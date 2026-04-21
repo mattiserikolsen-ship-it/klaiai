@@ -315,6 +315,11 @@
       <span class="ni">🤖</span> Alle agenter
     </div>
     <div class="nav-divider"></div>
+    <div class="nav-label">Fakturering</div>
+    <div class="nav-item" data-view="fakturaer" onclick="showView('fakturaer')">
+      <span class="ni">📄</span> Fakturaer
+    </div>
+    <div class="nav-divider"></div>
     <div class="nav-label">Generatorer</div>
     <div class="nav-item" data-view="gen-chatbot" onclick="showView('gen-chatbot')">
       <span class="ni">💬</span> Chatbot
@@ -417,8 +422,9 @@
     <!-- ── ALLE KLIENTER ── -->
     <div id="view-clients" class="hidden">
       <div class="card" style="padding:0; overflow:hidden">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border)">
-          <div style="font-size:.95rem; font-weight:700">Klienter <span id="clientCount" style="font-size:.8rem; color:var(--muted); font-weight:500"></span></div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); gap:1rem">
+          <div style="font-size:.95rem; font-weight:700; white-space:nowrap">Klienter <span id="clientCount" style="font-size:.8rem; color:var(--muted); font-weight:500"></span></div>
+          <input class="form-input" id="clientSearch" placeholder="🔍 Søg efter klient..." oninput="renderClientTable()" style="max-width:260px; padding:.5rem .9rem; font-size:.82rem"/>
           <button class="btn btn-primary btn-sm" onclick="showView('new-client')">+ Ny klient</button>
         </div>
         <div id="clientTableWrap">
@@ -539,7 +545,9 @@
         </div>
         <div style="margin-left:auto; display:flex; gap:.6rem; align-items:center">
           <span class="badge badge-green" id="detailStatus">Aktiv</span>
+          <button class="btn btn-secondary btn-sm" onclick="openEditModal()">✏️ Rediger</button>
           <button class="btn btn-secondary btn-sm" onclick="openClientPortal()">Åbn portal →</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteClient()">🗑 Slet</button>
         </div>
       </div>
 
@@ -927,8 +935,136 @@
       </div>
     </div>
 
+    <!-- ── FAKTURAER ── -->
+    <div id="view-fakturaer" class="hidden">
+      <div style="display:grid; grid-template-columns:1fr 380px; gap:1.5rem; align-items:start">
+
+        <!-- Faktura formular -->
+        <div class="card">
+          <div style="font-size:1rem; font-weight:700; margin-bottom:1.5rem">Ny faktura</div>
+
+          <div style="margin-bottom:1.25rem">
+            <div class="generator-section-title">Faktura info</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Fakturanr.</label>
+                <input class="form-input" id="inv_nr" placeholder="2024-001"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Dato</label>
+                <input class="form-input" type="date" id="inv_date"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Klient</label>
+                <select class="form-input form-select" id="inv_client" onchange="prefillInvoiceClient()"><option value="">— Vælg klient —</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1.25rem">
+            <div class="generator-section-title">Linjer</div>
+            <div id="inv_lines" style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:.75rem"></div>
+            <button class="btn btn-secondary btn-sm" onclick="addInvoiceLine()">+ Tilføj linje</button>
+          </div>
+
+          <div style="margin-bottom:1.25rem">
+            <div class="generator-section-title">Betalingsbetingelser</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Betalingsfrist (dage)</label>
+                <input class="form-input" type="number" id="inv_days" value="14"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Dit CVR-nr. (valgfrit)</label>
+                <input class="form-input" id="inv_cvr" placeholder="DK 12345678"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Note til klient</label>
+                <input class="form-input" id="inv_note" placeholder="Fx: Tak for samarbejdet!"/>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.75rem">
+            <button class="btn btn-generate" onclick="previewInvoice()" style="flex:1;justify-content:center">👁 Forhåndsvis</button>
+            <button class="btn btn-primary" onclick="printInvoice()">🖨 Print / Gem PDF</button>
+          </div>
+        </div>
+
+        <!-- Forhåndsvisning -->
+        <div>
+          <div class="card" style="padding:1.25rem">
+            <div style="font-size:.88rem; font-weight:700; margin-bottom:1rem; color:var(--muted)">FORHÅNDSVISNING</div>
+            <div id="inv_preview">
+              <div class="empty-state" style="padding:2rem">
+                <div class="empty-icon">📄</div>
+                <p>Udfyld formularen og klik "Forhåndsvis"</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
+
+<!-- ── EDIT CLIENT MODAL ── -->
+<div id="editModal" class="hidden" style="position:fixed;inset:0;background:rgba(5,8,15,0.55);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+  <div class="card" style="width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <div style="font-size:1rem;font-weight:700">Rediger klient</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Virksomhedsnavn *</label>
+        <input class="form-input" id="edit_name" placeholder="Firma A/S"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kontaktperson</label>
+        <input class="form-input" id="edit_contact" placeholder="Navn Navnesen"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input class="form-input" type="email" id="edit_email" placeholder="kontakt@firma.dk"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefon</label>
+        <input class="form-input" id="edit_phone" placeholder="+45 12 34 56 78"/>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Hjemmeside</label>
+        <input class="form-input" id="edit_website" placeholder="https://firma.dk"/>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Beskrivelse</label>
+        <textarea class="form-input" id="edit_desc"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Startpris (kr)</label>
+        <input class="form-input" type="number" id="edit_startpris"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Månedlig pris (kr)</label>
+        <input class="form-input" type="number" id="edit_mdpris"/>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Status</label>
+        <select class="form-input form-select" id="edit_status">
+          <option value="opsætning">Opsætning</option>
+          <option value="aktiv">Aktiv</option>
+          <option value="pause">Pause</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem">
+      <button class="btn btn-secondary" onclick="closeEditModal()">Annuller</button>
+      <button class="btn btn-primary" onclick="saveEditClient()">💾 Gem ændringer</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── DATA ──────────────────────────────────────────────
@@ -949,13 +1085,14 @@ const PRODUCTS = {
 function saveClients() { localStorage.setItem('klarai_clients', JSON.stringify(clients)); }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','new-client','client-detail','agents','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
+const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
   'new-client':    ['Ny klient', 'Opret og konfigurer ny klient'],
   'client-detail': ['Klient', ''],
   'agents':        ['AI-agenter', 'Automatiske agenter der kører for alle dine klienter'],
+  'fakturaer':     ['Fakturaer', 'Generer og print fakturaer til dine klienter'],
   'gen-chatbot':   ['Chatbot Generator', 'Generer AI-chatbot til en klient'],
   'gen-lead':      ['Lead Generator', 'Generer automatisk lead-opfølgning'],
   'gen-mail':      ['Mail Flow Generator', 'Generer automatiseret mail-flow'],
@@ -974,6 +1111,7 @@ function showView(v) {
   if (v === 'dashboard') renderDashboard();
   if (v === 'clients') renderClientTable();
   if (v === 'agents') renderAllAgents();
+  if (v === 'fakturaer') initFaktura();
   if (v.startsWith('gen-')) populateClientSelects();
 }
 
@@ -1039,13 +1177,19 @@ function renderDashboard() {
 
 // ── CLIENT TABLE ──────────────────────────────────────
 function renderClientTable() {
-  document.getElementById('clientCount').textContent = `(${clients.length})`;
+  const q = (document.getElementById('clientSearch')?.value || '').toLowerCase();
+  const filtered = q ? clients.filter(c => c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q)) : clients;
+  document.getElementById('clientCount').textContent = filtered.length !== clients.length ? `(${filtered.length} af ${clients.length})` : `(${clients.length})`;
   const tbody = document.getElementById('clientTableBody');
   if (clients.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">👥</div><h3>Ingen klienter endnu</h3><p>Klik "+ Ny klient" for at oprette din første</p></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = clients.map(c => {
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:2rem"><div class="empty-icon">🔍</div><h3>Ingen resultater</h3><p>Prøv en anden søgning</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(c => {
     const prods = c.products||[];
     const dots = Object.keys(PRODUCTS).map(key => `
       <div class="pdot-wrap">
@@ -1275,7 +1419,7 @@ function sendMsg() {
 // ── CLIENT SELECTS ────────────────────────────────────
 function populateClientSelects() {
   const opts = '<option value="">— Vælg klient —</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  ['chatbotClientSel','leadClientSel','mailClientSel','bookingClientSel','rapportClientSel'].forEach(id => {
+  ['chatbotClientSel','leadClientSel','mailClientSel','bookingClientSel','rapportClientSel','inv_client'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = opts;
   });
@@ -1643,6 +1787,172 @@ function activateAllAgentsGlobal() {
   });
   saveClients();
   renderAllAgents();
+}
+
+// ── SLET KLIENT ──────────────────────────────────────
+function deleteClient() {
+  if (!currentClient) return;
+  if (!confirm(`Er du sikker på at du vil slette ${currentClient.name}?\n\nDette kan ikke fortrydes.`)) return;
+  clients = clients.filter(c => c.id !== currentClient.id);
+  saveClients();
+  currentClient = null;
+  showView('clients');
+}
+
+// ── REDIGER KLIENT ────────────────────────────────────
+function openEditModal() {
+  if (!currentClient) return;
+  const c = currentClient;
+  document.getElementById('edit_name').value = c.name || '';
+  document.getElementById('edit_contact').value = c.contact || '';
+  document.getElementById('edit_email').value = c.email || '';
+  document.getElementById('edit_phone').value = c.phone || '';
+  document.getElementById('edit_website').value = c.website || '';
+  document.getElementById('edit_desc').value = c.desc || '';
+  document.getElementById('edit_startpris').value = c.startpris || '';
+  document.getElementById('edit_mdpris').value = c.mdpris || '';
+  document.getElementById('edit_status').value = c.status || 'aktiv';
+  document.getElementById('editModal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.add('hidden');
+}
+
+function saveEditClient() {
+  if (!currentClient) return;
+  const name = document.getElementById('edit_name').value.trim();
+  if (!name) { alert('Virksomhedsnavn er påkrævet'); return; }
+  currentClient.name = name;
+  currentClient.contact = document.getElementById('edit_contact').value.trim();
+  currentClient.email = document.getElementById('edit_email').value.trim();
+  currentClient.phone = document.getElementById('edit_phone').value.trim();
+  currentClient.website = document.getElementById('edit_website').value.trim();
+  currentClient.desc = document.getElementById('edit_desc').value.trim();
+  currentClient.startpris = document.getElementById('edit_startpris').value;
+  currentClient.mdpris = document.getElementById('edit_mdpris').value;
+  currentClient.status = document.getElementById('edit_status').value;
+  saveClients();
+  closeEditModal();
+  openClient(currentClient.id);
+}
+
+// ── FAKTURA ───────────────────────────────────────────
+let invoiceLines = [];
+
+function initFaktura() {
+  populateClientSelects();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('inv_date').value = today;
+  const nr = 'KAI-' + String(clients.length + 1).padStart(3,'0') + '-' + new Date().getFullYear();
+  document.getElementById('inv_nr').value = nr;
+  invoiceLines = [{ desc: 'Opsætning og konfiguration', qty: 1, price: '' }, { desc: 'Månedlig abonnement', qty: 1, price: '' }];
+  renderInvoiceLines();
+}
+
+function prefillInvoiceClient() {
+  const clientId = document.getElementById('inv_client').value;
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  invoiceLines = [];
+  if (c.startpris) invoiceLines.push({ desc: 'Opsætning & konfiguration', qty: 1, price: parseInt(c.startpris) });
+  if (c.mdpris) invoiceLines.push({ desc: 'Månedlig abonnement — KlarAI', qty: 1, price: parseInt(c.mdpris) });
+  (c.products||[]).forEach(p => {
+    // already included in packages, just log
+  });
+  if (invoiceLines.length === 0) invoiceLines = [{ desc: '', qty: 1, price: '' }];
+  renderInvoiceLines();
+}
+
+function renderInvoiceLines() {
+  const container = document.getElementById('inv_lines');
+  container.innerHTML = invoiceLines.map((l, i) => `
+    <div style="display:grid;grid-template-columns:1fr 80px 120px 36px;gap:.5rem;align-items:center">
+      <input class="form-input" placeholder="Beskrivelse" value="${l.desc||''}" oninput="invoiceLines[${i}].desc=this.value" style="font-size:.82rem;padding:.5rem .75rem"/>
+      <input class="form-input" type="number" placeholder="Antal" value="${l.qty||1}" oninput="invoiceLines[${i}].qty=parseInt(this.value)||1" style="font-size:.82rem;padding:.5rem .75rem"/>
+      <input class="form-input" type="number" placeholder="Pris (kr)" value="${l.price||''}" oninput="invoiceLines[${i}].price=parseFloat(this.value)||0" style="font-size:.82rem;padding:.5rem .75rem"/>
+      <button class="btn btn-ghost btn-sm" onclick="removeInvoiceLine(${i})" style="color:var(--red);padding:.4rem .5rem">✕</button>
+    </div>`).join('');
+}
+
+function addInvoiceLine() {
+  invoiceLines.push({ desc: '', qty: 1, price: '' });
+  renderInvoiceLines();
+}
+
+function removeInvoiceLine(i) {
+  invoiceLines.splice(i, 1);
+  renderInvoiceLines();
+}
+
+function previewInvoice() {
+  const clientId = document.getElementById('inv_client').value;
+  const c = clients.find(x => x.id === clientId);
+  const nr = document.getElementById('inv_nr').value || 'KAI-001';
+  const date = document.getElementById('inv_date').value;
+  const days = parseInt(document.getElementById('inv_days').value) || 14;
+  const cvr = document.getElementById('inv_cvr').value;
+  const note = document.getElementById('inv_note').value;
+
+  const due = new Date(date || Date.now());
+  due.setDate(due.getDate() + days);
+  const dueStr = due.toLocaleDateString('da-DK');
+  const dateStr = date ? new Date(date).toLocaleDateString('da-DK') : new Date().toLocaleDateString('da-DK');
+
+  const subtotal = invoiceLines.reduce((s, l) => s + ((parseFloat(l.price)||0) * (l.qty||1)), 0);
+  const moms = subtotal * 0.25;
+  const total = subtotal + moms;
+
+  const linesHtml = invoiceLines.filter(l => l.desc || l.price).map(l => `
+    <tr>
+      <td style="padding:.6rem .5rem;border-bottom:1px solid #e5e7eb;font-size:.85rem">${l.desc||'—'}</td>
+      <td style="padding:.6rem .5rem;border-bottom:1px solid #e5e7eb;font-size:.85rem;text-align:center">${l.qty||1}</td>
+      <td style="padding:.6rem .5rem;border-bottom:1px solid #e5e7eb;font-size:.85rem;text-align:right">${(parseFloat(l.price)||0).toLocaleString('da-DK')} kr</td>
+      <td style="padding:.6rem .5rem;border-bottom:1px solid #e5e7eb;font-size:.85rem;text-align:right;font-weight:600">${((parseFloat(l.price)||0)*(l.qty||1)).toLocaleString('da-DK')} kr</td>
+    </tr>`).join('');
+
+  document.getElementById('inv_preview').innerHTML = `
+    <div style="font-size:.78rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px solid var(--accent)">
+        <div>
+          <div style="font-size:1rem;font-weight:800;color:var(--accent)">KlarAI</div>
+          ${cvr ? `<div style="color:var(--muted);font-size:.72rem">CVR: ${cvr}</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;font-size:.9rem">FAKTURA #${nr}</div>
+          <div style="color:var(--muted)">Dato: ${dateStr}</div>
+          <div style="color:var(--muted)">Forfald: ${dueStr}</div>
+        </div>
+      </div>
+      ${c ? `<div style="margin-bottom:1rem"><div style="font-weight:700">${c.name}</div><div style="color:var(--muted)">${c.email||''}</div></div>` : ''}
+      <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
+        <thead><tr style="background:var(--bg)">
+          <th style="padding:.5rem;text-align:left;font-size:.72rem;color:var(--muted)">Beskrivelse</th>
+          <th style="padding:.5rem;text-align:center;font-size:.72rem;color:var(--muted)">Antal</th>
+          <th style="padding:.5rem;text-align:right;font-size:.72rem;color:var(--muted)">Enhedspris</th>
+          <th style="padding:.5rem;text-align:right;font-size:.72rem;color:var(--muted)">Total</th>
+        </tr></thead>
+        <tbody>${linesHtml}</tbody>
+      </table>
+      <div style="text-align:right;border-top:1px solid var(--border);padding-top:.75rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.25rem"><span style="color:var(--muted)">Subtotal ex. moms</span><span>${subtotal.toLocaleString('da-DK')} kr</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:.25rem"><span style="color:var(--muted)">Moms (25%)</span><span>${moms.toLocaleString('da-DK')} kr</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:.9rem;margin-top:.5rem;padding-top:.5rem;border-top:2px solid var(--accent);color:var(--accent)"><span>Total inkl. moms</span><span>${total.toLocaleString('da-DK')} kr</span></div>
+      </div>
+      ${note ? `<div style="margin-top:1rem;padding:.75rem;background:var(--bg);border-radius:8px;font-size:.78rem;color:var(--muted)">${note}</div>` : ''}
+    </div>`;
+}
+
+function printInvoice() {
+  previewInvoice();
+  setTimeout(() => {
+    const content = document.getElementById('inv_preview').innerHTML;
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Faktura</title><style>body{font-family:'Helvetica Neue',sans-serif;padding:40px;max-width:700px;margin:0 auto}@media print{body{padding:0}}</style></head><body>${content}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 300);
+  }, 100);
 }
 
 // Init
