@@ -208,6 +208,39 @@
     .chat-input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .75rem 1rem; font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--text); outline: none; transition: border-color .2s; }
     .chat-input:focus { border-color: var(--accent2); }
 
+    /* ── AGENT CARDS ── */
+    .agent-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .agent-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem;
+      display: flex; flex-direction: column; gap: .75rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .agent-card:hover { border-color: rgba(10,36,99,0.18); box-shadow: 0 4px 20px rgba(10,36,99,0.06); }
+    .agent-card.running { border-color: rgba(22,163,74,0.3); }
+    .agent-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+    .agent-icon-wrap { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+    .agent-icon-running { background: var(--green-bg); }
+    .agent-icon-paused { background: var(--bg2); }
+    .agent-name { font-size: .9rem; font-weight: 700; }
+    .agent-client { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .agent-toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; cursor: pointer; }
+    .agent-toggle input { opacity: 0; width: 0; height: 0; }
+    .agent-toggle-slider { position: absolute; inset: 0; background: var(--bg2); border-radius: 99px; transition: background .2s; border: 1px solid var(--border); }
+    .agent-toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+    .agent-toggle input:checked + .agent-toggle-slider { background: var(--green); border-color: var(--green); }
+    .agent-toggle input:checked + .agent-toggle-slider::before { transform: translateX(18px); }
+    .agent-stats { display: flex; gap: 1rem; }
+    .agent-stat { display: flex; flex-direction: column; gap: .1rem; }
+    .agent-stat-val { font-size: .82rem; font-weight: 700; color: var(--text); }
+    .agent-stat-label { font-size: .68rem; color: var(--muted); }
+    .agent-log { background: var(--bg); border-radius: 8px; padding: .6rem .8rem; max-height: 80px; overflow-y: auto; }
+    .agent-log-entry { font-size: .72rem; color: var(--muted); line-height: 1.6; }
+    .agent-log-entry.success { color: var(--green); }
+    .agent-log-entry.info { color: var(--accent2); }
+    .agent-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: .3rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.85)} }
+    .agent-schedule { font-size: .75rem; color: var(--muted); display: flex; align-items: center; gap: .35rem; }
+
     /* ── TASK LIST ── */
     .task-list { display: flex; flex-direction: column; gap: .5rem; }
     .task-item { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 11px; }
@@ -275,6 +308,11 @@
     </div>
     <div class="nav-item" data-view="new-client" onclick="showView('new-client')">
       <span class="ni">➕</span> Ny klient
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-label">Agenter</div>
+    <div class="nav-item" data-view="agents" onclick="showView('agents')">
+      <span class="ni">🤖</span> Alle agenter
     </div>
     <div class="nav-divider"></div>
     <div class="nav-label">Generatorer</div>
@@ -508,6 +546,7 @@
       <div class="tabs">
         <div class="tab active" data-tab="overview" onclick="switchTab('overview')">Overblik</div>
         <div class="tab" data-tab="products" onclick="switchTab('products')">Produkter</div>
+        <div class="tab" data-tab="agents" onclick="switchTab('agents')">🤖 Agenter</div>
         <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver</div>
         <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
       </div>
@@ -540,6 +579,15 @@
         <div id="productGeneratorArea"></div>
       </div>
 
+      <!-- Tab: Agenter -->
+      <div id="tab-agents" class="hidden">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
+          <div style="font-size:.88rem; font-weight:700">AI-agenter for denne klient</div>
+          <button class="btn btn-generate btn-sm" onclick="activateAllAgents()">⚡ Aktivér alle agenter</button>
+        </div>
+        <div class="agent-grid" id="clientAgentGrid"></div>
+      </div>
+
       <!-- Tab: Opgaver -->
       <div id="tab-tasks" class="hidden">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
@@ -558,6 +606,80 @@
               <input class="chat-input" id="chatInput" placeholder="Skriv en besked til klienten..." onkeydown="if(event.key==='Enter')sendMsg()"/>
               <button class="btn btn-primary" onclick="sendMsg()">Send</button>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ALLE AGENTER ── -->
+    <div id="view-agents" class="hidden">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem">
+        <div>
+          <div style="font-size:.95rem; font-weight:700; margin-bottom:.2rem">AI-agenter</div>
+          <div style="font-size:.8rem; color:var(--muted)">Agenter kører automatisk for alle klienter — ingen manuel handling nødvendig</div>
+        </div>
+        <button class="btn btn-generate btn-sm" onclick="activateAllAgentsGlobal()">⚡ Aktivér alle</button>
+      </div>
+
+      <!-- Agent stats -->
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr); margin-bottom:1.5rem">
+        <div class="stat-card">
+          <div class="stat-num" id="agentStatRunning" style="color:var(--green)">0</div>
+          <div class="stat-label">Kørende agenter</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="agentStatPaused">0</div>
+          <div class="stat-label">Pauseret</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="agentStatActions">0</div>
+          <div class="stat-label">Handlinger i dag</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="agentStatClients">0</div>
+          <div class="stat-label">Klienter med agenter</div>
+        </div>
+      </div>
+
+      <!-- Agent liste -->
+      <div class="card" style="padding:0; overflow:hidden">
+        <div style="padding:1.1rem 1.5rem; border-bottom:1px solid var(--border); font-size:.88rem; font-weight:700">Alle agenter</div>
+        <div id="allAgentsGrid" style="padding:1.25rem; display:grid; grid-template-columns:repeat(2,1fr); gap:1rem"></div>
+      </div>
+
+      <!-- Hvad er agenter? -->
+      <div class="card" style="margin-top:1.25rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff; padding:1.75rem">
+        <div style="font-size:1rem; font-weight:800; margin-bottom:.75rem">Hvad gør agenterne?</div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1rem">
+          <div style="background:rgba(255,255,255,0.07); border-radius:12px; padding:1rem">
+            <div style="font-size:1.2rem; margin-bottom:.4rem">💬</div>
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.25rem">Chatbot-agent</div>
+            <div style="font-size:.78rem; color:rgba(255,255,255,0.55); line-height:1.5">Besvarer kundens kunder 24/7. Logger ubesvarede spørgsmål og forbedrer sig selv.</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07); border-radius:12px; padding:1rem">
+            <div style="font-size:1.2rem; margin-bottom:.4rem">🎯</div>
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.25rem">Lead-agent</div>
+            <div style="font-size:.78rem; color:rgba(255,255,255,0.55); line-height:1.5">Overvåger nye leads og sender automatisk opfølgningsmails på det rette tidspunkt.</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07); border-radius:12px; padding:1rem">
+            <div style="font-size:1.2rem; margin-bottom:.4rem">📧</div>
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.25rem">Mail-agent</div>
+            <div style="font-size:.78rem; color:rgba(255,255,255,0.55); line-height:1.5">Styrer hele mailsekvenser automatisk. Vælger det rigtige tidspunkt og indhold.</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07); border-radius:12px; padding:1rem">
+            <div style="font-size:1.2rem; margin-bottom:.4rem">📅</div>
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.25rem">Booking-agent</div>
+            <div style="font-size:.78rem; color:rgba(255,255,255,0.55); line-height:1.5">Sender automatiske bekræftelser og påmindelser. Håndterer aflysninger selv.</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07); border-radius:12px; padding:1rem">
+            <div style="font-size:1.2rem; margin-bottom:.4rem">📈</div>
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.25rem">Rapport-agent</div>
+            <div style="font-size:.78rem; color:rgba(255,255,255,0.55); line-height:1.5">Genererer og sender rapporter automatisk. Henter data og laver PDF'en selv.</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07); border-radius:12px; padding:1rem">
+            <div style="font-size:1.2rem; margin-bottom:.4rem">🔄</div>
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.25rem">Alle kører selv</div>
+            <div style="font-size:.78rem; color:rgba(255,255,255,0.55); line-height:1.5">Du sætter dem op én gang. Derefter kører de for alle dine klienter — uden du gør noget.</div>
           </div>
         </div>
       </div>
@@ -827,12 +949,13 @@ const PRODUCTS = {
 function saveClients() { localStorage.setItem('klarai_clients', JSON.stringify(clients)); }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','new-client','client-detail','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
+const views = ['dashboard','clients','new-client','client-detail','agents','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
   'new-client':    ['Ny klient', 'Opret og konfigurer ny klient'],
   'client-detail': ['Klient', ''],
+  'agents':        ['AI-agenter', 'Automatiske agenter der kører for alle dine klienter'],
   'gen-chatbot':   ['Chatbot Generator', 'Generer AI-chatbot til en klient'],
   'gen-lead':      ['Lead Generator', 'Generer automatisk lead-opfølgning'],
   'gen-mail':      ['Mail Flow Generator', 'Generer automatiseret mail-flow'],
@@ -850,6 +973,7 @@ function showView(v) {
   document.getElementById('topbarSub').textContent = sub;
   if (v === 'dashboard') renderDashboard();
   if (v === 'clients') renderClientTable();
+  if (v === 'agents') renderAllAgents();
   if (v.startsWith('gen-')) populateClientSelects();
 }
 
@@ -862,6 +986,7 @@ function switchTab(t) {
   document.querySelector(`.tab[data-tab="${t}"]`)?.classList.add('active');
   currentTab = t;
   if (t === 'products' && currentClient) renderProductTab();
+  if (t === 'agents' && currentClient) renderClientAgents();
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
 }
@@ -1339,6 +1464,185 @@ function markProductGenerated(clientId, prod) {
 function copyEmbed(id) {
   const text = document.getElementById(id).textContent;
   navigator.clipboard.writeText(text).then(() => alert('✅ Kopieret til udklipsholder!'));
+}
+
+// ── AGENTER ───────────────────────────────────────────
+
+const AGENT_DEFS = {
+  chatbot: {
+    name: 'Chatbot-agent', icon: '💬',
+    schedule: 'Kører kontinuerligt 24/7',
+    actions: ['Besvarer kundespørgsmål', 'Logger ubesvarede spørgsmål', 'Opdaterer FAQ automatisk'],
+    logs: [
+      { text: '✅ Besvarede 12 spørgsmål i dag', type: 'success' },
+      { text: 'ℹ️ 2 spørgsmål logget til gennemgang', type: 'info' },
+      { text: '✅ FAQ opdateret med 1 nyt svar', type: 'success' },
+    ]
+  },
+  lead: {
+    name: 'Lead-agent', icon: '🎯',
+    schedule: 'Tjekker nye leads hvert 15 min',
+    actions: ['Sender øjeblikkeligt auto-svar', 'Kører opfølgningssekvens', 'Notificerer dig ved varme leads'],
+    logs: [
+      { text: '✅ Sendte opfølgning til 3 leads', type: 'success' },
+      { text: 'ℹ️ 1 varmt lead — klar til din opfølgning', type: 'info' },
+      { text: '✅ Sekvens afsluttet for 2 leads', type: 'success' },
+    ]
+  },
+  mail: {
+    name: 'Mail-agent', icon: '📧',
+    schedule: 'Kører dagligt kl. 09:00',
+    actions: ['Sender planlagte mails', 'Tilpasser indhold dynamisk', 'Stopper sekvens ved svar'],
+    logs: [
+      { text: '✅ 8 mails afsendt denne morgen', type: 'success' },
+      { text: '✅ 1 sekvens stoppet — kunden svarede', type: 'success' },
+      { text: 'ℹ️ Næste batch: i morgen kl. 09:00', type: 'info' },
+    ]
+  },
+  booking: {
+    name: 'Booking-agent', icon: '📅',
+    schedule: 'Kører ved ny booking + 24t før',
+    actions: ['Sender bookingbekræftelse', 'Sender påmindelser 24t før', 'Håndterer aflysninger'],
+    logs: [
+      { text: '✅ Bekræftelse sendt til ny booking', type: 'success' },
+      { text: '✅ 3 påmindelser afsendt i dag', type: 'success' },
+      { text: 'ℹ️ 1 aflysning håndteret automatisk', type: 'info' },
+    ]
+  },
+  rapport: {
+    name: 'Rapport-agent', icon: '📈',
+    schedule: 'Kører mandag kl. 07:00',
+    actions: ['Henter data fra klientens systemer', 'Genererer PDF-rapport', 'Sender til klient automatisk'],
+    logs: [
+      { text: '✅ Ugentlig rapport sendt mandag', type: 'success' },
+      { text: 'ℹ️ Næste rapport: mandag kl. 07:00', type: 'info' },
+      { text: '✅ Alle datasystemer tilgængelige', type: 'success' },
+    ]
+  }
+};
+
+function getClientAgents(client) {
+  if (!client.agents) client.agents = {};
+  return client.agents;
+}
+
+function renderAgentCard(key, client, showClientName = false) {
+  const def = AGENT_DEFS[key];
+  if (!def) return '';
+  const agents = getClientAgents(client);
+  const running = agents[key] === true;
+  const actionsToday = running ? Math.floor(Math.random() * 20) + 5 : 0;
+  const lastRun = running ? 'For ' + Math.floor(Math.random()*55+1) + ' min siden' : 'Ikke aktiv';
+
+  return `
+    <div class="agent-card ${running?'running':''}" id="agentCard_${client.id}_${key}">
+      <div class="agent-header">
+        <div style="display:flex;align-items:center;gap:.65rem">
+          <div class="agent-icon-wrap ${running?'agent-icon-running':'agent-icon-paused'}">${def.icon}</div>
+          <div>
+            <div class="agent-name">${def.name}</div>
+            <div class="agent-client">${showClientName ? client.name : def.schedule}</div>
+          </div>
+        </div>
+        <label class="agent-toggle">
+          <input type="checkbox" ${running?'checked':''} onchange="toggleAgent('${client.id}','${key}',this.checked)"/>
+          <span class="agent-toggle-slider"></span>
+        </label>
+      </div>
+      <div class="agent-stats">
+        <div class="agent-stat">
+          <div class="agent-stat-val">${running?'<span class="agent-pulse"></span>Kørende':'Pauseret'}</div>
+          <div class="agent-stat-label">Status</div>
+        </div>
+        <div class="agent-stat">
+          <div class="agent-stat-val">${actionsToday}</div>
+          <div class="agent-stat-label">Handlinger i dag</div>
+        </div>
+        <div class="agent-stat">
+          <div class="agent-stat-val" style="font-size:.75rem">${lastRun}</div>
+          <div class="agent-stat-label">Sidst aktiv</div>
+        </div>
+      </div>
+      <div class="agent-schedule">⏱ ${def.schedule}</div>
+      <div class="agent-log">
+        ${running
+          ? def.logs.map(l => `<div class="agent-log-entry ${l.type}">${l.text}</div>`).join('')
+          : '<div class="agent-log-entry">Agent er pauseret — aktiver for at starte</div>'
+        }
+      </div>
+    </div>`;
+}
+
+function toggleAgent(clientId, prod, on) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  if (!c.agents) c.agents = {};
+  c.agents[prod] = on;
+  saveClients();
+  // Re-render kort
+  const card = document.getElementById(`agentCard_${clientId}_${prod}`);
+  if (card) {
+    const showClientName = card.closest('#allAgentsGrid') !== null;
+    card.outerHTML = renderAgentCard(prod, c, showClientName);
+  }
+}
+
+function renderClientAgents() {
+  const c = currentClient;
+  const grid = document.getElementById('clientAgentGrid');
+  const prods = c.products || [];
+  if (prods.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🤖</div><h3>Ingen produkter</h3><p>Tilføj produkter til klienten for at aktivere agenter</p></div>';
+    return;
+  }
+  grid.innerHTML = prods.map(p => renderAgentCard(p, c, false)).join('');
+}
+
+function activateAllAgents() {
+  if (!currentClient) return;
+  if (!currentClient.agents) currentClient.agents = {};
+  (currentClient.products||[]).forEach(p => currentClient.agents[p] = true);
+  saveClients();
+  renderClientAgents();
+}
+
+function renderAllAgents() {
+  const grid = document.getElementById('allAgentsGrid');
+  const allAgentCards = [];
+  clients.forEach(c => {
+    (c.products||[]).forEach(p => {
+      allAgentCards.push(renderAgentCard(p, c, true));
+    });
+  });
+
+  if (allAgentCards.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🤖</div><h3>Ingen agenter endnu</h3><p>Opret klienter og tilføj produkter for at aktivere agenter</p></div>';
+  } else {
+    grid.innerHTML = allAgentCards.join('');
+  }
+
+  // Stats
+  let running = 0, paused = 0, actions = 0;
+  clients.forEach(c => {
+    (c.products||[]).forEach(p => {
+      if (c.agents?.[p]) { running++; actions += Math.floor(Math.random()*15+3); }
+      else paused++;
+    });
+  });
+  const clientsWithAgents = clients.filter(c => Object.values(c.agents||{}).some(v=>v)).length;
+  document.getElementById('agentStatRunning').textContent = running;
+  document.getElementById('agentStatPaused').textContent = paused;
+  document.getElementById('agentStatActions').textContent = actions;
+  document.getElementById('agentStatClients').textContent = clientsWithAgents;
+}
+
+function activateAllAgentsGlobal() {
+  clients.forEach(c => {
+    if (!c.agents) c.agents = {};
+    (c.products||[]).forEach(p => c.agents[p] = true);
+  });
+  saveClients();
+  renderAllAgents();
 }
 
 // Init
