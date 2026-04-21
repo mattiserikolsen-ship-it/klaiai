@@ -4,1683 +4,1345 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KlarAI – Admin</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --accent: #0a2463; --accent2: #1e4fcf; --bg: #f4f6fb; --bg2: #eaeff8;
-      --text: #0a1628; --muted: #4a5568; --border: rgba(10,25,80,0.1);
-      --card: #fff; --green: #22863a; --green-bg: #e6f4ea;
-      --orange: #d97706; --orange-bg: #fef3c7; --blue-bg: #dbeafe;
+      --sidebar-bg: #05080f;
+      --sidebar-border: rgba(255,255,255,0.07);
+      --bg: #f7f8fc;
+      --bg2: #eef0f7;
+      --card: #ffffff;
+      --border: rgba(10,25,80,0.08);
+      --accent: #0a2463;
+      --accent2: #1e4fcf;
+      --text: #0a1628;
+      --muted: #6b7a99;
+      --green: #16a34a; --green-bg: #dcfce7;
+      --orange: #d97706; --orange-bg: #fef3c7;
+      --red: #dc2626; --red-bg: #fee2e2;
+      --blue-bg: #dbeafe;
+      --purple: #7c3aed; --purple-bg: #ede9fe;
     }
+
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+    .hidden { display: none !important; }
 
-    /* SIDEBAR */
-    .sidebar { width: 240px; background: var(--accent); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 10; }
-    .sidebar-logo { padding: 1.5rem 1.25rem 1rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.5px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .sidebar-logo span { font-size: .7rem; display: block; opacity: .6; font-weight: 500; margin-top: .1rem; }
-    .sidebar-nav { flex: 1; padding: 1rem 0; }
-    .nav-section { padding: .25rem 1rem .5rem; font-size: .68rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; opacity: .5; margin-top: .5rem; }
-    .nav-item { display: flex; align-items: center; gap: .6rem; padding: .65rem 1.25rem; cursor: pointer; font-size: .88rem; font-weight: 500; opacity: .75; transition: opacity .15s, background .15s; border-radius: 0; }
-    .nav-item:hover { opacity: 1; background: rgba(255,255,255,0.07); }
-    .nav-item.active { opacity: 1; background: rgba(255,255,255,0.12); font-weight: 600; }
-    .nav-item .icon { width: 18px; text-align: center; }
-    .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); }
-    .logout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: .6rem 1rem; border-radius: 8px; width: 100%; font-family: 'Inter', sans-serif; font-size: .85rem; cursor: pointer; opacity: .7; transition: opacity .2s; }
-    .logout-btn:hover { opacity: 1; }
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 230px; background: var(--sidebar-bg); color: #fff;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; height: 100vh; z-index: 20;
+      border-right: 1px solid var(--sidebar-border);
+    }
+    .sidebar-logo {
+      padding: 1.4rem 1.25rem 1.1rem;
+      font-size: 1.2rem; font-weight: 800; letter-spacing: -.5px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+    .sidebar-logo small { display: block; font-size: .65rem; font-weight: 500; opacity: .4; margin-top: .1rem; letter-spacing: .5px; text-transform: uppercase; }
+    .sidebar-nav { flex: 1; padding: .75rem 0; overflow-y: auto; }
+    .nav-label { padding: .5rem 1.1rem .3rem; font-size: .62rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: .35; }
+    .nav-item {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .6rem 1.1rem; cursor: pointer;
+      font-size: .85rem; font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      transition: color .15s, background .15s;
+      border-radius: 0;
+    }
+    .nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.05); }
+    .nav-item.active { color: #fff; background: rgba(255,255,255,0.1); font-weight: 600; }
+    .nav-item .ni { font-size: 1rem; width: 20px; text-align: center; }
+    .nav-divider { height: 1px; background: var(--sidebar-border); margin: .5rem 1rem; }
+    .sidebar-footer { padding: 1rem 1.1rem; border-top: 1px solid var(--sidebar-border); }
+    .sidebar-user { display: flex; align-items: center; gap: .65rem; margin-bottom: .75rem; }
+    .sidebar-avatar { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .sidebar-user-name { font-size: .82rem; font-weight: 600; color: rgba(255,255,255,0.85); }
+    .sidebar-user-role { font-size: .68rem; color: rgba(255,255,255,0.35); }
+    .logout-btn { width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.5); padding: .5rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: .8rem; cursor: pointer; transition: all .2s; }
+    .logout-btn:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); }
 
-    /* MAIN */
-    .main { margin-left: 240px; flex: 1; min-height: 100vh; }
-    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 5; }
-    .topbar-title { font-size: 1rem; font-weight: 700; }
-    .topbar-sub { font-size: .8rem; color: var(--muted); }
-    .content { padding: 2rem; }
+    /* ── MAIN ── */
+    .main { margin-left: 230px; flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: .9rem 2rem; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-left { display: flex; flex-direction: column; }
+    .topbar-title { font-size: .95rem; font-weight: 700; }
+    .topbar-sub { font-size: .75rem; color: var(--muted); margin-top: .05rem; }
+    .topbar-actions { display: flex; gap: .75rem; align-items: center; }
+    .content { padding: 1.75rem 2rem; flex: 1; }
 
-    /* CARDS */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
-    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-    .card-title { font-size: 1rem; font-weight: 700; }
-
-    /* BUTTONS */
-    .btn-primary { background: var(--accent); color: #fff; border: none; padding: .7rem 1.25rem; border-radius: 9px; font-family: 'Inter', sans-serif; font-size: .88rem; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+    /* ── BUTTONS ── */
+    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: .65rem 1.15rem; border-radius: 9px; font-family: 'Inter', sans-serif; font-size: .85rem; font-weight: 600; cursor: pointer; border: none; transition: all .2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { opacity: .88; }
-    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: .65rem 1.25rem; border-radius: 9px; font-family: 'Inter', sans-serif; font-size: .88rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { background: var(--bg); }
-    .btn-danger { background: #fee2e2; color: #991b1b; border: none; padding: .55rem 1rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: .82rem; font-weight: 600; cursor: pointer; }
+    .btn-ghost { background: transparent; color: var(--muted); border: none; }
+    .btn-ghost:hover { color: var(--text); background: var(--bg2); }
+    .btn-danger { background: var(--red-bg); color: var(--red); }
+    .btn-success { background: var(--green-bg); color: var(--green); }
+    .btn-generate { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); color: #fff; box-shadow: 0 4px 20px rgba(10,36,99,0.25); }
+    .btn-generate:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(10,36,99,0.3); }
+    .btn-sm { padding: .4rem .8rem; font-size: .78rem; }
 
-    /* STATS ROW */
+    /* ── CARDS ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
+    .card-sm { padding: 1.1rem 1.25rem; border-radius: 12px; }
+
+    /* ── STATS ── */
     .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; }
-    .stat-num { font-size: 2rem; font-weight: 800; color: var(--accent); }
-    .stat-label { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.25rem; }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--accent); letter-spacing: -.5px; }
+    .stat-label { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+    .stat-sub { font-size: .7rem; color: var(--green); margin-top: .2rem; font-weight: 600; }
 
-    /* CLIENT LIST */
-    .client-list { display: flex; flex-direction: column; gap: .75rem; }
-    .client-row { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: var(--card); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
-    .client-row:hover { border-color: rgba(10,36,99,0.2); box-shadow: 0 2px 12px rgba(10,36,99,0.06); }
-    .client-avatar { width: 42px; height: 42px; border-radius: 12px; background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; color: var(--accent); flex-shrink: 0; }
-    .client-info { flex: 1; }
-    .client-name { font-weight: 700; font-size: .95rem; }
-    .client-sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
-    .client-progress { width: 120px; }
-    .progress-label { font-size: .72rem; color: var(--muted); margin-bottom: .3rem; }
-    .progress-bar { height: 6px; background: var(--bg2); border-radius: 99px; overflow: hidden; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .4s; }
-
-    /* STATUS BADGE */
-    .badge { display: inline-flex; align-items: center; padding: .25rem .7rem; border-radius: 99px; font-size: .73rem; font-weight: 700; }
+    /* ── BADGE ── */
+    .badge { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .65rem; border-radius: 99px; font-size: .7rem; font-weight: 700; }
     .badge-green { background: var(--green-bg); color: var(--green); }
     .badge-orange { background: var(--orange-bg); color: var(--orange); }
+    .badge-red { background: var(--red-bg); color: var(--red); }
     .badge-blue { background: var(--blue-bg); color: var(--accent2); }
+    .badge-purple { background: var(--purple-bg); color: var(--purple); }
     .badge-gray { background: var(--bg2); color: var(--muted); }
 
-    /* WIZARD */
-    .wizard-steps { display: flex; gap: 0; margin-bottom: 2rem; }
-    .wizard-step { flex: 1; text-align: center; padding: .75rem; font-size: .82rem; font-weight: 600; color: var(--muted); border-bottom: 3px solid var(--border); position: relative; }
-    .wizard-step.active { color: var(--accent2); border-bottom-color: var(--accent2); }
-    .wizard-step.done { color: var(--green); border-bottom-color: var(--green); }
-    .wizard-step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; margin-right: .4rem; }
-    .wizard-step.active .wizard-step-num { background: var(--accent2); color: #fff; }
-    .wizard-step.done .wizard-step-num { background: var(--green); color: #fff; }
+    /* ── CLIENT LIST ── */
+    .client-table { width: 100%; border-collapse: collapse; }
+    .client-table th { text-align: left; font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: .6rem 1rem; border-bottom: 1px solid var(--border); }
+    .client-table td { padding: .85rem 1rem; border-bottom: 1px solid var(--border); font-size: .875rem; vertical-align: middle; }
+    .client-table tr:last-child td { border-bottom: none; }
+    .client-table tr:hover td { background: var(--bg); cursor: pointer; }
+    .client-avatar { width: 36px; height: 36px; border-radius: 10px; background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 800; color: var(--accent); flex-shrink: 0; }
+    .client-name-cell { display: flex; align-items: center; gap: .75rem; }
+    .client-name { font-weight: 700; font-size: .9rem; }
+    .client-email { font-size: .75rem; color: var(--muted); }
 
-    /* FORMS */
+    /* ── PRODUCT DOTS ── */
+    .product-dots { display: flex; gap: .3rem; align-items: center; }
+    .pdot { width: 8px; height: 8px; border-radius: 50%; }
+    .pdot-active { background: var(--green); }
+    .pdot-pending { background: var(--orange); }
+    .pdot-none { background: var(--border); border: 1px solid var(--border); }
+    .pdot-wrap { position: relative; }
+    .pdot-label { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; font-size: .65rem; padding: .2rem .4rem; border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; }
+    .pdot-wrap:hover .pdot-label { opacity: 1; }
+
+    /* ── PROGRESS ── */
+    .progress-bar { height: 5px; background: var(--bg2); border-radius: 99px; overflow: hidden; width: 80px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; }
+
+    /* ── FORM ── */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .form-group { display: flex; flex-direction: column; gap: .4rem; }
+    .form-group { display: flex; flex-direction: column; gap: .35rem; }
     .form-group.full { grid-column: 1 / -1; }
-    label { font-size: .82rem; font-weight: 600; color: var(--muted); }
-    input, select, textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: .75rem 1rem; font-family: 'Inter', sans-serif; font-size: .9rem; color: var(--text); outline: none; transition: border-color .2s; }
-    input:focus, select:focus, textarea:focus { border-color: var(--accent2); }
-    textarea { resize: vertical; min-height: 80px; }
-    .challenges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-top: .25rem; }
-    .challenge-opt { display: flex; align-items: center; gap: .5rem; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: .6rem .9rem; cursor: pointer; font-size: .85rem; font-weight: 500; transition: border-color .2s, background .2s; user-select: none; }
-    .challenge-opt.selected { border-color: var(--accent2); background: var(--blue-bg); color: var(--accent); }
-    .challenge-opt input[type=checkbox] { display: none; }
+    .form-label { font-size: .78rem; font-weight: 600; color: var(--muted); }
+    .form-input { background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: .7rem 1rem; font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--text); outline: none; transition: border-color .2s; }
+    .form-input:focus { border-color: var(--accent2); }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .form-select { -webkit-appearance: none; }
 
-    /* RECS */
-    .rec-grid { display: flex; flex-direction: column; gap: .8rem; margin-top: 1rem; }
-    .rec-card { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; display: flex; gap: 1rem; align-items: flex-start; }
-    .rec-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
-    .rec-body { flex: 1; }
-    .rec-name { font-weight: 700; font-size: .95rem; }
-    .rec-vendor { font-size: .78rem; color: var(--muted); margin-bottom: .35rem; }
-    .rec-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; margin-bottom: .5rem; }
-    .rec-why { font-size: .83rem; color: var(--accent); background: var(--blue-bg); border-radius: 8px; padding: .4rem .7rem; display: inline-block; }
-    .rec-meta { display: flex; gap: .75rem; margin-top: .5rem; flex-wrap: wrap; }
-    .rec-meta-item { font-size: .75rem; color: var(--muted); }
-    .rec-meta-item strong { color: var(--text); }
+    /* ── PRODUCT SELECTOR ── */
+    .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+    .product-opt {
+      border: 1.5px solid var(--border); border-radius: 12px; padding: .9rem 1rem;
+      cursor: pointer; transition: all .2s; user-select: none;
+      display: flex; align-items: flex-start; gap: .6rem;
+    }
+    .product-opt:hover { border-color: rgba(10,36,99,0.2); background: var(--bg); }
+    .product-opt.selected { border-color: var(--accent2); background: var(--blue-bg); }
+    .product-opt .po-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .product-opt .po-name { font-size: .85rem; font-weight: 700; }
+    .product-opt .po-desc { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .product-opt input { display: none; }
 
-    /* TASKS */
-    .task-list { display: flex; flex-direction: column; gap: .6rem; }
-    .task-item { display: flex; align-items: center; gap: .85rem; padding: .9rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 11px; }
-    .task-status-btn { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); background: transparent; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-    .task-status-btn.in_progress { border-color: var(--orange); background: var(--orange-bg); }
-    .task-status-btn.done { border-color: var(--green); background: var(--green-bg); }
-    .task-status-btn.done::after { content: '✓'; font-size: .65rem; color: var(--green); font-weight: 800; }
-    .task-status-btn.in_progress::after { content: '●'; font-size: .45rem; color: var(--orange); }
-    .task-info { flex: 1; }
-    .task-title { font-size: .9rem; font-weight: 600; }
-    .task-title.done-text { text-decoration: line-through; color: var(--muted); }
-    .task-desc { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
-    .task-tool { font-size: .73rem; background: var(--bg2); color: var(--muted); padding: .15rem .5rem; border-radius: 5px; margin-left: auto; flex-shrink: 0; }
-    .task-actions { display: flex; gap: .4rem; }
-    .task-select { font-family: 'Inter', sans-serif; font-size: .75rem; padding: .3rem .5rem; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); cursor: pointer; outline: none; }
-
-    /* CHAT */
-    .chat-wrap { display: flex; flex-direction: column; height: 500px; }
-    .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; }
-    .msg { max-width: 75%; }
-    .msg-admin { align-self: flex-end; }
-    .msg-client { align-self: flex-start; }
-    .msg-bubble { padding: .65rem .9rem; border-radius: 14px; font-size: .88rem; line-height: 1.5; }
-    .msg-admin .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-    .msg-client .msg-bubble { background: var(--card); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
-    .msg-time { font-size: .7rem; color: var(--muted); margin-top: .2rem; }
-    .msg-admin .msg-time { text-align: right; }
-    .chat-input-row { display: flex; gap: .75rem; }
-    .chat-input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1rem; font-family: 'Inter', sans-serif; font-size: .9rem; color: var(--text); outline: none; transition: border-color .2s; }
-    .chat-input:focus { border-color: var(--accent2); }
-
-    /* CLIENT DETAIL TABS */
+    /* ── TABS ── */
     .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
-    .tab { padding: .75rem 1.25rem; font-size: .88rem; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; transition: color .2s; }
+    .tab { padding: .7rem 1.1rem; font-size: .85rem; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s; }
     .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab:hover { color: var(--text); }
 
-    /* MISC */
-    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-    .section-title { font-size: 1rem; font-weight: 700; }
-    .empty { text-align: center; padding: 2.5rem; color: var(--muted); font-size: .9rem; }
-    .add-task-form { display: none; gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); flex-direction: column; }
-    .add-task-form.open { display: flex; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .info-item { }
-    .info-label { font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: .2rem; }
-    .info-value { font-size: .9rem; font-weight: 600; }
-    .progress-section { margin-bottom: 1.5rem; }
-    .progress-big { height: 10px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
-    .progress-big-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .5s; }
-    .hidden { display: none !important; }
+    /* ── CLIENT DETAIL ── */
+    .detail-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .detail-avatar { width: 52px; height: 52px; border-radius: 14px; background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: var(--accent); }
+    .detail-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -.3px; }
+    .detail-meta { font-size: .82rem; color: var(--muted); margin-top: .15rem; }
 
-    /* ── BUILDER MODAL ── */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(10,18,40,0.55); z-index: 200; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; overflow-y: auto; }
-    .modal-overlay.hidden { display: none !important; }
-    .modal { background: var(--card); border-radius: 20px; width: 100%; max-width: 780px; box-shadow: 0 20px 60px rgba(10,18,40,0.2); overflow: hidden; }
-    .modal-header { background: var(--accent); color: #fff; padding: 1.25rem 1.75rem; display: flex; align-items: center; justify-content: space-between; }
-    .modal-header h2 { font-size: 1.05rem; font-weight: 700; }
-    .modal-header-sub { font-size: .78rem; opacity: .7; margin-top: .15rem; }
-    .modal-close { background: rgba(255,255,255,0.15); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background .2s; }
-    .modal-close:hover { background: rgba(255,255,255,0.25); }
-    .modal-body { padding: 1.75rem; }
-    .modal-footer { padding: 1rem 1.75rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: .75rem; background: var(--bg); }
+    /* ── PRODUKT CARDS I DETAIL ── */
+    .product-status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .product-status-card {
+      border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.25rem;
+      display: flex; flex-direction: column; gap: .6rem;
+      background: var(--card);
+    }
+    .psc-header { display: flex; align-items: center; justify-content: space-between; }
+    .psc-icon-name { display: flex; align-items: center; gap: .5rem; }
+    .psc-icon { font-size: 1.2rem; }
+    .psc-name { font-size: .88rem; font-weight: 700; }
+    .psc-status { font-size: .72rem; color: var(--muted); }
+    .psc-actions { display: flex; gap: .5rem; margin-top: .25rem; }
+    .psc-card-inactive { opacity: .5; }
 
-    /* Builder sections */
-    .builder-section { margin-bottom: 1.5rem; }
-    .builder-section-title { font-size: .8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .75rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
-    .faq-list { display: flex; flex-direction: column; gap: .5rem; }
-    .faq-item { display: flex; gap: .5rem; align-items: flex-start; }
-    .faq-item input { flex: 1; }
-    .faq-remove { background: #fee2e2; color: #991b1b; border: none; padding: .6rem .8rem; border-radius: 8px; cursor: pointer; font-size: .8rem; white-space: nowrap; }
+    /* ── GENERATOR VIEW ── */
+    .generator-wrap { max-width: 700px; }
+    .generator-section { margin-bottom: 1.5rem; }
+    .generator-section-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: .75rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+    .generated-embed { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; font-family: monospace; font-size: .8rem; color: var(--muted); white-space: pre-wrap; word-break: break-all; }
+    .copy-btn { font-size: .75rem; }
 
-    /* Output box */
-    .output-box { background: #0a1628; color: #e2e8f0; border-radius: 12px; padding: 1.25rem; font-family: 'Courier New', monospace; font-size: .78rem; line-height: 1.6; overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-height: 320px; overflow-y: auto; }
-    .output-actions { display: flex; gap: .6rem; margin-top: .75rem; }
-    .btn-copy { background: var(--accent); color: #fff; border: none; padding: .6rem 1.1rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: .82rem; font-weight: 600; cursor: pointer; transition: opacity .2s; }
-    .btn-copy:hover { opacity: .85; }
-    .btn-download { background: var(--green-bg); color: var(--green); border: none; padding: .6rem 1.1rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: .82rem; font-weight: 600; cursor: pointer; }
-    .copy-ok { color: var(--green); font-size: .8rem; font-weight: 600; opacity: 0; transition: opacity .3s; }
+    /* ── CHAT ── */
+    .chat-wrap { display: flex; flex-direction: column; height: 440px; }
+    .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .65rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: .75rem; }
+    .msg { max-width: 72%; }
+    .msg-admin { align-self: flex-end; }
+    .msg-client { align-self: flex-start; }
+    .msg-bubble { padding: .6rem .9rem; border-radius: 14px; font-size: .87rem; line-height: 1.5; }
+    .msg-admin .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .msg-client .msg-bubble { background: var(--card); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+    .msg-time { font-size: .68rem; color: var(--muted); margin-top: .15rem; }
+    .msg-admin .msg-time { text-align: right; }
+    .chat-input-row { display: flex; gap: .6rem; }
+    .chat-input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .75rem 1rem; font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--text); outline: none; transition: border-color .2s; }
+    .chat-input:focus { border-color: var(--accent2); }
 
-    /* Prompt cards */
-    .prompt-list { display: flex; flex-direction: column; gap: .6rem; }
-    .prompt-item { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: .85rem 1rem; }
-    .prompt-label { font-size: .72rem; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: .4px; margin-bottom: .3rem; }
-    .prompt-text { font-size: .88rem; color: var(--text); line-height: 1.5; font-style: italic; }
+    /* ── TASK LIST ── */
+    .task-list { display: flex; flex-direction: column; gap: .5rem; }
+    .task-item { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 11px; }
+    .task-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+    .task-check.done { border-color: var(--green); background: var(--green-bg); }
+    .task-check.done::after { content: '✓'; font-size: .65rem; color: var(--green); font-weight: 800; }
+    .task-check.progress { border-color: var(--orange); background: var(--orange-bg); }
+    .task-check.progress::after { content: '●'; font-size: .5rem; color: var(--orange); }
+    .task-info { flex: 1; }
+    .task-title { font-size: .875rem; font-weight: 600; }
+    .task-title.done-text { text-decoration: line-through; color: var(--muted); }
+    .task-desc { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .task-tag { font-size: .7rem; background: var(--bg2); color: var(--muted); padding: .15rem .5rem; border-radius: 5px; }
 
-    /* Build button on rec card */
-    .btn-build { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); color: #fff; border: none; padding: .45rem .9rem; border-radius: 7px; font-family: 'Inter', sans-serif; font-size: .78rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity .2s; margin-top: .6rem; }
-    .btn-build:hover { opacity: .88; }
-    .back-btn { display: flex; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 600; color: var(--muted); cursor: pointer; margin-bottom: 1.25rem; }
-    .back-btn:hover { color: var(--text); }
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .4rem; }
+    .empty-state p { font-size: .875rem; line-height: 1.6; }
+
+    /* ── MONTHLY REVENUE ── */
+    .revenue-bar { height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
+    .revenue-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #22c55e); border-radius: 99px; }
+
+    /* ── RAPPORT GENERATOR ── */
+    .rapport-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+    .rapport-opt { border: 1.5px solid var(--border); border-radius: 12px; padding: 1rem; cursor: pointer; transition: all .2s; }
+    .rapport-opt:hover { border-color: rgba(10,36,99,0.2); background: var(--bg); }
+    .rapport-opt.selected { border-color: var(--accent2); background: var(--blue-bg); }
+    .rapport-opt .ro-icon { font-size: 1.5rem; margin-bottom: .4rem; }
+    .rapport-opt .ro-name { font-size: .875rem; font-weight: 700; }
+    .rapport-opt .ro-desc { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+
+    /* ── MAIL FLOW BUILDER ── */
+    .flow-steps { display: flex; flex-direction: column; gap: 0; }
+    .flow-step { display: flex; align-items: flex-start; gap: .75rem; }
+    .flow-step-line { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    .flow-step-dot { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; flex-shrink: 0; }
+    .flow-step-connector { width: 2px; height: 24px; background: var(--border); margin: 2px auto; }
+    .flow-step-body { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+    .flow-step-title { font-size: .875rem; font-weight: 700; margin-bottom: .25rem; }
+    .flow-step-desc { font-size: .78rem; color: var(--muted); }
+    .flow-delay { font-size: .72rem; color: var(--accent2); font-weight: 600; margin-top: .35rem; background: var(--blue-bg); display: inline-block; padding: .15rem .5rem; border-radius: 5px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1100px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .product-status-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
+
 <!-- SIDEBAR -->
-<nav class="sidebar">
-  <div class="sidebar-logo">KlarAI <span>Admin-panel</span></div>
-  <div class="sidebar-nav">
-    <div class="nav-section">Klienter</div>
-    <div class="nav-item active" data-view="clients" onclick="showView('clients')">
-      <span class="icon">👥</span> Alle klienter
+<div class="sidebar">
+  <div class="sidebar-logo">KlarAI <small>Admin panel</small></div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Oversigt</div>
+    <div class="nav-item active" data-view="dashboard" onclick="showView('dashboard')">
+      <span class="ni">📊</span> Dashboard
+    </div>
+    <div class="nav-label">Klienter</div>
+    <div class="nav-item" data-view="clients" onclick="showView('clients')">
+      <span class="ni">👥</span> Alle klienter
     </div>
     <div class="nav-item" data-view="new-client" onclick="showView('new-client')">
-      <span class="icon">➕</span> Ny klient
+      <span class="ni">➕</span> Ny klient
     </div>
-  </div>
+    <div class="nav-divider"></div>
+    <div class="nav-label">Generatorer</div>
+    <div class="nav-item" data-view="gen-chatbot" onclick="showView('gen-chatbot')">
+      <span class="ni">💬</span> Chatbot
+    </div>
+    <div class="nav-item" data-view="gen-lead" onclick="showView('gen-lead')">
+      <span class="ni">🎯</span> Lead-opfølgning
+    </div>
+    <div class="nav-item" data-view="gen-mail" onclick="showView('gen-mail')">
+      <span class="ni">📧</span> Mail flow
+    </div>
+    <div class="nav-item" data-view="gen-booking" onclick="showView('gen-booking')">
+      <span class="ni">📅</span> Booking
+    </div>
+    <div class="nav-item" data-view="gen-rapport" onclick="showView('gen-rapport')">
+      <span class="ni">📈</span> Rapporter
+    </div>
+  </nav>
   <div class="sidebar-footer">
-    <button class="logout-btn" onclick="logout()">Log ud</button>
-  </div>
-</nav>
-
-<!-- MAIN -->
-<div class="main">
-  <div class="topbar">
-    <div>
-      <div class="topbar-title" id="topbarTitle">Klienter</div>
-      <div class="topbar-sub" id="topbarSub">Oversigt over alle KlarAI-klienter</div>
-    </div>
-    <button class="btn-primary" onclick="showView('new-client')">+ Ny klient</button>
-  </div>
-  <div class="content">
-
-    <!-- ── VIEW: CLIENTS ── -->
-    <div id="view-clients">
-      <div class="stats-row">
-        <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Klienter i alt</div></div>
-        <div class="stat-card"><div class="stat-num" id="statActive">0</div><div class="stat-label">Aktive forløb</div></div>
-        <div class="stat-card"><div class="stat-num" id="statTasks">0</div><div class="stat-label">Åbne opgaver</div></div>
-        <div class="stat-card"><div class="stat-num" id="statDone">0</div><div class="stat-label">Afsluttede</div></div>
-      </div>
-      <div class="client-list" id="clientList"></div>
-    </div>
-
-    <!-- ── VIEW: NEW CLIENT ── -->
-    <div id="view-new-client" class="hidden">
-      <div class="card">
-        <div class="wizard-steps" id="wizardSteps">
-          <div class="wizard-step active" id="ws1"><span class="wizard-step-num">1</span>Virksomhedsinfo</div>
-          <div class="wizard-step" id="ws2"><span class="wizard-step-num">2</span>AI-analyse</div>
-          <div class="wizard-step" id="ws3"><span class="wizard-step-num">3</span>Gennemse plan</div>
-        </div>
-
-        <!-- Step 1 -->
-        <div id="step1">
-          <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:1.25rem">Grundoplysninger</h2>
-          <div class="form-grid">
-            <div class="form-group"><label>Virksomhedsnavn *</label><input id="nc_company" placeholder="Eks. Hansen Wellness A/S"/></div>
-            <div class="form-group"><label>Kontaktperson *</label><input id="nc_contact" placeholder="Fornavn Efternavn"/></div>
-            <div class="form-group"><label>E-mail *</label><input id="nc_email" type="email" placeholder="kontakt@virksomhed.dk"/></div>
-            <div class="form-group"><label>Telefon</label><input id="nc_phone" placeholder="+45 xx xx xx xx"/></div>
-            <div class="form-group"><label>Adgangskode til portal *</label><input id="nc_password" placeholder="Min. 6 tegn"/></div>
-            <div class="form-group"><label>Branche</label>
-              <select id="nc_industry">
-                <option value="">Vælg branche...</option>
-                <option>Pool & Wellness</option><option>Detailhandel</option><option>Restaurant & Café</option>
-                <option>Sundhed & Klinik</option><option>Ejendomsmægler</option><option>Håndværk & Service</option>
-                <option>Rådgivning & Konsulent</option><option>Produktion</option><option>Transport & Logistik</option><option>Anden</option>
-              </select>
-            </div>
-            <div class="form-group"><label>Antal medarbejdere</label>
-              <select id="nc_size">
-                <option value="">Vælg...</option>
-                <option>1-5</option><option>6-15</option><option>16-50</option><option>51-200</option><option>200+</option>
-              </select>
-            </div>
-            <div class="form-group"><label>Nuværende digitale værktøjer</label><input id="nc_tools" placeholder="Eks. Excel, Outlook, WooCommerce..."/></div>
-          </div>
-          <div style="margin-top:1.5rem;display:flex;justify-content:flex-end">
-            <button class="btn-primary" onclick="goStep2()">Næste: AI-analyse →</button>
-          </div>
-        </div>
-
-        <!-- Step 2 -->
-        <div id="step2" class="hidden">
-          <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:.35rem">AI-analyse</h2>
-          <p style="color:var(--muted);font-size:.88rem;margin-bottom:1.25rem">Vælg de udfordringer virksomheden har – systemet genererer AI-anbefalinger automatisk.</p>
-          <div class="form-group" style="margin-bottom:1.25rem">
-            <label>Primære udfordringer (vælg alle der passer)</label>
-            <div class="challenges-grid" id="challengesGrid">
-              <div class="challenge-opt" data-val="kundeservice" onclick="toggleChallenge(this)">💬 Kundeservice</div>
-              <div class="challenge-opt" data-val="booking" onclick="toggleChallenge(this)">📅 Booking & tidsbestilling</div>
-              <div class="challenge-opt" data-val="marketing" onclick="toggleChallenge(this)">📣 Marketing & content</div>
-              <div class="challenge-opt" data-val="admin" onclick="toggleChallenge(this)">📄 Administration & dokumenter</div>
-              <div class="challenge-opt" data-val="automatisering" onclick="toggleChallenge(this)">⚡ Automatisering af processer</div>
-              <div class="challenge-opt" data-val="salg" onclick="toggleChallenge(this)">🎯 Salg & CRM</div>
-              <div class="challenge-opt" data-val="økonomi" onclick="toggleChallenge(this)">💰 Økonomi & fakturering</div>
-              <div class="challenge-opt" data-val="hr" onclick="toggleChallenge(this)">👥 HR & rekruttering</div>
-              <div class="challenge-opt" data-val="intern kommunikation" onclick="toggleChallenge(this)">🗣️ Intern kommunikation</div>
-            </div>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Budget pr. måned til AI-værktøjer</label>
-              <select id="nc_budget">
-                <option value="lav">Under 1.000 kr/md.</option>
-                <option value="medium" selected>1.000–5.000 kr/md.</option>
-                <option value="høj">5.000–15.000 kr/md.</option>
-                <option value="enterprise">15.000+ kr/md.</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>IT-kompetencer hos medarbejdere</label>
-              <select id="nc_tech">
-                <option value="lav">Lav (bruger primært e-mail/telefon)</option>
-                <option value="mellem" selected>Mellem (bruger daglige systemer)</option>
-                <option value="høj">Høj (teknisk erfarne medarbejdere)</option>
-              </select>
-            </div>
-          </div>
-          <div style="margin-top:1.5rem;display:flex;justify-content:space-between">
-            <button class="btn-secondary" onclick="goStep1()">← Tilbage</button>
-            <button class="btn-primary" onclick="goStep3()">Generer AI-plan →</button>
-          </div>
-        </div>
-
-        <!-- Step 3 -->
-        <div id="step3" class="hidden">
-          <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:.35rem">Genereret AI-plan</h2>
-          <p style="color:var(--muted);font-size:.88rem;margin-bottom:1.25rem">Baseret på analysen har systemet anbefalet følgende AI-løsninger. Gennemse og juster om nødvendigt.</p>
-          <div class="rec-grid" id="generatedRecs"></div>
-          <div style="margin-top:1.5rem;display:flex;justify-content:space-between;gap:.75rem">
-            <button class="btn-secondary" onclick="goStep2()">← Tilbage</button>
-            <button class="btn-primary" onclick="saveNewClient()">✓ Opret klient og aktivér portal</button>
-          </div>
-        </div>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">M</div>
+      <div>
+        <div class="sidebar-user-name">Mattis</div>
+        <div class="sidebar-user-role">Administrator</div>
       </div>
     </div>
-
-    <!-- ── VIEW: CLIENT DETAIL ── -->
-    <div id="view-client-detail" class="hidden">
-      <div class="back-btn" onclick="showView('clients')">← Alle klienter</div>
-      <div class="tabs">
-        <div class="tab active" data-tab="overview" onclick="switchTab('overview')">Overblik</div>
-        <div class="tab" data-tab="plan" onclick="switchTab('plan')">AI-plan</div>
-        <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver <span id="taskCountBadge" style="background:var(--orange-bg);color:var(--orange);padding:.1rem .4rem;border-radius:99px;font-size:.7rem;margin-left:.3rem"></span></div>
-        <div class="tab" data-tab="chatbot" onclick="switchTab('chatbot')">🤖 Chatbot <span id="unansweredBadge" style="display:none;background:#fee2e2;color:#991b1b;padding:.1rem .4rem;border-radius:99px;font-size:.7rem;margin-left:.3rem"></span></div>
-        <div class="tab" data-tab="chat" onclick="switchTab('chat')">Chat <span id="chatBadge" style="display:none;background:#fee2e2;color:#991b1b;padding:.1rem .4rem;border-radius:99px;font-size:.7rem;margin-left:.3rem">ny</span></div>
-      </div>
-
-      <!-- Tab: Overview -->
-      <div id="tab-overview">
-        <div class="card" style="margin-bottom:1rem">
-          <div class="card-header"><span class="card-title" id="detailCompanyName">—</span><div style="display:flex;align-items:center;gap:.6rem"><span id="detailStatus"></span><button class="btn-secondary" style="padding:.35rem .8rem;font-size:.78rem" onclick="openEditClient()">✏️ Rediger</button></div></div>
-          <div class="info-grid" id="detailInfo"></div>
-          <div class="progress-section" style="margin-top:1.25rem">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-size:.8rem;font-weight:600;color:var(--muted)">Implementeringsfremdrift</div>
-              <div style="font-size:.85rem;font-weight:700" id="progressPct">0%</div>
-            </div>
-            <div class="progress-big"><div class="progress-big-fill" id="progressBar" style="width:0%"></div></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title" style="margin-bottom:1rem">Opgavestatus</div>
-          <div style="display:flex;gap:1rem;flex-wrap:wrap" id="taskSummary"></div>
-        </div>
-      </div>
-
-      <!-- Tab: Plan -->
-      <div id="tab-plan" class="hidden">
-        <div class="rec-grid" id="detailRecs"></div>
-      </div>
-
-      <!-- Tab: Tasks -->
-      <div id="tab-tasks" class="hidden">
-        <div class="section-header">
-          <div class="section-title">Implementeringsopgaver</div>
-          <button class="btn-primary" onclick="toggleAddTask()">+ Tilføj opgave</button>
-        </div>
-        <div class="add-task-form" id="addTaskForm">
-          <div class="form-grid">
-            <div class="form-group"><label>Opgavetitel *</label><input id="newTaskTitle" placeholder="Hvad skal gøres?"/></div>
-            <div class="form-group"><label>Tilknyttet AI-system</label><input id="newTaskTool" placeholder="Eks. ChatGPT for Teams"/></div>
-            <div class="form-group full"><label>Beskrivelse</label><input id="newTaskDesc" placeholder="Kort beskrivelse af opgaven"/></div>
-          </div>
-          <div style="display:flex;gap:.6rem">
-            <button class="btn-primary" onclick="addTask()">Tilføj</button>
-            <button class="btn-secondary" onclick="toggleAddTask()">Annullér</button>
-          </div>
-        </div>
-        <div class="task-list" id="detailTasks"></div>
-      </div>
-
-      <!-- Tab: Chatbot -->
-      <div id="tab-chatbot" class="hidden">
-        <div id="chatbot-no-config" class="empty">Ingen chatbot genereret endnu. Gå til <strong>AI-plan</strong> og klik "Byg AI-chatbot".</div>
-        <div id="chatbot-has-config" class="hidden">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-            <div class="card" style="margin:0">
-              <div class="card-title" style="margin-bottom:.75rem">Chatbot-status</div>
-              <div id="chatbotStatusInfo"></div>
-              <button class="btn-primary" style="margin-top:1rem;width:100%" onclick="editChatbot()">✏️ Rediger chatbot</button>
-            </div>
-            <div class="card" style="margin:0">
-              <div class="card-title" style="margin-bottom:.75rem">Ubesvarede spørgsmål <span id="unansweredCount" style="background:var(--orange-bg);color:var(--orange);padding:.1rem .5rem;border-radius:99px;font-size:.75rem;font-weight:700;margin-left:.3rem">0</span></div>
-              <p style="font-size:.83rem;color:var(--muted);margin-bottom:.75rem">Spørgsmål chatbotten ikke kunne besvare — brug dem til at forbedre FAQ.</p>
-              <button class="btn-secondary" style="width:100%;font-size:.82rem" onclick="clearUnanswered()">Ryd liste</button>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-title" style="margin-bottom:.75rem">📋 Ubesvarede spørgsmål fra kunder</div>
-            <div id="unansweredList"><div class="empty" style="padding:1rem">Ingen ubesvarede spørgsmål endnu.</div></div>
-            <div id="addToFaqSection" class="hidden" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
-              <p style="font-size:.83rem;color:var(--muted);margin-bottom:.75rem">Vælg spørgsmål fra listen og tilføj dem til chatbottens FAQ automatisk:</p>
-              <button class="btn-primary" onclick="addSelectedToFaq()">+ Tilføj valgte til FAQ og regenerer</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab: Chat -->
-      <div id="tab-chat" class="hidden">
-        <div class="chat-wrap">
-          <div class="chat-messages" id="chatMessages"></div>
-          <div class="chat-input-row">
-            <input class="chat-input" id="chatInput" placeholder="Skriv en besked til klienten..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage('admin')}"/>
-            <button class="btn-primary" onclick="sendMessage('admin')">Send</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <button class="logout-btn" onclick="window.location='login.html'">Log ud</button>
   </div>
 </div>
 
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div class="topbar-sub" id="topbarSub">Overblik over alle klienter og generatorer</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary btn-sm" onclick="showView('new-client')">+ Ny klient</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="view-dashboard">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num" id="statClients">0</div>
+          <div class="stat-label">Aktive klienter</div>
+          <div class="stat-sub" id="statClientsNew"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statRevenue">0 kr</div>
+          <div class="stat-label">Månedlig omsætning</div>
+          <div class="revenue-bar"><div class="revenue-fill" id="revBar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statProducts">0</div>
+          <div class="stat-label">Aktive produkter</div>
+          <div class="stat-sub">på tværs af klienter</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statTasks">0</div>
+          <div class="stat-label">Åbne opgaver</div>
+          <div class="stat-sub" id="statTasksSub"></div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 340px; gap:1.25rem">
+        <div class="card">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem">
+            <div style="font-size:.95rem; font-weight:700">Seneste klienter</div>
+            <button class="btn btn-ghost btn-sm" onclick="showView('clients')">Se alle →</button>
+          </div>
+          <div id="dashClientList">
+            <div class="empty-state" style="padding:2rem">
+              <div class="empty-icon">👥</div>
+              <h3>Ingen klienter endnu</h3>
+              <p>Opret din første klient for at komme i gang</p>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:1rem">
+          <div class="card" style="padding:1.25rem">
+            <div style="font-size:.88rem; font-weight:700; margin-bottom:1rem">Produktfordeling</div>
+            <div id="productBreakdown" style="display:flex; flex-direction:column; gap:.6rem"></div>
+          </div>
+          <div class="card" style="padding:1.25rem; background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); border:none; color:#fff;">
+            <div style="font-size:.85rem; font-weight:700; margin-bottom:.4rem; color:rgba(255,255,255,0.8)">Hurtig adgang</div>
+            <div style="font-size:1.1rem; font-weight:800; margin-bottom:1rem">Generer til en klient</div>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.25); width:100%; justify-content:center; margin-bottom:.4rem" onclick="showView('new-client')">+ Opret ny klient</button>
+            <button class="btn btn-sm" style="background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.25); width:100%; justify-content:center" onclick="showView('clients')">Vælg eksisterende →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ALLE KLIENTER ── -->
+    <div id="view-clients" class="hidden">
+      <div class="card" style="padding:0; overflow:hidden">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem 1.5rem; border-bottom:1px solid var(--border)">
+          <div style="font-size:.95rem; font-weight:700">Klienter <span id="clientCount" style="font-size:.8rem; color:var(--muted); font-weight:500"></span></div>
+          <button class="btn btn-primary btn-sm" onclick="showView('new-client')">+ Ny klient</button>
+        </div>
+        <div id="clientTableWrap">
+          <table class="client-table">
+            <thead>
+              <tr>
+                <th>Virksomhed</th>
+                <th>Pakke</th>
+                <th>Produkter</th>
+                <th>Fremgang</th>
+                <th>Månedlig</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="clientTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NY KLIENT ── -->
+    <div id="view-new-client" class="hidden">
+      <div style="max-width:680px">
+        <div class="card">
+          <div style="font-size:1rem; font-weight:700; margin-bottom:1.5rem">Opret ny klient</div>
+
+          <div style="margin-bottom:1.5rem">
+            <div class="generator-section-title">Virksomhedsoplysninger</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Virksomhedsnavn *</label>
+                <input class="form-input" id="nc_name" placeholder="Firma A/S"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Kontaktperson *</label>
+                <input class="form-input" id="nc_contact" placeholder="Navn Navnesen"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">E-mail *</label>
+                <input class="form-input" type="email" id="nc_email" placeholder="kontakt@firma.dk"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Telefon</label>
+                <input class="form-input" id="nc_phone" placeholder="+45 12 34 56 78"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Hjemmeside</label>
+                <input class="form-input" id="nc_website" placeholder="https://firma.dk"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Kort beskrivelse af virksomheden</label>
+                <textarea class="form-input" id="nc_desc" placeholder="Hvad laver de, hvem er kunderne, branche..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1.5rem">
+            <div class="generator-section-title">Vælg produkter til klienten</div>
+            <div class="product-grid">
+              <label class="product-opt" data-prod="chatbot">
+                <input type="checkbox" value="chatbot"/>
+                <div class="po-icon">💬</div>
+                <div><div class="po-name">Chatbot</div><div class="po-desc">AI-chat på hjemmesiden</div></div>
+              </label>
+              <label class="product-opt" data-prod="lead">
+                <input type="checkbox" value="lead"/>
+                <div class="po-icon">🎯</div>
+                <div><div class="po-name">Lead-opfølgning</div><div class="po-desc">Auto-kontakt til nye leads</div></div>
+              </label>
+              <label class="product-opt" data-prod="mail">
+                <input type="checkbox" value="mail"/>
+                <div class="po-icon">📧</div>
+                <div><div class="po-name">Mail flow</div><div class="po-desc">Automatiserede mailsekvenser</div></div>
+              </label>
+              <label class="product-opt" data-prod="booking">
+                <input type="checkbox" value="booking"/>
+                <div class="po-icon">📅</div>
+                <div><div class="po-name">Booking</div><div class="po-desc">Online bookingsystem</div></div>
+              </label>
+              <label class="product-opt" data-prod="rapport">
+                <input type="checkbox" value="rapport"/>
+                <div class="po-icon">📈</div>
+                <div><div class="po-name">Rapporter</div><div class="po-desc">Økonomi, salg, marketing, lager</div></div>
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1.5rem">
+            <div class="generator-section-title">Pakke & pris</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Startpris (kr. ex. moms)</label>
+                <input class="form-input" id="nc_startpris" type="number" placeholder="9995"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Månedlig pris (kr. ex. moms)</label>
+                <input class="form-input" id="nc_mdpris" type="number" placeholder="1795"/>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:.75rem; justify-content:flex-end">
+            <button class="btn btn-secondary" onclick="showView('clients')">Annuller</button>
+            <button class="btn btn-generate" onclick="createClient()">✨ Opret klient & generer portal</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KLIENT DETAIL ── -->
+    <div id="view-client-detail" class="hidden">
+      <button class="btn btn-ghost btn-sm" style="margin-bottom:1rem" onclick="showView('clients')">← Tilbage</button>
+      <div class="detail-header">
+        <div class="detail-avatar" id="detailAvatar">A</div>
+        <div>
+          <div class="detail-name" id="detailName">Firma</div>
+          <div class="detail-meta" id="detailMeta"></div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:.6rem; align-items:center">
+          <span class="badge badge-green" id="detailStatus">Aktiv</span>
+          <button class="btn btn-secondary btn-sm" onclick="openClientPortal()">Åbn portal →</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="overview" onclick="switchTab('overview')">Overblik</div>
+        <div class="tab" data-tab="products" onclick="switchTab('products')">Produkter</div>
+        <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver</div>
+        <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
+      </div>
+
+      <!-- Tab: Overblik -->
+      <div id="tab-overview">
+        <div class="stats-row" style="grid-template-columns: repeat(3,1fr); margin-bottom:1.25rem">
+          <div class="stat-card">
+            <div class="stat-num" id="detailProductCount">0</div>
+            <div class="stat-label">Aktive produkter</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="detailMonthly">0 kr</div>
+            <div class="stat-label">Månedlig betaling</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="detailProgress">0%</div>
+            <div class="stat-label">Implementering</div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-size:.88rem; font-weight:700; margin-bottom:.75rem">Virksomhedsbeskrivelse</div>
+          <p style="font-size:.875rem; color:var(--muted); line-height:1.7" id="detailDesc"></p>
+        </div>
+      </div>
+
+      <!-- Tab: Produkter -->
+      <div id="tab-products" class="hidden">
+        <div class="product-status-grid" id="productStatusGrid"></div>
+        <div id="productGeneratorArea"></div>
+      </div>
+
+      <!-- Tab: Opgaver -->
+      <div id="tab-tasks" class="hidden">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
+          <div style="font-size:.88rem; font-weight:700">Implementeringsopgaver</div>
+          <button class="btn btn-secondary btn-sm" onclick="addTask()">+ Tilføj opgave</button>
+        </div>
+        <div class="task-list" id="taskList"></div>
+      </div>
+
+      <!-- Tab: Beskeder -->
+      <div id="tab-chat" class="hidden">
+        <div class="card" style="padding:1.25rem">
+          <div class="chat-wrap">
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-row">
+              <input class="chat-input" id="chatInput" placeholder="Skriv en besked til klienten..." onkeydown="if(event.key==='Enter')sendMsg()"/>
+              <button class="btn btn-primary" onclick="sendMsg()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATOR: CHATBOT ── -->
+    <div id="view-gen-chatbot" class="hidden">
+      <div class="generator-wrap">
+        <div class="card" style="margin-bottom:1rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff; padding:1.5rem">
+          <div style="font-size:1.4rem; margin-bottom:.4rem">💬</div>
+          <div style="font-size:1.1rem; font-weight:800; margin-bottom:.3rem">Chatbot Generator</div>
+          <div style="font-size:.85rem; color:rgba(255,255,255,0.5)">Generer en AI-chatbot til en klient med ét klik</div>
+        </div>
+        <div class="card">
+          <div class="generator-section">
+            <div class="generator-section-title">Vælg klient</div>
+            <select class="form-input form-select" id="chatbotClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Chatbot indstillinger</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Chatbot navn</label>
+                <input class="form-input" id="chatbotName" placeholder="Alma, Max, osv."/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Velkomsthilsen</label>
+                <input class="form-input" id="chatbotGreeting" placeholder="Hej! Hvordan kan jeg hjælpe?"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Vigtige informationer (åbningstider, priser, FAQ)</label>
+                <textarea class="form-input" id="chatbotFaq" placeholder="Åbningstider: Man-fre 8-17&#10;Priser: fra 499 kr.&#10;Levering: 2-3 hverdage..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Primær farve (hex)</label>
+                <input class="form-input" id="chatbotColor" placeholder="#0a2463"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Position på siden</label>
+                <select class="form-input form-select" id="chatbotPos">
+                  <option value="right">Højre hjørne</option>
+                  <option value="left">Venstre hjørne</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateChatbot()">✨ Generer chatbot</button>
+          <div id="chatbotResult" class="hidden" style="margin-top:1.25rem">
+            <div class="generator-section-title">Embed kode — indsæt på klientens hjemmeside</div>
+            <div class="generated-embed" id="chatbotEmbed"></div>
+            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('chatbotEmbed')">📋 Kopiér kode</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATOR: LEAD ── -->
+    <div id="view-gen-lead" class="hidden">
+      <div class="generator-wrap">
+        <div class="card" style="margin-bottom:1rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff; padding:1.5rem">
+          <div style="font-size:1.4rem; margin-bottom:.4rem">🎯</div>
+          <div style="font-size:1.1rem; font-weight:800; margin-bottom:.3rem">Lead-opfølgning Generator</div>
+          <div style="font-size:.85rem; color:rgba(255,255,255,0.5)">Automatisk opfølgning på nye leads</div>
+        </div>
+        <div class="card">
+          <div class="generator-section">
+            <div class="generator-section-title">Vælg klient</div>
+            <select class="form-input form-select" id="leadClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Opfølgningsstrategi</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Første svar inden (timer)</label>
+                <input class="form-input" id="leadDelay" type="number" placeholder="1" value="1"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Antal opfølgninger</label>
+                <input class="form-input" id="leadFollowups" type="number" placeholder="3" value="3"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Hvad sælger klienten? (bruges i mail-teksten)</label>
+                <textarea class="form-input" id="leadProduct" placeholder="Fx: Poolrengøring og vedligeholdelse af swimmingpools i Storkøbenhavn"></textarea>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Tilbud til nye leads</label>
+                <input class="form-input" id="leadOffer" placeholder="Fx: Gratis besigtigelse eller 10% rabat på første ordre"/>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateLead()">✨ Generer lead-flow</button>
+          <div id="leadResult" class="hidden" style="margin-top:1.25rem">
+            <div class="generator-section-title">Genereret mail-sekvens</div>
+            <div id="leadFlowSteps" class="flow-steps"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATOR: MAIL FLOW ── -->
+    <div id="view-gen-mail" class="hidden">
+      <div class="generator-wrap">
+        <div class="card" style="margin-bottom:1rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff; padding:1.5rem">
+          <div style="font-size:1.4rem; margin-bottom:.4rem">📧</div>
+          <div style="font-size:1.1rem; font-weight:800; margin-bottom:.3rem">Mail Flow Generator</div>
+          <div style="font-size:.85rem; color:rgba(255,255,255,0.5)">Automatiserede mailsekvenser til klientens kunder</div>
+        </div>
+        <div class="card">
+          <div class="generator-section">
+            <div class="generator-section-title">Vælg klient</div>
+            <select class="form-input form-select" id="mailClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Flow type</div>
+            <div class="product-grid">
+              <label class="product-opt" data-flow="welcome" onclick="selectFlow(this)">
+                <div class="po-icon">👋</div>
+                <div><div class="po-name">Velkomst-flow</div><div class="po-desc">Nye kunder onboardes automatisk</div></div>
+              </label>
+              <label class="product-opt" data-flow="reactivation" onclick="selectFlow(this)">
+                <div class="po-icon">🔄</div>
+                <div><div class="po-name">Reaktivering</div><div class="po-desc">Væk sovende kunder op</div></div>
+              </label>
+              <label class="product-opt" data-flow="upsell" onclick="selectFlow(this)">
+                <div class="po-icon">📈</div>
+                <div><div class="po-name">Upsell</div><div class="po-desc">Sælg mere til eksisterende kunder</div></div>
+              </label>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:1rem">
+            <label class="form-label">Virksomhedens produkt/ydelse</label>
+            <textarea class="form-input" id="mailProduct" placeholder="Beskriv kort hvad klienten sælger..."></textarea>
+          </div>
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateMailFlow()">✨ Generer mail flow</button>
+          <div id="mailResult" class="hidden" style="margin-top:1.25rem">
+            <div class="generator-section-title">Genereret flow</div>
+            <div id="mailFlowSteps" class="flow-steps"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATOR: BOOKING ── -->
+    <div id="view-gen-booking" class="hidden">
+      <div class="generator-wrap">
+        <div class="card" style="margin-bottom:1rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff; padding:1.5rem">
+          <div style="font-size:1.4rem; margin-bottom:.4rem">📅</div>
+          <div style="font-size:1.1rem; font-weight:800; margin-bottom:.3rem">Booking Generator</div>
+          <div style="font-size:.85rem; color:rgba(255,255,255,0.5)">Online bookingsystem klar til klientens hjemmeside</div>
+        </div>
+        <div class="card">
+          <div class="generator-section">
+            <div class="generator-section-title">Vælg klient</div>
+            <select class="form-input form-select" id="bookingClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Booking indstillinger</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Ydelsesnavn</label>
+                <input class="form-input" id="bookingService" placeholder="Fx: Poolrengøring, Konsultation"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Varighed (minutter)</label>
+                <input class="form-input" id="bookingDuration" type="number" placeholder="60"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Åbningstid (fra)</label>
+                <input class="form-input" id="bookingFrom" type="time" value="08:00"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Åbningstid (til)</label>
+                <input class="form-input" id="bookingTo" type="time" value="17:00"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Bekræftelsesmail tekst</label>
+                <textarea class="form-input" id="bookingConfirm" placeholder="Din booking er bekræftet! Vi glæder os til at se dig..."></textarea>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateBooking()">✨ Generer booking widget</button>
+          <div id="bookingResult" class="hidden" style="margin-top:1.25rem">
+            <div class="generator-section-title">Embed kode</div>
+            <div class="generated-embed" id="bookingEmbed"></div>
+            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('bookingEmbed')">📋 Kopiér kode</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GENERATOR: RAPPORTER ── -->
+    <div id="view-gen-rapport" class="hidden">
+      <div class="generator-wrap">
+        <div class="card" style="margin-bottom:1rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff; padding:1.5rem">
+          <div style="font-size:1.4rem; margin-bottom:.4rem">📈</div>
+          <div style="font-size:1.1rem; font-weight:800; margin-bottom:.3rem">Rapport Generator</div>
+          <div style="font-size:.85rem; color:rgba(255,255,255,0.5)">Økonomi, salg, marketing og lager</div>
+        </div>
+        <div class="card">
+          <div class="generator-section">
+            <div class="generator-section-title">Vælg klient</div>
+            <select class="form-input form-select" id="rapportClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Vælg rapporttype</div>
+            <div class="rapport-grid">
+              <div class="rapport-opt" onclick="toggleRapport(this,'okonomi')">
+                <div class="ro-icon">💰</div>
+                <div class="ro-name">Økonomirapport</div>
+                <div class="ro-desc">Omsætning, udgifter, overskud</div>
+              </div>
+              <div class="rapport-opt" onclick="toggleRapport(this,'salg')">
+                <div class="ro-icon">📊</div>
+                <div class="ro-name">Salgsrapport</div>
+                <div class="ro-desc">Konverteringer, pipeline, top-kunder</div>
+              </div>
+              <div class="rapport-opt" onclick="toggleRapport(this,'marketing')">
+                <div class="ro-icon">📣</div>
+                <div class="ro-name">Marketing rapport</div>
+                <div class="ro-desc">Trafik, leads, kampagne-ROI</div>
+              </div>
+              <div class="rapport-opt" onclick="toggleRapport(this,'lager')">
+                <div class="ro-icon">📦</div>
+                <div class="ro-name">Lagerstatus</div>
+                <div class="ro-desc">Beholdning, genbestilling, flow</div>
+              </div>
+            </div>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Frekvens</div>
+            <div class="form-group">
+              <select class="form-input form-select" id="rapportFrekvens">
+                <option value="ugentlig">Ugentlig (hver mandag)</option>
+                <option value="maanedlig" selected>Månedlig (første mandag)</option>
+                <option value="kvartal">Kvartalsvis</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateRapport()">✨ Generer rapport-opsætning</button>
+          <div id="rapportResult" class="hidden" style="margin-top:1.25rem">
+            <div class="generator-section-title">Rapport konfigureret</div>
+            <div id="rapportSummary" style="background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:1rem; font-size:.875rem; line-height:1.7"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
 <script>
-// ── AUTH ──────────────────────────────────────────────────────
-(function() {
-  const uid = localStorage.getItem('klaiai_current_user');
-  const users = JSON.parse(localStorage.getItem('klaiai_users') || '[]');
-  const user = users.find(u => u.id === uid);
-  if (!user || user.role !== 'admin') window.location.href = 'login.html';
-})();
-
-function logout() { localStorage.removeItem('klaiai_current_user'); window.location.href = 'login.html'; }
-
-// ── STATE ─────────────────────────────────────────────────────
-let currentClientId = null;
+// ── DATA ──────────────────────────────────────────────
+let clients = JSON.parse(localStorage.getItem('klarai_clients') || '[]');
+let currentClient = null;
 let currentTab = 'overview';
-let selectedChallenges = [];
-let generatedRecs = [];
+let selectedFlow = null;
+let selectedRapports = [];
 
-function getClients() { return JSON.parse(localStorage.getItem('klaiai_clients') || '[]'); }
-function saveClients(c) { localStorage.setItem('klaiai_clients', JSON.stringify(c)); }
-function getClient(id) { return getClients().find(c => c.id === id); }
-function updateClient(updated) {
-  const clients = getClients();
-  const idx = clients.findIndex(c => c.id === updated.id);
-  if (idx > -1) { clients[idx] = updated; saveClients(clients); }
-}
-function uid() { return 'id_' + Math.random().toString(36).substr(2, 9); }
-function formatTime(ts) {
-  const d = new Date(ts);
-  return d.toLocaleDateString('da-DK', { day:'numeric', month:'short' }) + ' ' + d.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' });
-}
+const PRODUCTS = {
+  chatbot: { name: 'Chatbot', icon: '💬' },
+  lead:    { name: 'Lead-opfølgning', icon: '🎯' },
+  mail:    { name: 'Mail flow', icon: '📧' },
+  booking: { name: 'Booking', icon: '📅' },
+  rapport: { name: 'Rapporter', icon: '📈' }
+};
 
-// ── TOOLS DATABASE ────────────────────────────────────────────
-const TOOLS_DB = [
-  { id: 'chatgpt', name: 'ChatGPT for Teams', category: 'AI-assistent', icon: '🤖', vendor: 'OpenAI', priority: 'høj', monthlyCost: 'ca. 200 kr/bruger/md.', implementationTime: '1-2 dage', description: 'AI-assistent til at skrive tekster, svare på spørgsmål og spare tid på daglige opgaver.', triggers: ['always'], tasks: [
-    { title: 'Oprette ChatGPT Teams-konto', description: 'Opsætning af administrator-konto og brugere' },
-    { title: 'Oplæringsworkshop – ChatGPT', description: 'Online session på 1-2 timer med medarbejderne' },
-    { title: 'Prompt-bibliotek til virksomheden', description: 'Vi skriver 20+ skabeloner tilpasset branchen' },
-    { title: 'AI-brugspolitik', description: 'Udarbejde retningslinjer for sikker AI-brug' }
-  ]},
-  { id: 'chatbot', name: 'AI-kundeservicechat', category: 'Kundeservice', icon: '💬', vendor: 'Tidio', priority: 'høj', monthlyCost: 'ca. 350 kr/md.', implementationTime: '3-5 dage', description: 'AI-chatbot på hjemmesiden der besvarer kundespørgsmål 24/7 og håndterer bookingforespørgsler.', triggers: ['kundeservice', 'booking'], tasks: [
-    { title: 'Installere chat på hjemmeside', description: 'Installation og initial konfigurering af widget' },
-    { title: 'Træne chatbot med FAQ', description: 'Indlæse spørgsmål/svar, priser og åbningstider' },
-    { title: 'Eskaleringsregler til menneskelig support', description: 'Opsæt regler for videresendelse' },
-    { title: 'Test og optimering', description: 'Gennemgang og forbedring af chatbot-svar' }
-  ]},
-  { id: 'booking', name: 'AI-bookingsystem', category: 'Booking', icon: '📅', vendor: 'Simplybook.me', priority: 'høj', monthlyCost: 'ca. 250 kr/md.', implementationTime: '3-4 dage', description: 'Intelligent bookingsystem med automatiske påmindelser og kapacitetsstyring.', triggers: ['booking'], tasks: [
-    { title: 'Opsætte bookingsystem', description: 'Konfigurering af ydelser, tider og kapacitet' },
-    { title: 'Automatiske bekræftelser og påmindelser', description: 'SMS- og e-mail-flow for reducerede no-shows' },
-    { title: 'Integrere booking på hjemmeside', description: 'Embed booking-widget på hjemmesiden' },
-    { title: 'Oplæring af personale', description: 'Gennemgang af administration i systemet' }
-  ]},
-  { id: 'copilot', name: 'Microsoft 365 Copilot', category: 'Produktivitet', icon: '📊', vendor: 'Microsoft', priority: 'høj', monthlyCost: 'ca. 350 kr/bruger/md.', implementationTime: '2-3 dage', description: 'AI direkte i Word, Excel og Outlook. Skriver udkast, opsummerer møder og analyserer data.', triggers: ['admin', 'økonomi', 'intern kommunikation'], tasks: [
-    { title: 'Aktivere Copilot i Microsoft 365', description: 'Licens og opsætning for relevante brugere' },
-    { title: 'Konfigurere til jeres arbejdsgange', description: 'Tilpasning til dokumenttyper og processer' },
-    { title: 'Oplæring i Copilot i Outlook og Word', description: 'Praktisk gennemgang' }
-  ]},
-  { id: 'make', name: 'Make (Automatisering)', category: 'Automatisering', icon: '⚡', vendor: 'Make.com', priority: 'mellem', monthlyCost: 'fra 110 kr/md.', implementationTime: '4-7 dage', description: 'Automatiserer gentagne opgaver og forbinder jeres systemer uden kode.', triggers: ['automatisering', 'admin', 'salg'], tasks: [
-    { title: 'Kortlæg processer til automatisering', description: 'Workshop for at identificere de bedste kandidater' },
-    { title: 'Bygge de første 3-5 automatiseringer', description: 'Opsætning af flows tilpasset jeres behov' },
-    { title: 'Test og justeringsrunde', description: 'Sikre at flows kører pålideligt' }
-  ]},
-  { id: 'hubspot', name: 'HubSpot AI CRM', category: 'Salg & CRM', icon: '🎯', vendor: 'HubSpot', priority: 'høj', monthlyCost: 'fra 500 kr/md.', implementationTime: '4-6 dage', description: 'CRM med AI der automatisk skriver opfølgningsemails, scorer leads og giver salgs-overblik.', triggers: ['salg', 'marketing', 'kundeservice'], tasks: [
-    { title: 'Opsætte HubSpot CRM', description: 'Pipeline og konfigurering til jeres salgsproces' },
-    { title: 'Import af eksisterende kontakter', description: 'Overfør kundedatabasen til HubSpot' },
-    { title: 'Opsætte AI-e-mail skabeloner', description: 'Automatiske opfølgninger og sekvenser' },
-    { title: 'Integrere med hjemmeside', description: 'Forbind leads fra hjemmesiden' }
-  ]},
-  { id: 'content', name: 'AI til Marketing & Content', category: 'Marketing', icon: '✍️', vendor: 'ChatGPT / Canva AI', priority: 'mellem', monthlyCost: 'ca. 200 kr/md.', implementationTime: '2-3 dage', description: 'Specialiseret AI til at generere SoMe-opslag, nyhedsbreve og annoncer i jeres tone of voice.', triggers: ['marketing'], tasks: [
-    { title: 'Konfigurere AI til jeres brand voice', description: 'Træne systemet med jeres kommunikationsstil' },
-    { title: 'Content-kalender-workflow', description: 'Workflow for godkendelse og publicering' },
-    { title: 'Oplæring af marketingteam', description: 'Praktisk workshop i AI-content-produktion' }
-  ]},
-  { id: 'notion', name: 'Notion AI (Vidensbase)', category: 'Vidensdeling', icon: '📝', vendor: 'Notion', priority: 'lav', monthlyCost: 'ca. 120 kr/bruger/md.', implementationTime: '3-5 dage', description: 'Samler al virksomhedens viden ét sted med AI-søgning og opsummering.', triggers: ['admin', 'hr', 'intern kommunikation'], tasks: [
-    { title: 'Opsætte Notion-workspace', description: 'Struktur for dokumenter og procedurer' },
-    { title: 'Migrere vigtige dokumenter', description: 'Overfør håndbøger og procedurer' },
-    { title: 'Onboard medarbejdere', description: 'Oplæringsworkshop i daglig brug' }
-  ]},
-  { id: 'hr', name: 'AI til HR & Rekruttering', category: 'HR', icon: '👥', vendor: 'Teamtailor', priority: 'lav', monthlyCost: 'fra 800 kr/md.', implementationTime: '3-4 dage', description: 'AI der hjælper med at skrive jobopslag, screene ansøgninger og automatisere onboarding.', triggers: ['hr'], tasks: [
-    { title: 'Opsætte rekrutteringsplatform', description: 'Pipeline og ansøgningsflow' },
-    { title: 'AI-jobopslag-skabeloner', description: 'Templates til typiske stillinger' },
-    { title: 'Automatisere onboarding-flow', description: 'Digitalt onboarding-materiale og tjekliste' }
-  ]},
-  { id: 'accounting', name: 'AI i Økonomi & Fakturering', category: 'Økonomi', icon: '💰', vendor: 'Dinero AI', priority: 'lav', monthlyCost: 'fra 200 kr/md.', implementationTime: '2-3 dage', description: 'Automatisk bogføring, fakturagenkendelse og AI-opsummering af jeres økonomi.', triggers: ['økonomi'], tasks: [
-    { title: 'Opsætte AI-bogføring', description: 'Integration med bank og regnskabssystem' },
-    { title: 'Konfigurere fakturahåndtering', description: 'OCR og automatisk kontering' },
-    { title: 'Oplæring i AI-økonomirapporter', description: 'Gennemgang af dashboards' }
-  ]}
-];
+function saveClients() { localStorage.setItem('klarai_clients', JSON.stringify(clients)); }
 
-function generateRecommendations(analysis) {
-  const { challenges, size, industry } = analysis;
-  const recs = [];
-  for (const tool of TOOLS_DB) {
-    if (tool.triggers.includes('always') || tool.triggers.some(t => challenges.includes(t))) {
-      recs.push({
-        id: uid(), name: tool.name, category: tool.category, icon: tool.icon,
-        vendor: tool.vendor, priority: tool.priority, monthlyCost: tool.monthlyCost,
-        implementationTime: tool.implementationTime, description: tool.description,
-        whyFit: `Anbefalet baseret på jeres udfordringer med ${challenges.slice(0,2).join(' og ')} og virksomhedsstørrelse (${size} medarbejdere).`
-      });
-    }
-  }
-  return recs;
+// ── NAVIGATION ────────────────────────────────────────
+const views = ['dashboard','clients','new-client','client-detail','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
+const topbarInfo = {
+  'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
+  'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
+  'new-client':    ['Ny klient', 'Opret og konfigurer ny klient'],
+  'client-detail': ['Klient', ''],
+  'gen-chatbot':   ['Chatbot Generator', 'Generer AI-chatbot til en klient'],
+  'gen-lead':      ['Lead Generator', 'Generer automatisk lead-opfølgning'],
+  'gen-mail':      ['Mail Flow Generator', 'Generer automatiseret mail-flow'],
+  'gen-booking':   ['Booking Generator', 'Generer bookingsystem til en klient'],
+  'gen-rapport':   ['Rapport Generator', 'Generer automatiske rapporter'],
+};
+
+function showView(v) {
+  views.forEach(id => document.getElementById('view-'+id)?.classList.add('hidden'));
+  document.getElementById('view-'+v)?.classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.nav-item[data-view="${v}"]`)?.classList.add('active');
+  const [title, sub] = topbarInfo[v] || [v, ''];
+  document.getElementById('topbarTitle').textContent = title;
+  document.getElementById('topbarSub').textContent = sub;
+  if (v === 'dashboard') renderDashboard();
+  if (v === 'clients') renderClientTable();
+  if (v.startsWith('gen-')) populateClientSelects();
 }
 
-function generateTasks(challenges) {
-  const tasks = [];
-  for (const tool of TOOLS_DB) {
-    if (tool.triggers.includes('always') || tool.triggers.some(t => challenges.includes(t))) {
-      for (const t of tool.tasks) {
-        tasks.push({ id: uid(), title: t.title, description: t.description, tool: tool.name, status: 'todo', createdAt: new Date().toISOString().split('T')[0] });
-      }
-    }
-  }
-  return tasks;
-}
-
-// ── NAVIGATION ────────────────────────────────────────────────
-function showView(view, clientId) {
-  ['clients','new-client','client-detail'].forEach(v => {
-    document.getElementById('view-' + v).classList.add('hidden');
-    document.querySelectorAll('[data-view]').forEach(el => el.classList.remove('active'));
+function switchTab(t) {
+  ['overview','products','tasks','chat'].forEach(id => {
+    document.getElementById('tab-'+id)?.classList.add('hidden');
   });
-  document.getElementById('view-' + view).classList.remove('hidden');
-  document.querySelector('[data-view="' + (view === 'client-detail' ? 'clients' : view) + '"]')?.classList.add('active');
+  document.getElementById('tab-'+t)?.classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${t}"]`)?.classList.add('active');
+  currentTab = t;
+  if (t === 'products' && currentClient) renderProductTab();
+  if (t === 'tasks' && currentClient) renderTasks();
+  if (t === 'chat' && currentClient) renderChat();
+}
 
-  if (view === 'clients') {
-    document.getElementById('topbarTitle').textContent = 'Klienter';
-    document.getElementById('topbarSub').textContent = 'Oversigt over alle KlarAI-klienter';
-    renderClientList();
-  } else if (view === 'new-client') {
-    document.getElementById('topbarTitle').textContent = 'Ny klient';
-    document.getElementById('topbarSub').textContent = 'Opret ny klient og generer AI-plan';
-    resetWizard();
-  } else if (view === 'client-detail') {
-    currentClientId = clientId;
-    const client = getClient(clientId);
-    document.getElementById('topbarTitle').textContent = client.companyName;
-    document.getElementById('topbarSub').textContent = client.contactName + ' · ' + client.industry;
-    switchTab('overview');
-    renderClientDetail();
+// ── DASHBOARD ─────────────────────────────────────────
+function renderDashboard() {
+  const active = clients.filter(c => c.status === 'aktiv');
+  document.getElementById('statClients').textContent = active.length;
+  document.getElementById('statClientsNew').textContent = clients.length > 0 ? `${clients.length} total` : '';
+
+  const revenue = clients.reduce((s,c) => s + (parseInt(c.mdpris)||0), 0);
+  document.getElementById('statRevenue').textContent = revenue.toLocaleString('da-DK') + ' kr';
+  document.getElementById('revBar').style.width = Math.min((revenue/50000)*100, 100) + '%';
+
+  const totalProducts = clients.reduce((s,c) => s + (c.products||[]).length, 0);
+  document.getElementById('statProducts').textContent = totalProducts;
+
+  const totalTasks = clients.reduce((s,c) => s + (c.tasks||[]).filter(t=>t.status!=='done').length, 0);
+  document.getElementById('statTasks').textContent = totalTasks;
+  document.getElementById('statTasksSub').textContent = totalTasks > 0 ? 'afventer' : 'alt klaret ✓';
+
+  // Recent clients
+  const wrap = document.getElementById('dashClientList');
+  if (clients.length === 0) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2rem"><div class="empty-icon">👥</div><h3>Ingen klienter endnu</h3><p>Opret din første klient for at komme i gang</p></div>`;
+  } else {
+    wrap.innerHTML = clients.slice(-5).reverse().map(c => `
+      <div class="client-row" style="display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;border-bottom:1px solid var(--border);cursor:pointer" onclick="openClient('${c.id}')">
+        <div class="client-avatar" style="width:36px;height:36px;border-radius:10px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent)">${c.name[0]}</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:.875rem">${c.name}</div><div style="font-size:.75rem;color:var(--muted)">${(c.products||[]).length} produkter · ${(parseInt(c.mdpris)||0).toLocaleString('da-DK')} kr/md</div></div>
+        <span class="badge badge-${c.status==='aktiv'?'green':'orange'}">${c.status}</span>
+      </div>`).join('');
+  }
+
+  // Product breakdown
+  const bd = document.getElementById('productBreakdown');
+  const counts = {};
+  clients.forEach(c => (c.products||[]).forEach(p => counts[p] = (counts[p]||0)+1));
+  if (Object.keys(counts).length === 0) {
+    bd.innerHTML = '<div style="font-size:.8rem;color:var(--muted)">Ingen produkter endnu</div>';
+  } else {
+    bd.innerHTML = Object.entries(PRODUCTS).map(([key,{name,icon}]) => `
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <span style="font-size:.9rem">${icon}</span>
+        <span style="font-size:.8rem;flex:1">${name}</span>
+        <span style="font-size:.8rem;font-weight:700;color:var(--accent)">${counts[key]||0}</span>
+      </div>`).join('');
   }
 }
 
-// ── CLIENT LIST ───────────────────────────────────────────────
-function getProgress(client) {
-  if (!client.tasks || client.tasks.length === 0) return 0;
-  return Math.round(client.tasks.filter(t => t.status === 'done').length / client.tasks.length * 100);
+// ── CLIENT TABLE ──────────────────────────────────────
+function renderClientTable() {
+  document.getElementById('clientCount').textContent = `(${clients.length})`;
+  const tbody = document.getElementById('clientTableBody');
+  if (clients.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">👥</div><h3>Ingen klienter endnu</h3><p>Klik "+ Ny klient" for at oprette din første</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = clients.map(c => {
+    const prods = c.products||[];
+    const dots = Object.keys(PRODUCTS).map(key => `
+      <div class="pdot-wrap">
+        <div class="pdot ${prods.includes(key)?'pdot-active':'pdot-none'}"></div>
+        <div class="pdot-label">${PRODUCTS[key].icon} ${PRODUCTS[key].name}</div>
+      </div>`).join('');
+    const prog = c.progress||0;
+    return `<tr onclick="openClient('${c.id}')">
+      <td><div class="client-name-cell">
+        <div class="client-avatar">${c.name[0]}</div>
+        <div><div class="client-name">${c.name}</div><div class="client-email">${c.email||''}</div></div>
+      </div></td>
+      <td><span style="font-size:.8rem">${prods.length} produkt${prods.length!==1?'er':''}</span></td>
+      <td><div class="product-dots">${dots}</div></td>
+      <td><div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">${prog}%</div></td>
+      <td style="font-weight:600">${(parseInt(c.mdpris)||0).toLocaleString('da-DK')} kr</td>
+      <td><span class="badge badge-${c.status==='aktiv'?'green':c.status==='opsætning'?'orange':'gray'}">${c.status||'aktiv'}</span></td>
+    </tr>`;
+  }).join('');
 }
 
-function statusBadge(status) {
-  const map = { ny: ['gray','Ny'], analyse: ['blue','Analyse'], plan_klar: ['orange','Plan klar'], implementering: ['orange','Implementering'], afsluttet: ['green','Afsluttet'] };
-  const [cls, label] = map[status] || ['gray', status];
-  return `<span class="badge badge-${cls}">${label}</span>`;
+// ── OPRET KLIENT ─────────────────────────────────────
+function createClient() {
+  const name = document.getElementById('nc_name').value.trim();
+  const email = document.getElementById('nc_email').value.trim();
+  if (!name) { alert('Udfyld venligst virksomhedsnavnet'); return; }
+
+  const prods = [...document.querySelectorAll('.product-opt input:checked')].map(i => i.value);
+
+  const client = {
+    id: Date.now().toString(),
+    name, email,
+    contact: document.getElementById('nc_contact').value.trim(),
+    phone: document.getElementById('nc_phone').value.trim(),
+    website: document.getElementById('nc_website').value.trim(),
+    desc: document.getElementById('nc_desc').value.trim(),
+    startpris: document.getElementById('nc_startpris').value,
+    mdpris: document.getElementById('nc_mdpris').value,
+    products: prods,
+    status: 'opsætning',
+    progress: 0,
+    tasks: prods.flatMap(p => defaultTasks(p)),
+    messages: [],
+    created: new Date().toISOString()
+  };
+
+  clients.push(client);
+  saveClients();
+
+  // Reset form
+  ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris'].forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('.product-opt').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.product-opt input').forEach(el => el.checked = false);
+
+  openClient(client.id);
 }
 
-function renderClientList() {
-  const clients = getClients();
-  document.getElementById('statTotal').textContent = clients.length;
-  document.getElementById('statActive').textContent = clients.filter(c => c.status === 'implementering').length;
-  document.getElementById('statTasks').textContent = clients.reduce((a,c) => a + (c.tasks||[]).filter(t=>t.status!=='done').length, 0);
-  document.getElementById('statDone').textContent = clients.filter(c => c.status === 'afsluttet').length;
+function defaultTasks(prod) {
+  const map = {
+    chatbot: [
+      { id: Date.now()+'c1', title: 'Konfigurer chatbot', desc: 'Navn, farve og velkomsttekst', status: 'pending', product: 'chatbot' },
+      { id: Date.now()+'c2', title: 'Indlæs FAQ og info', desc: 'Åbningstider, priser, ydelser', status: 'pending', product: 'chatbot' },
+      { id: Date.now()+'c3', title: 'Embed på hjemmeside', desc: 'Indsæt koden på kundens site', status: 'pending', product: 'chatbot' },
+    ],
+    lead: [
+      { id: Date.now()+'l1', title: 'Opsæt lead-capture', desc: 'Formular på hjemmesiden', status: 'pending', product: 'lead' },
+      { id: Date.now()+'l2', title: 'Konfigurer mail-sekvens', desc: '3 opfølgningsmails', status: 'pending', product: 'lead' },
+    ],
+    mail: [
+      { id: Date.now()+'m1', title: 'Vælg flow-type', desc: 'Velkomst, reaktivering eller upsell', status: 'pending', product: 'mail' },
+      { id: Date.now()+'m2', title: 'Skriv mailindhold', desc: 'Tekst til alle mails i sekvensen', status: 'pending', product: 'mail' },
+      { id: Date.now()+'m3', title: 'Aktiver automatisering', desc: 'Sæt flow i gang', status: 'pending', product: 'mail' },
+    ],
+    booking: [
+      { id: Date.now()+'b1', title: 'Konfigurer booking', desc: 'Ydelse, tider og varighed', status: 'pending', product: 'booking' },
+      { id: Date.now()+'b2', title: 'Embed booking widget', desc: 'Indsæt på hjemmesiden', status: 'pending', product: 'booking' },
+    ],
+    rapport: [
+      { id: Date.now()+'r1', title: 'Vælg rapporttyper', desc: 'Økonomi, salg, marketing, lager', status: 'pending', product: 'rapport' },
+      { id: Date.now()+'r2', title: 'Sæt datakilder op', desc: 'Forbind til kundens systemer', status: 'pending', product: 'rapport' },
+      { id: Date.now()+'r3', title: 'Aktiver automatisk udsendelse', desc: 'Ugentlig eller månedlig frekvens', status: 'pending', product: 'rapport' },
+    ],
+  };
+  return (map[prod]||[]).map((t,i) => ({...t, id: Date.now()+prod+i}));
+}
 
-  const list = document.getElementById('clientList');
-  if (clients.length === 0) { list.innerHTML = '<div class="empty">Ingen klienter endnu. Klik "Ny klient" for at komme i gang.</div>'; return; }
-  list.innerHTML = clients.map(c => {
-    const pct = getProgress(c);
-    const initials = c.companyName.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-    return `<div class="client-row" onclick="showView('client-detail','${c.id}')">
-      <div class="client-avatar">${initials}</div>
-      <div class="client-info">
-        <div class="client-name">${c.companyName}</div>
-        <div class="client-sub">${c.contactName} · ${c.industry || '—'} · ${c.size||'—'} medarbejdere</div>
+// ── ÅBEN KLIENT ───────────────────────────────────────
+function openClient(id) {
+  currentClient = clients.find(c => c.id === id);
+  if (!currentClient) return;
+
+  document.getElementById('detailAvatar').textContent = currentClient.name[0];
+  document.getElementById('detailName').textContent = currentClient.name;
+  document.getElementById('detailMeta').textContent = `${currentClient.email||''}${currentClient.phone?' · '+currentClient.phone:''}${currentClient.website?' · '+currentClient.website:''}`;
+  document.getElementById('detailProductCount').textContent = (currentClient.products||[]).length;
+  document.getElementById('detailMonthly').textContent = (parseInt(currentClient.mdpris)||0).toLocaleString('da-DK') + ' kr';
+  document.getElementById('detailProgress').textContent = (currentClient.progress||0) + '%';
+  document.getElementById('detailDesc').textContent = currentClient.desc || 'Ingen beskrivelse';
+
+  document.getElementById('topbarTitle').textContent = currentClient.name;
+  document.getElementById('topbarSub').textContent = `${(currentClient.products||[]).length} produkter · oprettet ${new Date(currentClient.created).toLocaleDateString('da-DK')}`;
+
+  switchTab('overview');
+  showView('client-detail');
+}
+
+function openClientPortal() {
+  window.open('client.html?id=' + currentClient?.id, '_blank');
+}
+
+// ── PRODUKT TAB ───────────────────────────────────────
+function renderProductTab() {
+  const c = currentClient;
+  const grid = document.getElementById('productStatusGrid');
+  grid.innerHTML = Object.entries(PRODUCTS).map(([key,{name,icon}]) => {
+    const active = (c.products||[]).includes(key);
+    return `<div class="product-status-card ${active?'':'psc-card-inactive'}">
+      <div class="psc-header">
+        <div class="psc-icon-name"><span class="psc-icon">${icon}</span><span class="psc-name">${name}</span></div>
+        <span class="badge badge-${active?'green':'gray'}">${active?'Aktiv':'Inaktiv'}</span>
       </div>
-      <div class="client-progress">
-        <div class="progress-label">${pct}% færdig</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="psc-status">${active?'Kørende for klienten':'Ikke inkluderet i pakken'}</div>
+      <div class="psc-actions">
+        ${active
+          ? `<button class="btn btn-primary btn-sm" onclick="goGenerate('${key}')">⚡ Generer</button>
+             <button class="btn btn-danger btn-sm" onclick="removeProduct('${key}')">Fjern</button>`
+          : `<button class="btn btn-secondary btn-sm" onclick="addProduct('${key}')">+ Tilføj</button>`
+        }
       </div>
-      ${statusBadge(c.status)}
     </div>`;
   }).join('');
 }
 
-// ── WIZARD ────────────────────────────────────────────────────
-function resetWizard() {
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step3').classList.add('hidden');
-  ['nc_company','nc_contact','nc_email','nc_phone','nc_password','nc_tools'].forEach(id => { document.getElementById(id).value = ''; });
-  document.getElementById('nc_industry').value = '';
-  document.getElementById('nc_size').value = '';
-  selectedChallenges = [];
-  document.querySelectorAll('.challenge-opt').forEach(el => el.classList.remove('selected'));
-  setWizardStep(1);
+function goGenerate(prod) {
+  const map = {chatbot:'gen-chatbot', lead:'gen-lead', mail:'gen-mail', booking:'gen-booking', rapport:'gen-rapport'};
+  showView(map[prod]);
+  // Pre-select client
+  setTimeout(() => {
+    const sel = document.querySelector(`#${prod}ClientSel, #${map[prod].replace('gen-','')}ClientSel`);
+    if (sel) sel.value = currentClient.id;
+  }, 50);
 }
 
-function setWizardStep(n) {
-  [1,2,3].forEach(i => {
-    const el = document.getElementById('ws'+i);
-    el.classList.remove('active','done');
-    if (i < n) el.classList.add('done');
-    else if (i === n) el.classList.add('active');
-  });
-}
-
-function toggleChallenge(el) {
-  const val = el.dataset.val;
-  if (selectedChallenges.includes(val)) {
-    selectedChallenges = selectedChallenges.filter(v => v !== val);
-    el.classList.remove('selected');
-  } else {
-    selectedChallenges.push(val);
-    el.classList.add('selected');
+function addProduct(key) {
+  if (!currentClient.products) currentClient.products = [];
+  if (!currentClient.products.includes(key)) {
+    currentClient.products.push(key);
+    currentClient.tasks = [...(currentClient.tasks||[]), ...defaultTasks(key)];
+    saveClients();
+    renderProductTab();
   }
 }
 
-function goStep2() {
-  if (!document.getElementById('nc_company').value || !document.getElementById('nc_contact').value || !document.getElementById('nc_email').value || !document.getElementById('nc_password').value) {
-    alert('Udfyld venligst navn, kontaktperson, e-mail og adgangskode.'); return;
-  }
-  document.getElementById('step1').classList.add('hidden');
-  document.getElementById('step2').classList.remove('hidden');
-  setWizardStep(2);
+function removeProduct(key) {
+  if (!confirm(`Fjern ${PRODUCTS[key].name} fra ${currentClient.name}?`)) return;
+  currentClient.products = (currentClient.products||[]).filter(p => p !== key);
+  saveClients();
+  renderProductTab();
 }
 
-function goStep1() {
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step1').classList.remove('hidden');
-  setWizardStep(1);
-}
-
-function goStep3() {
-  if (selectedChallenges.length === 0) { alert('Vælg mindst én udfordring.'); return; }
-  const analysis = {
-    challenges: selectedChallenges,
-    size: document.getElementById('nc_size').value || '1-5',
-    industry: document.getElementById('nc_industry').value || 'Anden',
-    budget: document.getElementById('nc_budget').value,
-    technicalLevel: document.getElementById('nc_tech').value
-  };
-  generatedRecs = generateRecommendations(analysis);
-  document.getElementById('generatedRecs').innerHTML = generatedRecs.map(r => recCardHTML(r)).join('');
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step3').classList.remove('hidden');
-  setWizardStep(3);
-}
-
-function saveNewClient() {
-  const email = document.getElementById('nc_email').value.trim().toLowerCase();
-  const password = document.getElementById('nc_password').value;
-  const analysis = {
-    challenges: selectedChallenges,
-    size: document.getElementById('nc_size').value || '1-5',
-    industry: document.getElementById('nc_industry').value || 'Anden',
-    budget: document.getElementById('nc_budget').value,
-    technicalLevel: document.getElementById('nc_tech').value
-  };
-  const clientId = uid();
-  const client = {
-    id: clientId,
-    companyName: document.getElementById('nc_company').value,
-    contactName: document.getElementById('nc_contact').value,
-    email, phone: document.getElementById('nc_phone').value,
-    industry: analysis.industry, size: analysis.size,
-    challenges: analysis.challenges, currentTools: document.getElementById('nc_tools').value,
-    budget: analysis.budget, technicalLevel: analysis.technicalLevel,
-    status: 'implementering', createdAt: new Date().toISOString().split('T')[0],
-    recommendations: generatedRecs,
-    tasks: generateTasks(analysis.challenges),
-    messages: [{ id: uid(), from: 'admin', text: `Hej ${document.getElementById('nc_contact').value.split(' ')[0]}! Vi har nu oprettet jeres KlarAI-portal og er klar til at implementere AI i ${document.getElementById('nc_company').value}. I kan logge ind her med e-mailen ${email} og se jeres personlige AI-plan.`, timestamp: new Date().toISOString() }]
-  };
-  const clients = getClients();
-  clients.push(client);
-  saveClients(clients);
-  const users = JSON.parse(localStorage.getItem('klaiai_users') || '[]');
-  users.push({ id: uid(), email, password, role: 'client', name: client.contactName, clientId });
-  localStorage.setItem('klaiai_users', JSON.stringify(users));
-  showView('client-detail', clientId);
-}
-
-// ── CLIENT DETAIL ─────────────────────────────────────────────
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
-  ['overview','plan','tasks','chatbot','chat'].forEach(t => { document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab); });
-  if (tab === 'chat') renderChat();
-  if (tab === 'tasks') renderTasks();
-  if (tab === 'plan') renderPlan();
-  if (tab === 'overview') renderOverview();
-  if (tab === 'chatbot') renderChatbotTab();
-}
-
-function renderChatbotTab() {
-  // Sync unanswered questions from chatbot localStorage key into client data
-  const client = getClient(currentClientId);
-  const logKey = 'klaiai_unanswered_' + currentClientId;
-  const logged = JSON.parse(localStorage.getItem(logKey) || '[]');
-  if (logged.length) {
-    if (!client.unansweredQuestions) client.unansweredQuestions = [];
-    logged.forEach(lq => {
-      const existing = client.unansweredQuestions.find(x => x.question.toLowerCase() === lq.question.toLowerCase());
-      if (existing) { existing.count = lq.count; existing.lastAsked = lq.lastAsked; }
-      else client.unansweredQuestions.push(lq);
-    });
-    localStorage.removeItem(logKey);
-    updateClient(client);
-  }
-  const config = client.chatbotConfig;
-  const noConfig = document.getElementById('chatbot-no-config');
-  const hasConfig = document.getElementById('chatbot-has-config');
-
-  if (!config) { noConfig.classList.remove('hidden'); hasConfig.classList.add('hidden'); return; }
-  noConfig.classList.add('hidden');
-  hasConfig.classList.remove('hidden');
-
-  // Status info
-  document.getElementById('chatbotStatusInfo').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:.5rem">
-      <div style="font-size:.83rem"><span style="color:var(--muted);font-weight:600">Navn:</span> ${config.botname}</div>
-      <div style="font-size:.83rem"><span style="color:var(--muted);font-weight:600">FAQ-emner:</span> ${(config.faqs||[]).length} spørgsmål</div>
-      <div style="font-size:.83rem"><span style="color:var(--muted);font-weight:600">Sidst opdateret:</span> ${config.updatedAt || config.createdAt}</div>
-      <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem">
-        <div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>
-        <span style="font-size:.82rem;color:var(--green);font-weight:600">Aktiv</span>
-      </div>
-    </div>`;
-
-  // Unanswered questions
-  const unanswered = client.unansweredQuestions || [];
-  const badge = document.getElementById('unansweredBadge');
-  document.getElementById('unansweredCount').textContent = unanswered.length;
-  if (unanswered.length > 0) { badge.style.display = 'inline'; badge.textContent = unanswered.length; }
-  else badge.style.display = 'none';
-
-  const list = document.getElementById('unansweredList');
-  if (!unanswered.length) {
-    list.innerHTML = '<div class="empty" style="padding:1rem">Ingen ubesvarede spørgsmål endnu. Spørgsmål chatbotten ikke kan besvare dukker op her.</div>';
-    document.getElementById('addToFaqSection').classList.add('hidden');
+// ── TASKS ─────────────────────────────────────────────
+function renderTasks() {
+  const tasks = currentClient.tasks || [];
+  const list = document.getElementById('taskList');
+  if (tasks.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><h3>Ingen opgaver</h3><p>Opgaver genereres automatisk når produkter tilføjes</p></div>';
     return;
   }
-
-  document.getElementById('addToFaqSection').classList.remove('hidden');
-  list.innerHTML = unanswered.map((q, i) => `
-    <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem .5rem;border-bottom:1px solid var(--border)">
-      <input type="checkbox" id="uq${i}" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent2)"/>
-      <label for="uq${i}" style="flex:1;cursor:pointer">
-        <div style="font-size:.88rem;font-weight:600">"${q.question}"</div>
-        <div style="font-size:.73rem;color:var(--muted)">${q.count} gang${q.count>1?'e':''} spurgt · sidst: ${q.lastAsked}</div>
-      </label>
-      <button class="btn-secondary" style="font-size:.75rem;padding:.35rem .7rem" onclick="quickAddFaq(${i})">+ Tilføj til FAQ</button>
-    </div>
-  `).join('');
-}
-
-function clearUnanswered() {
-  if (!confirm('Ryd alle ubesvarede spørgsmål?')) return;
-  const client = getClient(currentClientId);
-  client.unansweredQuestions = [];
-  updateClient(client);
-  renderChatbotTab();
-}
-
-function quickAddFaq(idx) {
-  const client = getClient(currentClientId);
-  const q = client.unansweredQuestions[idx];
-  const answer = prompt(`Skriv svaret på:\n"${q.question}"`);
-  if (!answer) return;
-  if (!client.chatbotConfig.faqs) client.chatbotConfig.faqs = [];
-  client.chatbotConfig.faqs.push({ q: q.question, a: answer });
-  client.unansweredQuestions.splice(idx, 1);
-  client.chatbotConfig.updatedAt = new Date().toLocaleDateString('da-DK');
-  updateClient(client);
-  alert('Tilføjet til FAQ! Husk at regenerere og opdatere chatbot-koden på hjemmesiden.');
-  renderChatbotTab();
-}
-
-function addSelectedToFaq() {
-  const client = getClient(currentClientId);
-  const unanswered = client.unansweredQuestions || [];
-  const selected = unanswered.filter((_, i) => document.getElementById('uq'+i)?.checked);
-  if (!selected.length) { alert('Vælg mindst ét spørgsmål.'); return; }
-  const answers = selected.map(q => ({ q: q.question, a: prompt(`Svar på: "${q.question}"`) })).filter(x => x.a);
-  if (!client.chatbotConfig.faqs) client.chatbotConfig.faqs = [];
-  client.chatbotConfig.faqs.push(...answers);
-  client.unansweredQuestions = unanswered.filter((_, i) => !document.getElementById('uq'+i)?.checked);
-  client.chatbotConfig.updatedAt = new Date().toLocaleDateString('da-DK');
-  updateClient(client);
-  alert(`${answers.length} svar tilføjet til FAQ. Gå til AI-plan → Rediger chatbot for at regenerere koden.`);
-  renderChatbotTab();
-}
-
-function openEditClient() {
-  const client = getClient(currentClientId);
-  document.getElementById('editClientSub').textContent = client.companyName;
-  document.getElementById('ec_company').value = client.companyName || '';
-  document.getElementById('ec_contact').value = client.contactName || '';
-  document.getElementById('ec_email').value = client.email || '';
-  document.getElementById('ec_phone').value = client.phone || '';
-  document.getElementById('ec_industry').value = client.industry || '';
-  document.getElementById('ec_size').value = client.size || '';
-  document.getElementById('ec_status').value = client.status || 'ny';
-  document.getElementById('ec_tools').value = client.currentTools || '';
-  document.getElementById('ec_password').value = '';
-  document.getElementById('editClientModal').classList.remove('hidden');
-}
-
-function closeEditClient() {
-  document.getElementById('editClientModal').classList.add('hidden');
-}
-
-function saveEditClient() {
-  const client = getClient(currentClientId);
-  const newEmail = document.getElementById('ec_email').value.trim().toLowerCase();
-  const newPassword = document.getElementById('ec_password').value;
-
-  client.companyName = document.getElementById('ec_company').value.trim();
-  client.contactName = document.getElementById('ec_contact').value.trim();
-  client.email = newEmail;
-  client.phone = document.getElementById('ec_phone').value.trim();
-  client.industry = document.getElementById('ec_industry').value;
-  client.size = document.getElementById('ec_size').value;
-  client.status = document.getElementById('ec_status').value;
-  client.currentTools = document.getElementById('ec_tools').value.trim();
-  updateClient(client);
-
-  // Update user login info
-  const users = JSON.parse(localStorage.getItem('klaiai_users') || '[]');
-  const userIdx = users.findIndex(u => u.clientId === currentClientId);
-  if (userIdx > -1) {
-    users[userIdx].email = newEmail;
-    users[userIdx].name = client.contactName;
-    if (newPassword) users[userIdx].password = newPassword;
-    localStorage.setItem('klaiai_users', JSON.stringify(users));
-  }
-
-  closeEditClient();
-  renderOverview();
-  document.getElementById('topbarTitle').textContent = client.companyName;
-  document.getElementById('topbarSub').textContent = client.contactName + ' · ' + client.industry;
-}
-
-function deleteClient() {
-  const client = getClient(currentClientId);
-  if (!confirm(`Er du sikker på at du vil slette ${client.companyName}?\n\nDette kan ikke fortrydes.`)) return;
-  const clients = getClients().filter(c => c.id !== currentClientId);
-  saveClients(clients);
-  const users = JSON.parse(localStorage.getItem('klaiai_users') || '[]');
-  localStorage.setItem('klaiai_users', JSON.stringify(users.filter(u => u.clientId !== currentClientId)));
-  closeEditClient();
-  showView('clients');
-}
-
-function editChatbot() {
-  const client = getClient(currentClientId);
-  const config = client.chatbotConfig;
-  if (!config) return;
-  const rec = (client.recommendations || []).find(r => r.category === 'Kundeservice');
-  openBuilder(rec?.id || 'chatbot', 'Kundeservice', 'AI-kundeservicechat', config);
-}
-
-function renderClientDetail() {
-  renderOverview();
-}
-
-function renderOverview() {
-  const client = getClient(currentClientId);
-  document.getElementById('detailCompanyName').textContent = client.companyName;
-  document.getElementById('detailStatus').innerHTML = statusBadge(client.status);
-  const pct = getProgress(client);
-  document.getElementById('progressPct').textContent = pct + '%';
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('detailInfo').innerHTML = `
-    <div class="info-item"><div class="info-label">Kontaktperson</div><div class="info-value">${client.contactName}</div></div>
-    <div class="info-item"><div class="info-label">E-mail</div><div class="info-value">${client.email}</div></div>
-    <div class="info-item"><div class="info-label">Branche</div><div class="info-value">${client.industry||'—'}</div></div>
-    <div class="info-item"><div class="info-label">Medarbejdere</div><div class="info-value">${client.size||'—'}</div></div>
-    <div class="info-item"><div class="info-label">Oprettet</div><div class="info-value">${client.createdAt}</div></div>
-    <div class="info-item"><div class="info-label">AI-systemer</div><div class="info-value">${(client.recommendations||[]).length} anbefalinger</div></div>
-  `;
-  const tasks = client.tasks || [];
-  const todo = tasks.filter(t=>t.status==='todo').length;
-  const doing = tasks.filter(t=>t.status==='in_progress').length;
-  const done = tasks.filter(t=>t.status==='done').length;
-  document.getElementById('taskSummary').innerHTML = `
-    <div style="text-align:center;padding:.75rem 1.5rem;background:var(--bg2);border-radius:12px"><div style="font-size:1.5rem;font-weight:800">${todo}</div><div style="font-size:.78rem;color:var(--muted)">Ikke startet</div></div>
-    <div style="text-align:center;padding:.75rem 1.5rem;background:var(--orange-bg);border-radius:12px"><div style="font-size:1.5rem;font-weight:800;color:var(--orange)">${doing}</div><div style="font-size:.78rem;color:var(--orange)">I gang</div></div>
-    <div style="text-align:center;padding:.75rem 1.5rem;background:var(--green-bg);border-radius:12px"><div style="font-size:1.5rem;font-weight:800;color:var(--green)">${done}</div><div style="font-size:.78rem;color:var(--green)">Afsluttet</div></div>
-  `;
-  const openTasks = tasks.filter(t=>t.status!=='done').length;
-  document.getElementById('taskCountBadge').textContent = openTasks > 0 ? openTasks : '';
-}
-
-function recCardHTML(r, forClient) {
-  const builderLabel = {
-    'Kundeservice': '🤖 Byg chatbot →',
-    'AI-assistent': '📋 Generer prompt-bibliotek →',
-    'Marketing': '📅 Generer content-plan →',
-  }[r.category] || '📄 Generer setup-guide →';
-
-  const buildBtn = forClient
-    ? `<button class="btn-build" onclick="openBuilder('${r.id}','${r.category}','${r.name}')">${builderLabel}</button>`
-    : '';
-
-  return `<div class="rec-card">
-    <div class="rec-icon">${r.icon}</div>
-    <div class="rec-body">
-      <div class="rec-name">${r.name}</div>
-      <div class="rec-vendor">${r.vendor} · ${r.category}</div>
-      <div class="rec-desc">${r.description}</div>
-      <div class="rec-why">💡 ${r.whyFit}</div>
-      <div class="rec-meta">
-        <div class="rec-meta-item"><strong>Prioritet:</strong> ${r.priority}</div>
-        <div class="rec-meta-item"><strong>Pris:</strong> ${r.monthlyCost}</div>
-        <div class="rec-meta-item"><strong>Implementeringstid:</strong> ${r.implementationTime}</div>
-      </div>
-      ${buildBtn}
-    </div>
-  </div>`;
-}
-
-function renderPlan() {
-  const client = getClient(currentClientId);
-  const recs = client.recommendations || [];
-  document.getElementById('detailRecs').innerHTML = recs.length ? recs.map(r => recCardHTML(r, true)).join('') : '<div class="empty">Ingen AI-anbefalinger endnu.</div>';
-}
-
-function renderTasks() {
-  const client = getClient(currentClientId);
-  const tasks = client.tasks || [];
-  document.getElementById('detailTasks').innerHTML = tasks.length ? tasks.map(t => `
+  list.innerHTML = tasks.map(t => `
     <div class="task-item">
-      <button class="task-status-btn ${t.status}" onclick="cycleTask('${t.id}')" title="Skift status"></button>
+      <div class="task-check ${t.status}" onclick="cycleTask('${t.id}')"></div>
       <div class="task-info">
         <div class="task-title ${t.status==='done'?'done-text':''}">${t.title}</div>
-        <div class="task-desc">${t.description}</div>
+        <div class="task-desc">${t.desc||''}</div>
       </div>
-      <span class="task-tool">${t.tool}</span>
-      <select class="task-select" onchange="setTaskStatus('${t.id}',this.value)">
-        <option value="todo" ${t.status==='todo'?'selected':''}>Ikke startet</option>
-        <option value="in_progress" ${t.status==='in_progress'?'selected':''}>I gang</option>
-        <option value="done" ${t.status==='done'?'selected':''}>Afsluttet</option>
-      </select>
-    </div>
-  `).join('') : '<div class="empty">Ingen opgaver endnu.</div>';
+      ${t.product?`<span class="task-tag">${PRODUCTS[t.product]?.icon} ${PRODUCTS[t.product]?.name}</span>`:''}
+    </div>`).join('');
 }
 
-function cycleTask(taskId) {
-  const order = ['todo','in_progress','done'];
-  const client = getClient(currentClientId);
-  const task = client.tasks.find(t => t.id === taskId);
-  const next = order[(order.indexOf(task.status)+1)%order.length];
-  task.status = next;
-  updateClient(client);
+function cycleTask(id) {
+  const task = currentClient.tasks?.find(t => t.id === id);
+  if (!task) return;
+  const cycle = {pending:'progress', progress:'done', done:'pending'};
+  task.status = cycle[task.status] || 'pending';
+  const done = (currentClient.tasks||[]).filter(t => t.status==='done').length;
+  currentClient.progress = Math.round((done / currentClient.tasks.length) * 100);
+  saveClients();
   renderTasks();
-  renderOverview();
-}
-
-function setTaskStatus(taskId, status) {
-  const client = getClient(currentClientId);
-  const task = client.tasks.find(t => t.id === taskId);
-  task.status = status;
-  updateClient(client);
-  renderTasks();
-  renderOverview();
-}
-
-function toggleAddTask() {
-  document.getElementById('addTaskForm').classList.toggle('open');
 }
 
 function addTask() {
-  const title = document.getElementById('newTaskTitle').value.trim();
-  if (!title) { alert('Angiv en opgavetitel.'); return; }
-  const client = getClient(currentClientId);
-  client.tasks.push({ id: uid(), title, description: document.getElementById('newTaskDesc').value, tool: document.getElementById('newTaskTool').value || '—', status: 'todo', createdAt: new Date().toISOString().split('T')[0] });
-  updateClient(client);
-  document.getElementById('newTaskTitle').value = '';
-  document.getElementById('newTaskDesc').value = '';
-  document.getElementById('newTaskTool').value = '';
-  document.getElementById('addTaskForm').classList.remove('open');
+  const title = prompt('Opgavetitel:');
+  if (!title) return;
+  if (!currentClient.tasks) currentClient.tasks = [];
+  currentClient.tasks.push({ id: Date.now().toString(), title, desc: '', status: 'pending' });
+  saveClients();
   renderTasks();
-  renderOverview();
 }
 
+// ── CHAT ──────────────────────────────────────────────
 function renderChat() {
-  const client = getClient(currentClientId);
-  const msgs = client.messages || [];
-  const container = document.getElementById('chatMessages');
-  container.innerHTML = msgs.map(m => `
+  const msgs = currentClient.messages || [];
+  const box = document.getElementById('chatMessages');
+  if (msgs.length === 0) {
+    box.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.85rem;padding:2rem">Ingen beskeder endnu</div>';
+    return;
+  }
+  box.innerHTML = msgs.map(m => `
     <div class="msg msg-${m.from}">
       <div class="msg-bubble">${m.text}</div>
-      <div class="msg-time">${m.from === 'admin' ? 'KlarAI' : client.contactName} · ${formatTime(m.timestamp)}</div>
-    </div>
-  `).join('');
-  container.scrollTop = container.scrollHeight;
+      <div class="msg-time">${m.time}</div>
+    </div>`).join('');
+  box.scrollTop = box.scrollHeight;
 }
 
-function sendMessage(from) {
+function sendMsg() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
-  const client = getClient(currentClientId);
-  client.messages.push({ id: uid(), from, text, timestamp: new Date().toISOString() });
-  updateClient(client);
+  if (!currentClient.messages) currentClient.messages = [];
+  currentClient.messages.push({ from:'admin', text, time: new Date().toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'}) });
+  saveClients();
   input.value = '';
   renderChat();
 }
 
-// Init
-showView('clients');
-
-// ── BUILDER ───────────────────────────────────────────────────
-let builderRecId = null;
-
-function openBuilder(recId, category, name, existingConfig) {
-  builderRecId = recId;
-  const client = getClient(currentClientId);
-  const body = document.getElementById('builderBody');
-  const title = document.getElementById('builderTitle');
-  const sub = document.getElementById('builderSub');
-
-  document.getElementById('builderOutput').classList.add('hidden');
-  document.getElementById('builderForm').classList.remove('hidden');
-  document.getElementById('builderFooterForm').classList.remove('hidden');
-  document.getElementById('builderFooterOutput').classList.add('hidden');
-
-  if (category === 'Kundeservice') {
-    title.textContent = '🤖 Byg AI-chatbot';
-    sub.textContent = existingConfig ? `Redigér chatbot til ${client.companyName}` : `Til ${client.companyName} — genererer embed-kode til hjemmesiden`;
-    body.innerHTML = chatbotFormHTML(client, existingConfig);
-    // Pre-fill if editing
-    if (existingConfig) {
-      setTimeout(() => {
-        if (existingConfig.botname) document.getElementById('b_botname').value = existingConfig.botname;
-        if (existingConfig.hours) document.getElementById('b_hours').value = existingConfig.hours;
-        if (existingConfig.greeting) document.getElementById('b_greeting').value = existingConfig.greeting;
-        if (existingConfig.fallback) document.getElementById('b_fallback').value = existingConfig.fallback;
-        if (existingConfig.color) document.getElementById('b_color').value = existingConfig.color;
-        // Re-populate FAQs
-        if (existingConfig.faqs?.length) {
-          const list = document.getElementById('faqList');
-          list.innerHTML = '';
-          faqCount = 0;
-          existingConfig.faqs.forEach((faq, i) => {
-            const div = document.createElement('div');
-            div.className = 'faq-item'; div.id = `faq_${faqCount}`;
-            div.innerHTML = `<input placeholder="Spørgsmål..." id="fq${faqCount}" value="${faq.q.replace(/"/g,'&quot;')}"/><input placeholder="Svar..." id="fa${faqCount}" value="${faq.a.replace(/"/g,'&quot;')}"/><button class="faq-remove" onclick="removeFaq(${faqCount})">✕</button>`;
-            list.appendChild(div); faqCount++;
-          });
-        }
-      }, 50);
-    }
-  } else if (category === 'AI-assistent') {
-    title.textContent = '📋 Generer prompt-bibliotek';
-    sub.textContent = `Til ${client.companyName} — klar til brug i ChatGPT`;
-    body.innerHTML = promptFormHTML(client);
-  } else if (category === 'Marketing') {
-    title.textContent = '📅 Generer content-plan';
-    sub.textContent = `Til ${client.companyName} — 4-ugers SoMe-kalender`;
-    body.innerHTML = contentFormHTML(client);
-  } else {
-    title.textContent = `📄 Setup-guide: ${name}`;
-    sub.textContent = `Til ${client.companyName}`;
-    body.innerHTML = guideFormHTML(client, name);
-  }
-
-  modal.classList.remove('hidden');
-}
-
-function closeBuilder() {
-  document.getElementById('builderModal').classList.add('hidden');
-}
-
-function chatbotFormHTML(client) {
-  return `
-  <div class="builder-section">
-    <div class="builder-section-title">Virksomhedsinfo</div>
-    <div class="form-grid">
-      <div class="form-group"><label>Virksomhedsnavn</label><input id="b_name" value="${client.companyName}"/></div>
-      <div class="form-group"><label>Chatbot-navn</label><input id="b_botname" value="Assistent"/></div>
-      <div class="form-group"><label>Telefon</label><input id="b_phone" value="${client.phone||''}"/></div>
-      <div class="form-group"><label>E-mail</label><input id="b_email" value="${client.email||''}"/></div>
-      <div class="form-group full"><label>Åbningstider</label><input id="b_hours" placeholder="Man-fre 9-17, Lør 10-14"/></div>
-      <div class="form-group full"><label>Velkomstbesked</label><input id="b_greeting" value="Hej! Jeg er ${client.companyName}s AI-assistent. Hvordan kan jeg hjælpe dig?"/></div>
-      <div class="form-group"><label>Chatbot-farve</label><input type="color" id="b_color" value="#0a2463" style="height:42px;padding:.2rem"/></div>
-      <div class="form-group"><label>Fallback-svar (når chatbot ikke kender svaret)</label><input id="b_fallback" value="Det kan jeg desværre ikke svare på. Ring til os på ${client.phone||'[telefon]'} eller skriv til ${client.email||'[email]'}."/></div>
-    </div>
-  </div>
-  <div class="builder-section">
-    <div class="builder-section-title" style="display:flex;justify-content:space-between;align-items:center">Ofte stillede spørgsmål (FAQ) <button class="btn-primary" style="padding:.35rem .75rem;font-size:.75rem" onclick="addFaq()">+ Tilføj</button></div>
-    <div class="faq-list" id="faqList">
-      <div class="faq-item"><input placeholder="Spørgsmål: Hvad koster det?" id="fq0"/><input placeholder="Svar: Prisen starter fra..." id="fa0"/><button class="faq-remove" onclick="removeFaq(0)">✕</button></div>
-      <div class="faq-item"><input placeholder="Spørgsmål: Hvornår har I åbent?" id="fq1"/><input placeholder="Svar: Vi har åbent..." id="fa1"/><button class="faq-remove" onclick="removeFaq(1)">✕</button></div>
-      <div class="faq-item"><input placeholder="Spørgsmål: Hvordan booker jeg?" id="fq2"/><input placeholder="Svar: Du kan booke via..." id="fa2"/><button class="faq-remove" onclick="removeFaq(2)">✕</button></div>
-    </div>
-  </div>`;
-}
-
-let faqCount = 3;
-function addFaq() {
-  const list = document.getElementById('faqList');
-  const i = faqCount++;
-  const div = document.createElement('div');
-  div.className = 'faq-item';
-  div.id = `faq_${i}`;
-  div.innerHTML = `<input placeholder="Spørgsmål..." id="fq${i}"/><input placeholder="Svar..." id="fa${i}"/><button class="faq-remove" onclick="removeFaq(${i})">✕</button>`;
-  list.appendChild(div);
-}
-function removeFaq(i) {
-  const el = document.getElementById(`faq_${i}`) || document.querySelector(`#faqList .faq-item:nth-child(${i+1})`);
-  if (el) el.remove();
-}
-
-function promptFormHTML(client) {
-  return `
-  <div class="builder-section">
-    <div class="builder-section-title">Tilpas prompt-biblioteket</div>
-    <div class="form-grid">
-      <div class="form-group"><label>Branche</label><input id="p_industry" value="${client.industry||''}"/></div>
-      <div class="form-group"><label>Primær udfordring</label><input id="p_challenge" value="${(client.challenges||[]).join(', ')}"/></div>
-      <div class="form-group full"><label>Virksomhedsbeskrivelse (bruges i promptene)</label><textarea id="p_desc" rows="2" placeholder="Eks: Vi er en wellness-virksomhed der tilbyder spa, massage og pool-oplevelser...">${client.companyName} er en ${client.industry||''}-virksomhed.</textarea></div>
-      <div class="form-group full"><label>Tone of voice</label>
-        <select id="p_tone"><option value="professionel">Professionel og seriøs</option><option value="venlig" selected>Venlig og imødekommende</option><option value="uformel">Uformel og moderne</option></select>
-      </div>
-    </div>
-  </div>`;
-}
-
-function contentFormHTML(client) {
-  return `
-  <div class="builder-section">
-    <div class="builder-section-title">Indstillinger for content-plan</div>
-    <div class="form-grid">
-      <div class="form-group"><label>Virksomhedsnavn</label><input id="c_name" value="${client.companyName}"/></div>
-      <div class="form-group"><label>Branche</label><input id="c_industry" value="${client.industry||''}"/></div>
-      <div class="form-group"><label>Primære platforme</label>
-        <select id="c_platform"><option>Facebook & Instagram</option><option>Instagram</option><option>LinkedIn</option><option>Facebook</option><option>TikTok</option></select>
-      </div>
-      <div class="form-group"><label>Tone of voice</label>
-        <select id="c_tone"><option value="professionel">Professionel</option><option value="venlig" selected>Venlig</option><option value="inspirerende">Inspirerende</option></select>
-      </div>
-      <div class="form-group full"><label>Produkter/ydelser (kommasepareret)</label>
-        <input id="c_products" placeholder="Eks: massage, sauna, pool, wellness-ophold..."/></div>
-    </div>
-  </div>`;
-}
-
-function guideFormHTML(client, toolName) {
-  return `
-  <div class="builder-section">
-    <div class="builder-section-title">Generér opsætningsvejledning</div>
-    <div class="form-grid">
-      <div class="form-group"><label>Virksomhedsnavn</label><input id="g_name" value="${client.companyName}"/></div>
-      <div class="form-group"><label>Kontaktperson</label><input id="g_contact" value="${client.contactName||''}"/></div>
-    </div>
-    <p style="font-size:.88rem;color:var(--muted);margin-top:.75rem">Systemet genererer en trin-for-trin guide til opsætning af <strong>${toolName}</strong>, tilpasset ${client.companyName}.</p>
-  </div>`;
-}
-
-function runBuilder() {
-  const client = getClient(currentClientId);
-  const title = document.getElementById('builderTitle').textContent;
-  let output = '';
-  let outputTitle = '';
-  let isChatbot = false;
-
-  if (title.includes('chatbot')) {
-    output = generateChatbotCode(client);
-    outputTitle = '🤖 Embed-kode — indsæt direkte på hjemmesiden';
-    isChatbot = true;
-    // Save chatbot config to client
-    const faqs = [];
-    document.querySelectorAll('#faqList .faq-item').forEach(row => {
-      const q = row.querySelector('input:first-child')?.value?.trim();
-      const a = row.querySelector('input:nth-child(2)')?.value?.trim();
-      if (q && a) faqs.push({ q, a });
-    });
-    client.chatbotConfig = {
-      botname: document.getElementById('b_botname')?.value || 'Assistent',
-      phone: document.getElementById('b_phone')?.value || '',
-      email: document.getElementById('b_email')?.value || '',
-      hours: document.getElementById('b_hours')?.value || '',
-      greeting: document.getElementById('b_greeting')?.value || '',
-      fallback: document.getElementById('b_fallback')?.value || '',
-      color: document.getElementById('b_color')?.value || '#0a2463',
-      faqs,
-      createdAt: new Date().toLocaleDateString('da-DK'),
-      updatedAt: new Date().toLocaleDateString('da-DK'),
-    };
-    if (!client.unansweredQuestions) client.unansweredQuestions = [];
-    updateClient(client);
-  } else if (title.includes('prompt')) {
-    output = generatePromptLibrary(client);
-    outputTitle = '📋 Prompt-bibliotek — klar til brug i ChatGPT';
-  } else if (title.includes('content')) {
-    output = generateContentPlan(client);
-    outputTitle = '📅 Content-kalender — 4 ugers plan klar';
-  } else {
-    output = generateSetupGuide(client, title.replace('📄 Setup-guide: ',''));
-    outputTitle = '📄 Setup-guide — trin-for-trin vejledning';
-  }
-
-  document.getElementById('builderOutputCode').textContent = output;
-  document.getElementById('builderOutputTitle').textContent = outputTitle;
-
-  // Show integration tip for chatbot
-  const integrationBox = document.getElementById('chatbotIntegration');
-  if (isChatbot) {
-    integrationBox.classList.remove('hidden');
-  } else {
-    integrationBox.classList.add('hidden');
-  }
-
-  document.getElementById('builderOutput').classList.remove('hidden');
-  document.getElementById('builderForm').classList.add('hidden');
-  document.getElementById('builderFooterForm').classList.add('hidden');
-  document.getElementById('builderFooterOutput').classList.remove('hidden');
-}
-
-function goBackToForm() {
-  document.getElementById('builderForm').classList.remove('hidden');
-  document.getElementById('builderOutput').classList.add('hidden');
-  document.getElementById('builderFooterForm').classList.remove('hidden');
-  document.getElementById('builderFooterOutput').classList.add('hidden');
-}
-
-function sendToClient() {
-  const client = getClient(currentClientId);
-  const title = document.getElementById('builderTitle').textContent;
-  const output = document.getElementById('builderOutputCode').textContent;
-  const shortTitle = title.replace(/[📋📅🤖📄⚡]\s*/g, '');
-
-  // Save as a pinned message in client chat
-  client.messages.push({
-    id: uid(),
-    from: 'admin',
-    text: `✅ Vi har nu genereret din ${shortTitle}. Du finder den herunder — klik "Kopier" og indsæt den på din hjemmeside eller del den med din webudvikler.\n\n\`\`\`\n${output.substring(0, 300)}...\n\`\`\`\n\n[Se hele outputtet i admin-portalen]`,
-    timestamp: new Date().toISOString(),
-    attachment: { title: shortTitle, content: output }
+// ── CLIENT SELECTS ────────────────────────────────────
+function populateClientSelects() {
+  const opts = '<option value="">— Vælg klient —</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  ['chatbotClientSel','leadClientSel','mailClientSel','bookingClientSel','rapportClientSel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
   });
-  updateClient(client);
-
-  // Show confirmation
-  const btn = document.querySelector('#builderFooterOutput .btn-primary');
-  btn.textContent = '✓ Sendt til klient!';
-  btn.style.background = 'var(--green)';
-  btn.disabled = true;
-  setTimeout(() => {
-    btn.textContent = '📤 Send til klient';
-    btn.disabled = false;
-    closeBuilder();
-  }, 1800);
 }
 
-// ── GENERATORS ────────────────────────────────────────────────
-
-function generateChatbotCode(client) {
-  const name = document.getElementById('b_name')?.value || client.companyName;
-  const botname = document.getElementById('b_botname')?.value || 'Assistent';
-  const phone = document.getElementById('b_phone')?.value || '';
-  const email = document.getElementById('b_email')?.value || '';
-  const hours = document.getElementById('b_hours')?.value || 'Kontakt os for åbningstider';
-  const greeting = document.getElementById('b_greeting')?.value || `Hej! Velkommen til ${name}`;
-  const fallback = document.getElementById('b_fallback')?.value || `Ring til os på ${phone}`;
-  const color = document.getElementById('b_color')?.value || '#0a2463';
-
-  const faqs = [];
-  document.querySelectorAll('#faqList .faq-item').forEach((row, i) => {
-    const q = row.querySelector('input:first-child')?.value?.trim();
-    const a = row.querySelector('input:nth-child(2)')?.value?.trim();
-    if (q && a) faqs.push({ q, a });
-  });
-
-  const faqJSON = JSON.stringify(faqs, null, 2);
-
-  return `<!-- ================================================ -->
-<!-- KlarAI Chatbot til ${name}                    -->
-<!-- Indsæt denne kode lige før </body> på din hjemmeside -->
-<!-- ================================================ -->
-<script>
-(function() {
-  var CFG = {
-    company: "${name}",
-    botname: "${botname}",
-    color: "${color}",
-    greeting: "${greeting}",
-    hours: "${hours}",
-    phone: "${phone}",
-    email: "${email}",
-    fallback: "${fallback}",
-    clientId: "${currentClientId}",
-    faqs: ${faqJSON}
-  };
-
-  var style = document.createElement('style');
-  style.textContent = [
-    '#klai-wrap *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif}',
-    '#klai-btn{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:'+CFG.color+';border:none;cursor:pointer;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);font-size:1.5rem;display:flex;align-items:center;justify-content:center;color:#fff;transition:transform .2s}',
-    '#klai-btn:hover{transform:scale(1.08)}',
-    '#klai-win{position:fixed;bottom:96px;right:24px;width:340px;height:480px;background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.18);z-index:9998;display:flex;flex-direction:column;overflow:hidden;transform:scale(.95) translateY(10px);opacity:0;pointer-events:none;transition:all .25s}',
-    '#klai-win.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}',
-    '#klai-head{background:'+CFG.color+';color:#fff;padding:.9rem 1.1rem;display:flex;align-items:center;gap:.65rem}',
-    '#klai-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.1rem}',
-    '#klai-headname{font-weight:700;font-size:.92rem}',
-    '#klai-headsub{font-size:.72rem;opacity:.75}',
-    '#klai-close{margin-left:auto;background:transparent;border:none;color:#fff;font-size:1.1rem;cursor:pointer;opacity:.8;padding:.2rem}',
-    '#klai-msgs{flex:1;overflow-y:auto;padding:.9rem;display:flex;flex-direction:column;gap:.55rem;background:#f4f6fb}',
-    '.klai-msg{max-width:82%;padding:.6rem .85rem;border-radius:14px;font-size:.85rem;line-height:1.45}',
-    '.klai-bot{background:#fff;border:1px solid rgba(0,0,0,.08);align-self:flex-start;border-bottom-left-radius:4px}',
-    '.klai-user{background:'+CFG.color+';color:#fff;align-self:flex-end;border-bottom-right-radius:4px}',
-    '#klai-inputrow{padding:.75rem;border-top:1px solid rgba(0,0,0,.07);display:flex;gap:.5rem;background:#fff}',
-    '#klai-input{flex:1;border:1px solid rgba(0,0,0,.1);border-radius:9px;padding:.6rem .85rem;font-size:.85rem;outline:none}',
-    '#klai-send{background:'+CFG.color+';color:#fff;border:none;border-radius:9px;padding:.6rem .9rem;cursor:pointer;font-size:.85rem;font-weight:600}'
-  ].join('');
-  document.head.appendChild(style);
-
-  var wrap = document.createElement('div');
-  wrap.id = 'klai-wrap';
-  wrap.innerHTML = '<button id="klai-btn" onclick="klaiToggle()">💬</button>' +
-    '<div id="klai-win">' +
-      '<div id="klai-head"><div id="klai-avatar">🤖</div><div><div id="klai-headname">'+CFG.botname+'</div><div id="klai-headsub">'+CFG.company+'</div></div><button id="klai-close" onclick="klaiToggle()">✕</button></div>' +
-      '<div id="klai-msgs"><div class="klai-msg klai-bot">'+CFG.greeting+'</div></div>' +
-      '<div id="klai-inputrow"><input id="klai-input" placeholder="Skriv her..." onkeydown="if(event.key===\\'Enter\\')klaiSend()"/><button id="klai-send" onclick="klaiSend()">Send</button></div>' +
-    '</div>';
-  document.body.appendChild(wrap);
-
-  window.klaiToggle = function() { document.getElementById('klai-win').classList.toggle('open'); };
-
-  window.klaiSend = function() {
-    var inp = document.getElementById('klai-input');
-    var msg = inp.value.trim(); if (!msg) return;
-    klaiAppend(msg, 'user'); inp.value = '';
-    setTimeout(function() { klaiAppend(klaiReply(msg), 'bot'); }, 400);
-  };
-
-  function klaiAppend(text, who) {
-    var msgs = document.getElementById('klai-msgs');
-    var d = document.createElement('div');
-    d.className = 'klai-msg klai-' + who;
-    d.textContent = text;
-    msgs.appendChild(d);
-    msgs.scrollTop = msgs.scrollHeight;
-  }
-
-  function klaiReply(msg) {
-    var m = msg.toLowerCase();
-    if (/(åbningstid|åbent|lukket|åbning|hvornår)/.test(m)) return CFG.hours;
-    if (/(telefon|ring|nummer|tlf)/.test(m)) return CFG.phone ? 'Du kan ringe til os på ' + CFG.phone : CFG.fallback;
-    if (/(mail|email|skriv|kontakt)/.test(m)) return CFG.email ? 'Skriv til os på ' + CFG.email : CFG.fallback;
-    for (var i=0; i<CFG.faqs.length; i++) {
-      var words = CFG.faqs[i].q.toLowerCase().split(/[\\s,?!.]+/);
-      var hits = words.filter(function(w){ return w.length>3 && m.includes(w); });
-      if (hits.length >= 1) return CFG.faqs[i].a;
+// ── PRODUKT OPT TOGGLE ────────────────────────────────
+document.querySelectorAll('.product-opt').forEach(el => {
+  el.addEventListener('click', () => {
+    const cb = el.querySelector('input[type=checkbox]');
+    if (cb) {
+      cb.checked = !cb.checked;
+      el.classList.toggle('selected', cb.checked);
     }
-    // Log unanswered question back to KlarAI admin
-    try {
-      var key = 'klaiai_unanswered_' + CFG.clientId;
-      var log = JSON.parse(localStorage.getItem(key) || '[]');
-      var existing = log.find(function(x){ return x.question.toLowerCase() === msg.toLowerCase(); });
-      var today = new Date().toLocaleDateString('da-DK');
-      if (existing) { existing.count++; existing.lastAsked = today; }
-      else { log.push({ question: msg, count: 1, lastAsked: today }); }
-      localStorage.setItem(key, JSON.stringify(log));
-    } catch(e) {}
-    return CFG.fallback;
-  }
-})();
+  });
+});
+
+// ── GENERATORER ───────────────────────────────────────
+
+// CHATBOT
+function generateChatbot() {
+  const client = clients.find(c => c.id === document.getElementById('chatbotClientSel').value);
+  const name = document.getElementById('chatbotName').value || 'Alma';
+  const greeting = document.getElementById('chatbotGreeting').value || 'Hej! Hvordan kan jeg hjælpe dig?';
+  const color = document.getElementById('chatbotColor').value || '#0a2463';
+  const pos = document.getElementById('chatbotPos').value;
+
+  const embed = `<!-- KlarAI Chatbot ${client?'· '+client.name:''} -->
+<script src="https://klaiai.dk/chatbot.js"
+  data-name="${name}"
+  data-greeting="${greeting}"
+  data-color="${color}"
+  data-position="${pos}"
+  data-client="${client?.id||'demo'}">
 <\/script>`;
+
+  document.getElementById('chatbotEmbed').textContent = embed;
+  document.getElementById('chatbotResult').classList.remove('hidden');
+
+  if (client) {
+    markProductGenerated(client.id, 'chatbot');
+    alert(`✅ Chatbot genereret til ${client.name}!`);
+  }
 }
 
-function generatePromptLibrary(client) {
-  const industry = document.getElementById('p_industry')?.value || client.industry || '';
-  const tone = document.getElementById('p_tone')?.value || 'venlig';
-  const desc = document.getElementById('p_desc')?.value || client.companyName;
-  const toneWord = { professionel: 'professionel og præcis', venlig: 'venlig og imødekommende', uformel: 'uformel og moderne' }[tone];
+// LEAD
+function generateLead() {
+  const client = clients.find(c => c.id === document.getElementById('leadClientSel').value);
+  const product = document.getElementById('leadProduct').value || 'jeres ydelser';
+  const offer = document.getElementById('leadOffer').value || 'en gratis konsultation';
+  const delay = parseInt(document.getElementById('leadDelay').value)||1;
+  const followups = parseInt(document.getElementById('leadFollowups').value)||3;
 
-  const challenges = client.challenges || [];
-  let prompts = [
-    { label: 'E-mail svar', text: `Skriv et ${toneWord} svar på denne kundehenvendelse på vegne af ${client.companyName}. Henvendelse: [INDSÆT TEKST]. Hold svaret kort og handlingsorienteret.` },
-    { label: 'Mødereferat', text: `Lav et struktureret mødereferat ud fra disse noter: [INDSÆT NOTER]. Inkluder: deltagere, beslutninger og action points med ansvarlige.` },
-    { label: 'Jobopslag', text: `Skriv et engagerende jobopslag til ${client.companyName} for stillingen som [STILLINGSNAVN]. Tone: ${toneWord}. Inkluder: opgaver, krav og hvad vi tilbyder.` },
-    { label: 'Velkomstmail til ny medarbejder', text: `Skriv en ${toneWord} velkomstmail til en ny medarbejder hos ${client.companyName}. Inkluder velkomst, hvad de kan forvente første dag og praktiske informationer.` },
-    { label: 'Opsummer dokument', text: `Opsummer følgende dokument i 5 punkter på dansk, fremhæv de vigtigste pointer: [INDSÆT DOKUMENT]` },
-    { label: 'Forbedre tekst', text: `Omskriv følgende tekst så den er mere ${toneWord} og klar. Behold budskabet, men gør den lettere at læse: [INDSÆT TEKST]` },
+  const steps = [
+    { num:1, title:'Øjeblikkelig auto-svar', desc:`Tak for din henvendelse! Vi vender tilbage inden for ${delay} time${delay>1?'r':''}. ${offer?'Vi tilbyder '+offer+'.':''}`, delay:'Øjeblikkeligt' },
+    { num:2, title:'Opfølgning #1', desc:`Har du haft mulighed for at se på vores tilbud om ${product}? Vi står klar til en uforpligtende snak.`, delay:'24 timer efter' },
   ];
-
-  if (challenges.includes('kundeservice')) {
-    prompts.push({ label: 'Svar på negativ anmeldelse', text: `Skriv et professionelt og empatisk svar på denne negative anmeldelse af ${client.companyName}: [INDSÆT ANMELDELSE]. Anerkend problemet, undskyld og tilbyd en løsning.` });
-    prompts.push({ label: 'FAQ-svar', text: `Skriv et ${toneWord} svar på dette kundespørgsmål til ${client.companyName}: [SPØRGSMÅL]. Hold svaret under 3 sætninger.` });
-  }
-  if (challenges.includes('marketing')) {
-    prompts.push({ label: 'Instagram-opslag', text: `Skriv 3 varianter af et Instagram-opslag for ${client.companyName} om [EMNE]. Tone: ${toneWord}. Inkluder 5 relevante hashtags.` });
-    prompts.push({ label: 'Nyhedsbrev', text: `Skriv et nyhedsbrev fra ${client.companyName} om [EMNE]. Tone: ${toneWord}. Inkluder: fængende emneord, intro, hovedindhold og call-to-action.` });
-    prompts.push({ label: 'Annoncetekst', text: `Skriv en kort og fængende annoncetekst (maks. 150 tegn) til Facebook/Instagram for ${client.companyName} om [PRODUKT/TILBUD].` });
-  }
-  if (challenges.includes('admin')) {
-    prompts.push({ label: 'Procedureskrivning', text: `Skriv en klar procedurebeskrivelse for denne arbejdsgang hos ${client.companyName}: [BESKRIV PROCESSEN]. Formater som nummereret liste med enkle trin.` });
-    prompts.push({ label: 'Tilbud til kunde', text: `Skriv et professionelt tilbudsbrev fra ${client.companyName} til [KUNDENAVN]. Ydelse: [BESKRIV]. Pris: [BELØB]. Tone: ${toneWord}.` });
-  }
-  if (challenges.includes('salg')) {
-    prompts.push({ label: 'Opfølgningsmail', text: `Skriv en ${toneWord} opfølgningsmail til en potentiel kunde der ikke har svaret i 5 dage. Vi tilbød [PRODUKT/SERVICE] til [PRIS]. Hold den kort og åbn for dialog.` });
-    prompts.push({ label: 'Salgspræsentation', text: `Lav en struktureret salgspræsentation for ${client.companyName}'s [PRODUKT/SERVICE] til [MÅLGRUPPE]. Inkluder: problem vi løser, vores løsning, social proof og næste skridt.` });
+  for (let i = 2; i < followups; i++) {
+    steps.push({ num: i+1, title: `Opfølgning #${i}`, desc: `Sidste chance for at benytte tilbuddet. Vi håber vi snart kan hjælpe jer med ${product}.`, delay: `${i*3} dage efter` });
   }
 
-  let out = `════════════════════════════════════════════
-PROMPT-BIBLIOTEK TIL ${client.companyName.toUpperCase()}
-Genereret af KlarAI · ${new Date().toLocaleDateString('da-DK')}
-════════════════════════════════════════════
+  const container = document.getElementById('leadFlowSteps');
+  container.innerHTML = steps.map((s, i) => `
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-step-dot">${s.num}</div>
+        ${i < steps.length-1 ? '<div class="flow-step-connector"></div>' : ''}
+      </div>
+      <div class="flow-step-body" style="margin-top:.15rem">
+        <div class="flow-step-title">${s.title}</div>
+        <div class="flow-step-desc">${s.desc}</div>
+        <div class="flow-delay">⏱ ${s.delay}</div>
+      </div>
+    </div>`).join('');
 
-Sådan bruges dette bibliotek:
-1. Åbn ChatGPT (chatgpt.com) eller Claude
-2. Kopier en prompt herunder
-3. Erstat teksten i [KANTEDE PARENTESER] med jeres indhold
-4. Send og modtag svar
-
-TIP: Gem dette dokument i en delt mappe så alle medarbejdere kan bruge det.
-
-`;
-  prompts.forEach((p, i) => {
-    out += `────────────────────────────────────────────\n`;
-    out += `${i+1}. ${p.label.toUpperCase()}\n`;
-    out += `────────────────────────────────────────────\n`;
-    out += `${p.text}\n\n`;
-  });
-  out += `════════════════════════════════════════════\nGenereret af KlarAI — klaiai.dk\n════════════════════════════════════════════`;
-  return out;
+  document.getElementById('leadResult').classList.remove('hidden');
+  if (client) { markProductGenerated(client.id, 'lead'); }
 }
 
-function generateContentPlan(client) {
-  const name = document.getElementById('c_name')?.value || client.companyName;
-  const industry = document.getElementById('c_industry')?.value || client.industry || '';
-  const platform = document.getElementById('c_platform')?.value || 'Facebook & Instagram';
-  const tone = document.getElementById('c_tone')?.value || 'venlig';
-  const products = document.getElementById('c_products')?.value || '';
+// MAIL FLOW
+function selectFlow(el) {
+  document.querySelectorAll('.product-opt[data-flow]').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedFlow = el.dataset.flow;
+}
 
-  const types = ['Produktfokus', 'Kundehistorie', 'Tips & råd', 'Behind the scenes', 'Tilbud/kampagne', 'Inspirationsopslag', 'FAQ-opslag', 'Team-spotlight'];
-  let out = `════════════════════════════════════════════
-4-UGERS CONTENT-KALENDER: ${name.toUpperCase()}
-Platform: ${platform} · Tone: ${tone}
-Genereret af KlarAI · ${new Date().toLocaleDateString('da-DK')}
-════════════════════════════════════════════\n\n`;
+function generateMailFlow() {
+  if (!selectedFlow) { alert('Vælg venligst en flow-type'); return; }
+  const client = clients.find(c => c.id === document.getElementById('mailClientSel').value);
+  const product = document.getElementById('mailProduct').value || 'jeres ydelser';
 
-  for (let w = 1; w <= 4; w++) {
-    out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nUGE ${w}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    const days = [['Mandag','📸'],['Onsdag','💡'],['Fredag','🎯']];
-    days.forEach(([day, emoji], di) => {
-      const type = types[(w * 3 + di) % types.length];
-      out += `${emoji} ${day.toUpperCase()} — ${type}\n`;
-      out += `ChatGPT-prompt til at skrive opslaget:\n`;
-      out += `"Skriv et ${tone} ${platform}-opslag for ${name} (${industry}). Type: ${type}. ${products ? 'Vores produkter/ydelser: ' + products + '.' : ''} Inkluder 4-5 relevante hashtags. Maks. 150 ord."\n\n`;
-    });
+  const flows = {
+    welcome: [
+      { num:1, title:'Velkomstmail', desc:`Velkommen som kunde! Her er alt hvad du skal vide om ${product}.`, delay:'Straks ved tilmelding' },
+      { num:2, title:'Onboarding guide', desc:'Her er en guide til at komme godt i gang.', delay:'2 dage efter' },
+      { num:3, title:'Tjek-in mail', desc:'Hvordan går det? Har du spørgsmål?', delay:'7 dage efter' },
+    ],
+    reactivation: [
+      { num:1, title:'Vi savner dig', desc:`Det er et stykke tid siden vi sidst hørte fra dig. Vi har noget nyt om ${product}.`, delay:'Dag 1' },
+      { num:2, title:'Særligt tilbud', desc:'Som en af vores kunder tilbyder vi dig en eksklusiv rabat.', delay:'Dag 4' },
+      { num:3, title:'Sidste chance', desc:'Tilbuddet udløber snart — kom tilbage og se hvad der er nyt.', delay:'Dag 10' },
+    ],
+    upsell: [
+      { num:1, title:'Du mangler kun ét', desc:`Du bruger allerede ${product} — vidste du at vi også tilbyder disse ekstra ydelser?`, delay:'Dag 1' },
+      { num:2, title:'Case study', desc:'Se hvordan andre kunder har fået endnu mere ud af os.', delay:'Dag 5' },
+      { num:3, title:'Personligt tilbud', desc:'Baseret på dit brug har vi et skræddersyet tilbud til dig.', delay:'Dag 10' },
+    ],
+  };
+
+  const steps = flows[selectedFlow] || [];
+  const container = document.getElementById('mailFlowSteps');
+  container.innerHTML = steps.map((s, i) => `
+    <div class="flow-step">
+      <div class="flow-step-line">
+        <div class="flow-step-dot">${s.num}</div>
+        ${i < steps.length-1 ? '<div class="flow-step-connector"></div>' : ''}
+      </div>
+      <div class="flow-step-body" style="margin-top:.15rem">
+        <div class="flow-step-title">${s.title}</div>
+        <div class="flow-step-desc">${s.desc}</div>
+        <div class="flow-delay">📅 ${s.delay}</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('mailResult').classList.remove('hidden');
+  if (client) markProductGenerated(client.id, 'mail');
+}
+
+// BOOKING
+function generateBooking() {
+  const client = clients.find(c => c.id === document.getElementById('bookingClientSel').value);
+  const service = document.getElementById('bookingService').value || 'Konsultation';
+  const duration = document.getElementById('bookingDuration').value || '60';
+  const from = document.getElementById('bookingFrom').value || '08:00';
+  const to = document.getElementById('bookingTo').value || '17:00';
+
+  const embed = `<!-- KlarAI Booking Widget ${client?'· '+client.name:''} -->
+<iframe
+  src="https://klaiai.dk/booking?client=${client?.id||'demo'}&service=${encodeURIComponent(service)}&duration=${duration}&from=${from}&to=${to}"
+  width="100%"
+  height="600"
+  frameborder="0"
+  style="border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.1)">
+</iframe>`;
+
+  document.getElementById('bookingEmbed').textContent = embed;
+  document.getElementById('bookingResult').classList.remove('hidden');
+  if (client) { markProductGenerated(client.id, 'booking'); alert(`✅ Booking genereret til ${client.name}!`); }
+}
+
+// RAPPORT
+function toggleRapport(el, type) {
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) {
+    if (!selectedRapports.includes(type)) selectedRapports.push(type);
+  } else {
+    selectedRapports = selectedRapports.filter(r => r !== type);
   }
-
-  out += `════════════════════════════════════════════
-IMPLEMENTERINGSTIPS:
-• Brug ChatGPT med promptene ovenfor til at skrive opslag
-• Planlæg opslag i Meta Business Suite (gratis)
-• Post konsekvent — 3x om ugen er bedre end 7x en uge og ingenting næste
-• Svar altid på kommentarer inden for 24 timer
-════════════════════════════════════════════\nGenereret af KlarAI — klaiai.dk\n════════════════════════════════════════════`;
-  return out;
 }
 
-function generateSetupGuide(client, toolName) {
-  const name = document.getElementById('g_name')?.value || client.companyName;
-  const contact = document.getElementById('g_contact')?.value || client.contactName;
+function generateRapport() {
+  if (selectedRapports.length === 0) { alert('Vælg mindst én rapporttype'); return; }
+  const client = clients.find(c => c.id === document.getElementById('rapportClientSel').value);
+  const frekvens = document.getElementById('rapportFrekvens').value;
+  const typeNames = { okonomi:'Økonomirapport 💰', salg:'Salgsrapport 📊', marketing:'Marketing rapport 📣', lager:'Lagerstatus 📦' };
 
-  return `════════════════════════════════════════════
-OPSÆTNINGSVEJLEDNING: ${toolName.toUpperCase()}
-Til: ${name} · Att: ${contact}
-Udarbejdet af KlarAI · ${new Date().toLocaleDateString('da-DK')}
-════════════════════════════════════════════
-
-Kære ${contact.split(' ')[0]},
-
-Herunder finder du en trin-for-trin vejledning til opsætning af ${toolName} i ${name}. KlarAI hjælper dig igennem hvert trin.
-
-────────────────────────────────────────────
-FORBEREDELSE
-────────────────────────────────────────────
-□ Bekræft at der er budget til systemet
-□ Identificer den primære bruger/administrator
-□ Sørg for adgang til virksomhedens e-mail
-
-────────────────────────────────────────────
-TRIN 1: OPRETTELSE
-────────────────────────────────────────────
-□ Gå til leverandørens hjemmeside
-□ Opret en konto med virksomhedens e-mail
-□ Vælg den rigtige plan (KlarAI vejleder)
-□ Bekræft e-mail og fuldfør oprettelse
-
-────────────────────────────────────────────
-TRIN 2: GRUNDOPSÆTNING
-────────────────────────────────────────────
-□ Udfyld virksomhedsoplysninger
-□ Tilpas til ${name}s specifikke behov
-□ Inviter relevante medarbejdere
-□ Gennemgå og tilpas standardindstillinger
-
-────────────────────────────────────────────
-TRIN 3: OPLÆRING
-────────────────────────────────────────────
-□ KlarAI afholder online oplæringsworkshop
-□ Medarbejdere øver sig i systemet
-□ Eventuelle spørgsmål besvares
-□ Systemet tages i brug
-
-────────────────────────────────────────────
-TRIN 4: OPFØLGNING
-────────────────────────────────────────────
-□ Tjek in efter 2 uger (KlarAI kontakter jer)
-□ Eventuelle justeringer foretages
-□ Evaluer effekt og udbytte
-
-────────────────────────────────────────────
-SUPPORT
-────────────────────────────────────────────
-Har du spørgsmål undervejs? Chat med os
-direkte i KlarAI-portalen.
-
-════════════════════════════════════════════
-KlarAI — Vi implementerer AI for dig
-════════════════════════════════════════════`;
+  const summary = `
+    <strong>${client?client.name:'Klient'}</strong> modtager følgende rapporter <strong>${frekvens}</strong>:<br><br>
+    ${selectedRapports.map(r => `✅ ${typeNames[r]}`).join('<br>')}<br><br>
+    Rapporterne genereres automatisk og sendes til <strong>${client?.email||'klientens e-mail'}</strong>.
+  `;
+  document.getElementById('rapportSummary').innerHTML = summary;
+  document.getElementById('rapportResult').classList.remove('hidden');
+  if (client) markProductGenerated(client.id, 'rapport');
 }
 
-function copyOutput() {
-  const text = document.getElementById('builderOutputCode').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const ok = document.getElementById('copyOk');
-    ok.style.opacity = 1;
-    setTimeout(() => { ok.style.opacity = 0; }, 2000);
-  });
+function markProductGenerated(clientId, prod) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  if (!c.generatedProducts) c.generatedProducts = [];
+  if (!c.generatedProducts.includes(prod)) c.generatedProducts.push(prod);
+  c.status = 'aktiv';
+  saveClients();
 }
 
-function downloadOutput() {
-  const title = document.getElementById('builderTitle').textContent;
-  const text = document.getElementById('builderOutputCode').textContent;
-  const ext = title.includes('chatbot') ? 'html' : 'txt';
-  const filename = `klaiai_${title.replace(/[^a-zA-Z0-9]/g,'_').toLowerCase()}.${ext}`;
-  const blob = new Blob([text], { type: 'text/plain' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
+// ── UTILS ─────────────────────────────────────────────
+function copyEmbed(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => alert('✅ Kopieret til udklipsholder!'));
 }
+
+// Init
+renderDashboard();
 </script>
-
-<!-- EDIT CLIENT MODAL -->
-<div class="modal-overlay hidden" id="editClientModal" onclick="if(event.target===this)closeEditClient()">
-  <div class="modal" style="max-width:600px">
-    <div class="modal-header">
-      <div><h2>✏️ Rediger klientoplysninger</h2><div class="modal-header-sub" id="editClientSub"></div></div>
-      <button class="modal-close" onclick="closeEditClient()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-group"><label>Virksomhedsnavn *</label><input id="ec_company"/></div>
-        <div class="form-group"><label>Kontaktperson *</label><input id="ec_contact"/></div>
-        <div class="form-group"><label>E-mail *</label><input id="ec_email" type="email"/></div>
-        <div class="form-group"><label>Telefon</label><input id="ec_phone"/></div>
-        <div class="form-group"><label>Branche</label>
-          <select id="ec_industry">
-            <option value="">Vælg branche...</option>
-            <option>Pool & Wellness</option><option>Detailhandel</option><option>Restaurant & Café</option>
-            <option>Sundhed & Klinik</option><option>Ejendomsmægler</option><option>Håndværk & Service</option>
-            <option>Rådgivning & Konsulent</option><option>Produktion</option><option>Transport & Logistik</option><option>Anden</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Antal medarbejdere</label>
-          <select id="ec_size">
-            <option value="">Vælg...</option>
-            <option>1-5</option><option>6-15</option><option>16-50</option><option>51-200</option><option>200+</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Status</label>
-          <select id="ec_status">
-            <option value="ny">Ny</option>
-            <option value="analyse">Analyse</option>
-            <option value="plan_klar">Plan klar</option>
-            <option value="implementering">Implementering</option>
-            <option value="afsluttet">Afsluttet</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Ny adgangskode <span style="font-weight:400;opacity:.6">(lad stå tom for at beholde)</span></label><input id="ec_password" type="password" placeholder="••••••••"/></div>
-        <div class="form-group full"><label>Nuværende digitale værktøjer</label><input id="ec_tools"/></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-danger" onclick="deleteClient()">🗑 Slet klient</button>
-      <div style="display:flex;gap:.6rem">
-        <button class="btn-secondary" onclick="closeEditClient()">Annullér</button>
-        <button class="btn-primary" onclick="saveEditClient()">Gem ændringer</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- BUILDER MODAL -->
-<div class="modal-overlay hidden" id="builderModal" onclick="if(event.target===this)closeBuilder()">
-  <div class="modal">
-    <div class="modal-header">
-      <div>
-        <h2 id="builderTitle">Byg løsning</h2>
-        <div class="modal-header-sub" id="builderSub"></div>
-      </div>
-      <button class="modal-close" onclick="closeBuilder()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="builderForm">
-        <div id="builderBody"></div>
-      </div>
-      <div id="builderOutput" class="hidden">
-        <div class="builder-section-title" id="builderOutputTitle">Genereret output</div>
-
-        <!-- Chatbot integration guide -->
-        <div id="chatbotIntegration" class="hidden" style="background:var(--green-bg);border:1px solid rgba(34,134,58,.2);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
-          <div style="font-size:.82rem;font-weight:700;color:var(--green);margin-bottom:.5rem">🚀 Sådan integreres chatbotten på hjemmesiden</div>
-          <ol style="font-size:.83rem;color:#1a4a28;line-height:1.7;padding-left:1.1rem">
-            <li>Klik <strong>Kopier kode</strong> herunder</li>
-            <li>Åbn hjemmesidens kildekode (WordPress, Wix, Squarespace osv.)</li>
-            <li>Indsæt koden lige <strong>før &lt;/body&gt;</strong>-tagget</li>
-            <li>Gem og opdater siden — chatbotten er aktiv med det samme</li>
-          </ol>
-          <div style="font-size:.78rem;color:#1a4a28;margin-top:.5rem;opacity:.8">💡 Har klienten en webudvikler? Klik "Send til klient" — de modtager koden direkte i portalen.</div>
-        </div>
-
-        <div class="output-box" id="builderOutputCode"></div>
-        <div class="output-actions">
-          <button class="btn-copy" onclick="copyOutput()">📋 Kopier kode</button>
-          <button class="btn-copy" style="background:var(--green)" onclick="downloadOutput()">⬇ Download fil</button>
-          <span class="copy-ok" id="copyOk">✓ Kopieret!</span>
-        </div>
-        <div style="margin-top:.75rem">
-          <button class="btn-secondary" onclick="goBackToForm()">← Rediger</button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer" id="builderFooterForm">
-      <button class="btn-secondary" onclick="closeBuilder()">Luk</button>
-      <button class="btn-primary" onclick="runBuilder()">⚡ Generer nu</button>
-    </div>
-    <div class="modal-footer hidden" id="builderFooterOutput">
-      <button class="btn-secondary" onclick="closeBuilder()">Luk</button>
-      <button class="btn-primary" style="background:var(--green)" onclick="sendToClient()">📤 Send til klient</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
