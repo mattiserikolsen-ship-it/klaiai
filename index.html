@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KlarAI – AI-integration for din virksomhed</title>
+  <meta name="description" content="KlarAI hjælper virksomheder med at finde og implementere de rette AI-løsninger. Mange års erfaring i AI-integration." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f7f8fc;
+      --bg3: #eaeff8;
+      --border: rgba(10,25,80,0.08);
+      --accent: #0a2463;
+      --accent2: #1e4fcf;
+      --accent-glow: rgba(10,36,99,0.18);
+      --text: #0a1628;
+      --muted: #6b7a99;
+      --card: #ffffff;
+      --hero-bg: #05080f;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2.5rem;
+      background: rgba(5,8,15,0.75);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .logo {
+      font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+
+    .nav-links { display: flex; gap: 2.25rem; list-style: none; }
+    .nav-links a {
+      color: rgba(255,255,255,0.55); text-decoration: none; font-size: .875rem; font-weight: 500;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: #ffffff; }
+
+    .nav-cta {
+      background: #ffffff; color: var(--hero-bg); padding: .5rem 1.25rem;
+      border-radius: 8px; text-decoration: none; font-size: .875rem; font-weight: 700;
+      transition: opacity .2s;
+    }
+    .nav-cta:hover { opacity: .85; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 9rem 2rem 6rem;
+      position: relative; overflow: hidden;
+      background: var(--hero-bg);
+    }
+
+    .hero-noise {
+      position: absolute; inset: 0; pointer-events: none; z-index: 2;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: .25;
+    }
+
+    .hero-gradient {
+      position: absolute; top: -20%; left: 50%; transform: translateX(-50%); z-index: 2;
+      width: 900px; height: 700px; border-radius: 50%;
+      background: radial-gradient(ellipse at center, rgba(30,79,207,0.2) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.7); padding: .4rem 1rem; border-radius: 99px;
+      font-size: .78rem; font-weight: 600; letter-spacing: .6px; text-transform: uppercase;
+      margin-bottom: 2rem; position: relative; z-index: 3;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.6rem, 6vw, 5.2rem);
+      font-weight: 800; line-height: 1.08; letter-spacing: -2px;
+      max-width: 860px; margin-bottom: 1.75rem;
+      color: #ffffff; position: relative; z-index: 3;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, #6fa3ff 0%, #a78bfa 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 1.1rem; color: rgba(255,255,255,0.65); max-width: 520px;
+      margin: 0 auto 2.75rem; line-height: 1.75; font-weight: 400; position: relative; z-index: 3;
+    }
+
+    .hero-actions { display: flex; gap: .85rem; flex-wrap: wrap; justify-content: center; position: relative; z-index: 3; }
+
+    .btn-primary {
+      background: #ffffff; color: var(--hero-bg); padding: .85rem 2rem;
+      border-radius: 10px; text-decoration: none; font-weight: 700; font-size: .95rem;
+      transition: opacity .2s, transform .2s;
+    }
+    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); padding: .85rem 2rem;
+      border-radius: 10px; text-decoration: none; font-weight: 600; font-size: .95rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: background .2s, border-color .2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.22); }
+
+    /* ── HERO VIDEO ── */
+    .hero-video-bg {
+      position: absolute; inset: 0; z-index: 0;
+      overflow: hidden;
+    }
+
+    .hero-video-bg video {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      opacity: .35;
+    }
+
+    /* Fallback gradient når ingen video er tilsluttet */
+    .hero-video-bg-fallback {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, #0d1525 0%, #0a1020 100%);
+      opacity: .6;
+    }
+
+    .hero-video-overlay {
+      position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: linear-gradient(180deg,
+        rgba(5,8,15,0.55) 0%,
+        rgba(5,8,15,0.25) 40%,
+        rgba(5,8,15,0.65) 100%);
+    }
+
+    .hero-stats {
+      display: flex; gap: 3.5rem; margin-top: 4rem; flex-wrap: wrap; justify-content: center;
+      position: relative; z-index: 3;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.9rem; font-weight: 800; color: #ffffff; }
+    .stat-label { font-size: .82rem; color: rgba(255,255,255,0.4); margin-top: .2rem; font-weight: 500; }
+
+    /* ── SECTION SHARED ── */
+    section { padding: 6rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      display: inline-block; color: var(--accent2);
+      font-size: .75rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+      margin-bottom: .75rem;
+    }
+    .section-title {
+      font-size: clamp(1.9rem, 3.5vw, 2.8rem); font-weight: 800;
+      letter-spacing: -.75px; line-height: 1.15; margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: var(--muted); font-size: 1rem; max-width: 520px; line-height: 1.75;
+    }
+
+    /* ── ABOUT ── */
+    #om { background: var(--bg2); }
+
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center;
+    }
+
+    .about-image-wrap {
+      position: relative;
+    }
+
+    .about-avatar {
+      width: 100%; max-width: 420px; aspect-ratio: 1;
+      border-radius: 28px;
+      background: linear-gradient(135deg, #e8edf8 0%, #d0d9ef 100%);
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem;
+      position: relative; overflow: hidden;
+    }
+
+    .avatar-initials {
+      font-size: 5rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .avatar-name { font-size: 1.3rem; font-weight: 700; }
+    .avatar-title { color: var(--muted); font-size: .9rem; }
+
+    .about-content { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .about-content p { color: var(--muted); line-height: 1.85; font-size: .975rem; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .tag {
+      background: rgba(10,36,99,0.06); border: 1px solid rgba(10,36,99,0.12);
+      color: var(--accent2); padding: .35rem .85rem; border-radius: 99px;
+      font-size: .78rem; font-weight: 600;
+    }
+
+    /* ── PRODUCT ── */
+    #produkt { background: var(--bg); }
+
+    .product-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3rem;
+    }
+
+    .feature-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 2rem;
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+    }
+    .feature-card:hover { border-color: rgba(10,36,99,0.2); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(10,36,99,0.07); }
+
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--bg2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; margin-bottom: 1.1rem;
+    }
+
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; letter-spacing: -.2px; }
+    .feature-card p { color: var(--muted); font-size: .875rem; line-height: 1.65; }
+
+    /* ── HOW IT WORKS ── */
+    #hvordan { background: var(--bg2); }
+
+    .steps {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem;
+      position: relative;
+    }
+
+    .steps::before {
+      content: '';
+      position: absolute; top: 28px; left: calc(16.66% + 28px); right: calc(16.66% + 28px);
+      height: 1px; background: linear-gradient(90deg, var(--accent), var(--accent2));
+      opacity: .3;
+    }
+
+    .step { text-align: center; padding: 1.5rem; }
+
+    .step-num {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 800; margin: 0 auto 1.25rem;
+      position: relative; z-index: 1;
+    }
+
+    .step h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: .5rem; }
+    .step p { color: var(--muted); font-size: .9rem; line-height: 1.6; }
+
+    /* ── PRICING ── */
+    #priser { background: var(--bg); }
+
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;
+      max-width: 780px; margin: 3rem auto 0;
+    }
+
+    .price-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2rem;
+      transition: border-color .2s;
+    }
+
+    .price-card.featured {
+      border-color: var(--accent);
+      background: linear-gradient(160deg, rgba(10,36,99,0.05) 0%, var(--card) 100%);
+      position: relative;
+    }
+
+    .price-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #fff;
+      padding: .25rem .85rem; border-radius: 99px;
+      font-size: .75rem; font-weight: 700; white-space: nowrap;
+    }
+
+    .price-card h3 { font-size: 1rem; font-weight: 700; color: var(--muted); margin-bottom: 1rem; }
+
+    .price-amount {
+      font-size: 2.8rem; font-weight: 800; letter-spacing: -1px; margin-bottom: .25rem;
+    }
+    .price-amount span { font-size: 1rem; font-weight: 500; color: var(--muted); }
+
+    .price-note { font-size: .85rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+    .price-features { list-style: none; display: flex; flex-direction: column; gap: .75rem; margin-bottom: 2rem; }
+    .price-features li {
+      display: flex; align-items: flex-start; gap: .6rem;
+      font-size: .9rem; color: var(--muted);
+    }
+    .price-features li::before {
+      content: '✓'; color: var(--accent2); font-weight: 700; flex-shrink: 0; margin-top: .1rem;
+    }
+
+    .price-btn {
+      display: block; text-align: center; padding: .85rem;
+      border-radius: 10px; font-weight: 700; font-size: .95rem; text-decoration: none;
+      transition: opacity .2s, box-shadow .2s;
+    }
+
+    .price-btn-primary {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .price-btn-primary:hover { opacity: .9; box-shadow: 0 6px 28px var(--accent-glow); }
+
+    .price-btn-secondary {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .price-btn-secondary:hover { border-color: rgba(10,36,99,0.25); background: rgba(10,36,99,0.04); }
+
+    /* ── CONTACT ── */
+    #kontakt { background: var(--bg2); }
+
+    .contact-wrap {
+      max-width: 600px; margin: 3rem auto 0;
+    }
+
+    .contact-form {
+      display: flex; flex-direction: column; gap: 1.25rem;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+    .form-group { display: flex; flex-direction: column; gap: .5rem; }
+    .form-group label { font-size: .85rem; font-weight: 600; color: var(--muted); }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: .85rem 1rem;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: .95rem;
+      outline: none; transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { border-color: var(--accent); }
+
+    .form-group textarea { resize: vertical; min-height: 120px; }
+
+    .form-group select option { background: var(--bg2); }
+
+    .form-submit {
+      background: var(--accent); color: #fff; border: none;
+      padding: 1rem 2rem; border-radius: 10px;
+      font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: opacity .2s, box-shadow .2s;
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+    .form-submit:hover { opacity: .9; box-shadow: 0 6px 32px var(--accent-glow); }
+
+    .form-success {
+      display: none; text-align: center; padding: 2rem;
+      background: rgba(10,36,99,0.06); border: 1px solid rgba(10,36,99,0.15);
+      border-radius: 16px; color: var(--accent2); font-weight: 600;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--accent); border-top: none;
+      padding: 3rem 2rem; text-align: center;
+    }
+
+    .footer-logo {
+      font-size: 1.5rem; font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    footer .footer-text { color: rgba(255,255,255,0.6); }
+
+    .footer-text { color: var(--muted); font-size: .9rem; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .about-grid { grid-template-columns: 1fr; }
+      .about-avatar { max-width: 100%; }
+      .product-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .steps::before { display: none; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .hero-stats { gap: 1.5rem; }
+    }
+
+    /* ── SCROLL ANIMATIONS ── */
+    .reveal {
+      opacity: 0; transform: translateY(24px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">KlarAI</div>
+    <ul class="nav-links">
+      <li><a href="#om">Om KlarAI</a></li>
+      <li><a href="#produkt">Produkt</a></li>
+      <li><a href="#hvordan">Sådan virker det</a></li>
+      <li><a href="#priser">Priser</a></li>
+      <li><a href="#kontakt">Kontakt</a></li>
+    </ul>
+    <a href="#kontakt" class="nav-cta">Kom i gang</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <!-- Baggrundsvideo — kører konstant uden lyd -->
+    <div class="hero-video-bg">
+      <!-- Tilslut din video: erstat src="" med fx src="video/intro.mp4" -->
+      <video autoplay muted loop playsinline src=""></video>
+      <div class="hero-video-bg-fallback"></div>
+    </div>
+    <div class="hero-video-overlay"></div>
+    <div class="hero-noise"></div>
+    <div class="hero-gradient"></div>
+
+    <div class="hero-badge">AI-strategi, bygget til din virksomhed</div>
+    <h1>Vi bygger din<br><span>AI-strategi</span> for dig</h1>
+    <p>Ikke et spørgeskema. Ikke ChatGPT. Vi sætter os ind i din forretning og leverer en konkret, håndholdt plan — lavet af mennesker med erfaring.</p>
+    <div class="hero-actions">
+      <a href="#kontakt" class="btn-primary">Start din AI-rejse</a>
+      <a href="#produkt" class="btn-secondary">Se hvad vi tilbyder</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-num">50+</div>
+        <div class="stat-label">AI-systemer kortlagt</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">10+</div>
+        <div class="stat-label">Års erfaring</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Skræddersyet til dig</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OM MATTIS -->
+  <section id="om">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-image-wrap reveal">
+          <div class="about-avatar">
+            <div class="avatar-initials">KAI</div>
+            <div class="avatar-name">KlarAI</div>
+            <div class="avatar-title">AI-integreringseksperter</div>
+          </div>
+        </div>
+        <div class="about-content reveal">
+          <div>
+            <div class="section-tag">Om os</div>
+            <h2 class="section-title">Hvem er KlarAI?</h2>
+          </div>
+          <p>
+            KlarAI er et specialistteam inden for AI-integration med mange års erfaring i at hjælpe virksomheder med at tage det digitale spring. Vores baggrund er primært fra pool- og wellnessbranchen, hvor vi har transformeret virksomheder ved at indføre de rette AI-løsninger på det rette tidspunkt.
+          </p>
+          <p>
+            Jeg har set alt for mange virksomheder taste et spørgsmål ind i ChatGPT og kalde det en AI-strategi. Det holder ikke. En reel AI-implementering kræver, at nogen faktisk forstår din forretning — dine arbejdsgange, dine flaskehalse og dit marked. Det er præcis det, vi gør.
+          </p>
+          <div class="tags">
+            <span class="tag">AI-strategi</span>
+            <span class="tag">Systemintegration</span>
+            <span class="tag">Pool & Wellness</span>
+            <span class="tag">Automatisering</span>
+            <span class="tag">Procesoptimering</span>
+            <span class="tag">ChatGPT & Copilot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUKT -->
+  <section id="produkt">
+    <div class="container">
+      <div class="reveal">
+        <div class="section-tag">Hvad du får</div>
+        <h2 class="section-title">Vi gør det for dig — fra analyse til implementering</h2>
+        <p class="section-sub">Du kan ikke få den samme plan ved at spørge ChatGPT. Vores analyser er baseret på dybe samtaler, erfaring fra branchen og kendskab til de systemer, der faktisk virker i praksis.</p>
+      </div>
+      <div class="product-grid">
+        <div class="feature-card reveal">
+          <div class="feature-icon">🔍</div>
+          <h3>Dybdegående virksomhedsanalyse</h3>
+          <p>Vi graver os ned i din forretning. Dine arbejdsgange, dine udfordringer, dine ressourcer. Ingen generiske spørgsmål — vi sætter os ind i netop din situation.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">🎯</div>
+          <h3>Præcise AI-anbefalinger</h3>
+          <p>Baseret på analysen udvælger vi selv de AI-systemer, der passer til din virksomhed — og forklarer præcis hvorfor. Ikke en liste fra Google, men et håndplukkede valg med begrundelse.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">🗺️</div>
+          <h3>Konkret implementeringsplan</h3>
+          <p>Vi skriver planen for dig — trin for trin, med deadlines, prioriteringer og klare handlingspunkter. Ikke et whitepaper du skal tolke, men en plan du kan handle på dagen efter.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">⚡</div>
+          <h3>Løbende opfølgning og tilpasning</h3>
+          <p>AI-verdenen ændrer sig konstant. Vi holder øje for dig og opdaterer din plan løbende — så du altid er et skridt foran, uden selv at skulle følge med i alt det nye.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">📊</div>
+          <h3>Målbare resultater</h3>
+          <p>Vi definerer succeskriterier sammen med dig og følger op på dem. Du skal ikke gætte om det virker — vi viser dig det i tal.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">🤝</div>
+          <h3>Personlig sparring</h3>
+          <p>Direkte adgang til KlarAI-teamet. Stil spørgsmål, få feedback og navigér AI-landskabet med erfarne rådgivere ved din side.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HVORDAN DET VIRKER -->
+  <section id="hvordan">
+    <div class="container">
+      <div class="reveal" style="text-align:center; margin-bottom:0">
+        <div class="section-tag">Processen</div>
+        <h2 class="section-title">Sådan arbejder vi sammen</h2>
+        <p class="section-sub" style="margin:0 auto">Vi tager ansvar for hele forløbet — du behøver ikke vide noget om AI på forhånd.</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-num">1</div>
+          <h3>Vi lærer din virksomhed at kende</h3>
+          <p>Vi holder en indledende samtale, hvor vi stiller de rigtige spørgsmål. Vi afdækker dine processer, udfordringer og mål — og finder de steder, AI giver mest mening.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">2</div>
+          <h3>Vi laver din AI-plan</h3>
+          <p>Vi udarbejder en skræddersyet strategi med konkrete AI-anbefalinger og en trin-for-trin implementeringsplan. Ikke genereret af en chatbot — skrevet af os til dig.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">3</div>
+          <h3>Vi hjælper dig med at gennemføre den</h3>
+          <p>Du er ikke alene. Vi er med dig gennem implementeringen, justerer planen løbende og sikrer at AI faktisk virker i din hverdag — ikke bare på papiret.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIFFERENTIATOR -->
+  <section id="forskel" style="background: var(--accent); padding: 4rem 2rem;">
+    <div class="container">
+      <div style="max-width: 780px; margin: 0 auto; text-align: center;">
+        <p style="color: rgba(255,255,255,0.65); font-size: .85rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: .75rem;">Hvorfor ikke bare bruge ChatGPT?</p>
+        <h2 style="font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800; color: #fff; line-height: 1.25; margin-bottom: 1.5rem;">
+          ChatGPT kender ikke din virksomhed.<br>Vi gør.
+        </h2>
+        <p style="color: rgba(255,255,255,0.72); font-size: 1.05rem; line-height: 1.75; max-width: 620px; margin: 0 auto 2.5rem;">
+          Du kan sagtens spørge ChatGPT om AI-anbefalinger. Det kan alle. Men du vil få det samme generiske svar som alle andre — fordi ChatGPT ikke ved hvem du er, hvad du sælger, hvem dine kunder er, eller hvad dine medarbejdere faktisk bruger tid på. Vores analyser er baseret på ægte indsigt i din forretning, kombineret med mange års erfaring i at implementere AI der rent faktisk bruges.
+        </p>
+        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
+          <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 1.25rem 1.75rem; text-align: left; max-width: 220px;">
+            <div style="font-size: 1.3rem; margin-bottom: .5rem;">❌</div>
+            <div style="color: rgba(255,255,255,0.6); font-size: .85rem; font-weight: 600;">ChatGPT</div>
+            <div style="color: #fff; font-size: .9rem; margin-top: .25rem; line-height: 1.5;">Generiske svar — ingen forståelse af din forretning</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 1.25rem 1.75rem; text-align: left; max-width: 220px;">
+            <div style="font-size: 1.3rem; margin-bottom: .5rem;">❌</div>
+            <div style="color: rgba(255,255,255,0.6); font-size: .85rem; font-weight: 600;">Gøre det selv</div>
+            <div style="color: #fff; font-size: .9rem; margin-top: .25rem; line-height: 1.5;">Tidskrævende, dyrt at fejle og svært at vide hvad der virker</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); border-radius: 12px; padding: 1.25rem 1.75rem; text-align: left; max-width: 220px;">
+            <div style="font-size: 1.3rem; margin-bottom: .5rem;">✅</div>
+            <div style="color: rgba(255,255,255,0.8); font-size: .85rem; font-weight: 600;">KlarAI</div>
+            <div style="color: #fff; font-size: .9rem; margin-top: .25rem; line-height: 1.5;">Håndholdt analyse og plan — lavet af eksperter til netop dig</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRISER -->
+  <section id="priser">
+    <div class="container">
+      <div class="reveal" style="text-align:center">
+        <div class="section-tag">Priser</div>
+        <h2 class="section-title">Enkel og gennemsigtig prissætning</h2>
+        <p class="section-sub" style="margin:0 auto">Betal ét engangsbeløb for at komme i gang, derefter en lav månedlig pris for løbende adgang og support.</p>
+      </div>
+      <div class="pricing-grid">
+
+        <div class="price-card reveal">
+          <h3>Starter</h3>
+          <div class="price-amount">4.995 <span>kr.</span></div>
+          <div class="price-note">Engangsbeløb + 995 kr./måned herefter</div>
+          <ul class="price-features">
+            <li>Fuld AI-analyse af din virksomhed</li>
+            <li>Op til 10 AI-anbefalinger</li>
+            <li>Implementeringsplan (basis)</li>
+            <li>Månedlige AI-opdateringer</li>
+            <li>E-mail support</li>
+          </ul>
+          <a href="#kontakt" class="price-btn price-btn-secondary">Kom i gang</a>
+        </div>
+
+        <div class="price-card featured reveal">
+          <div class="price-badge">Mest populær</div>
+          <h3>Pro</h3>
+          <div class="price-amount">9.995 <span>kr.</span></div>
+          <div class="price-note">Engangsbeløb + 1.795 kr./måned herefter</div>
+          <ul class="price-features">
+            <li>Alt i Starter</li>
+            <li>Ubegrænsede AI-anbefalinger</li>
+            <li>Fuld implementeringsguide</li>
+            <li>ROI-tracking dashboard</li>
+            <li>Månedlig sparring med KlarAI-teamet</li>
+            <li>Prioriteret support</li>
+            <li>Kvartalsvise AI-strategimøder</li>
+          </ul>
+          <a href="#kontakt" class="price-btn price-btn-primary">Start med Pro</a>
+        </div>
+
+      </div>
+      <p style="text-align:center; margin-top:1.5rem; color:var(--muted); font-size:.9rem;">Alle priser er ex. moms. Skræddersyede enterprise-løsninger? <a href="#kontakt" style="color:var(--accent2)">Kontakt os direkte.</a></p>
+    </div>
+  </section>
+
+  <!-- KONTAKT -->
+  <section id="kontakt">
+    <div class="container">
+      <div class="reveal" style="text-align:center">
+        <div class="section-tag">Kontakt</div>
+        <h2 class="section-title">Klar til at tage det første skridt?</h2>
+        <p class="section-sub" style="margin:0 auto">Udfyld formularen, så vender vi personligt tilbage inden for 24 timer.</p>
+      </div>
+      <div class="contact-wrap reveal">
+        <form class="contact-form" id="contactForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Navn</label>
+              <input type="text" id="name" placeholder="Dit fulde navn" required />
+            </div>
+            <div class="form-group">
+              <label for="email">E-mail</label>
+              <input type="email" id="email" placeholder="din@virksomhed.dk" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="company">Virksomhed</label>
+              <input type="text" id="company" placeholder="Virksomhedens navn" />
+            </div>
+            <div class="form-group">
+              <label for="plan">Interesseret i</label>
+              <select id="plan">
+                <option value="">Vælg pakke...</option>
+                <option value="starter">Starter (4.995 kr.)</option>
+                <option value="pro">Pro (9.995 kr.)</option>
+                <option value="enterprise">Enterprise (skræddersyet)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="message">Besked</label>
+            <textarea id="message" placeholder="Fortæl kort om din virksomhed og hvad du ønsker at opnå med AI..."></textarea>
+          </div>
+          <button type="submit" class="form-submit">Send besked →</button>
+        </form>
+        <div class="form-success" id="formSuccess">
+          ✅ Tak! Vi vender tilbage inden for 24 timer.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">KlarAI</div>
+    <p class="footer-text">© 2026 KlarAI &nbsp;·&nbsp; AI-integration for fremtidens virksomheder</p>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), i * 80);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    reveals.forEach(el => observer.observe(el));
+
+    // Nav: skift til lys baggrund når vi scroller forbi hero
+    const nav = document.querySelector('nav');
+    const heroSection = document.querySelector('.hero');
+    const navObserver = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        nav.style.background = 'rgba(5,8,15,0.75)';
+        nav.style.borderBottomColor = 'rgba(255,255,255,0.06)';
+        document.querySelector('.logo').style.color = '#ffffff';
+        document.querySelectorAll('.nav-links a').forEach(a => a.style.color = 'rgba(255,255,255,0.55)');
+        document.querySelector('.nav-cta').style.background = '#ffffff';
+        document.querySelector('.nav-cta').style.color = '#05080f';
+      } else {
+        nav.style.background = 'rgba(255,255,255,0.92)';
+        nav.style.borderBottomColor = 'rgba(10,25,80,0.08)';
+        document.querySelector('.logo').style.color = '#0a2463';
+        document.querySelectorAll('.nav-links a').forEach(a => a.style.color = '#6b7a99');
+        document.querySelector('.nav-cta').style.background = '#0a2463';
+        document.querySelector('.nav-cta').style.color = '#ffffff';
+      }
+    }, { threshold: 0.1 });
+    navObserver.observe(heroSection);
+
+    // Form submit (demo)
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      this.style.display = 'none';
+      document.getElementById('formSuccess').style.display = 'block';
+    });
+  </script>
+</body>
+</html>

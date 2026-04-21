@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KlarAI – Log ind</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #0a2463; --accent2: #1e4fcf; --bg: #f4f6fb;
+      --text: #0a1628; --muted: #4a5568; --border: rgba(10,25,80,0.12);
+      --card: #fff;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .login-wrap { width: 100%; max-width: 420px; padding: 1.5rem; }
+    .logo { font-size: 1.8rem; font-weight: 800; color: var(--accent); text-align: center; margin-bottom: 2rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem; box-shadow: 0 4px 32px rgba(10,25,80,0.08); }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: .25rem; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
+    .form-group { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1.1rem; }
+    label { font-size: .82rem; font-weight: 600; color: var(--muted); }
+    input { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1rem; font-family: 'Inter', sans-serif; font-size: .95rem; color: var(--text); outline: none; transition: border-color .2s; }
+    input:focus { border-color: var(--accent2); }
+    .btn { width: 100%; background: var(--accent); color: #fff; border: none; padding: .9rem; border-radius: 10px; font-family: 'Inter', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity .2s; margin-top: .5rem; }
+    .btn:hover { opacity: .9; }
+    .error { color: #e53e3e; font-size: .85rem; margin-top: .25rem; min-height: 1.2rem; }
+    .demo-section { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+    .demo-label { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .75rem; }
+    .demo-btns { display: flex; gap: .6rem; }
+    .demo-btn { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: .6rem; font-family: 'Inter', sans-serif; font-size: .8rem; font-weight: 600; color: var(--accent); cursor: pointer; transition: background .2s; }
+    .demo-btn:hover { background: rgba(10,36,99,0.05); }
+    .demo-btn span { display: block; font-weight: 400; color: var(--muted); font-size: .75rem; margin-top: .1rem; }
+  </style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="logo">KlarAI</div>
+  <div class="card">
+    <h1>Velkommen tilbage</h1>
+    <p class="sub">Log ind for at tilgå platformen</p>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">E-mail</label>
+        <input type="email" id="email" placeholder="din@email.dk" required/>
+      </div>
+      <div class="form-group">
+        <label for="password">Adgangskode</label>
+        <input type="password" id="password" placeholder="••••••••" required/>
+      </div>
+      <div class="error" id="loginError"></div>
+      <button type="submit" class="btn">Log ind →</button>
+    </form>
+    <div class="demo-section">
+      <div class="demo-label">Demo-adgange</div>
+      <div class="demo-btns">
+        <button class="demo-btn" onclick="fillDemo('admin')">
+          KlarAI Admin
+          <span>admin@klaiai.dk</span>
+        </button>
+        <button class="demo-btn" onclick="fillDemo('client')">
+          Klient-demo
+          <span>demo@poolcenter.dk</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // ── SEED DATA ──────────────────────────────────────────────
+  function seedData() {
+    if (localStorage.getItem('klaiai_initialized')) return;
+
+    const clients = [{
+      id: 'c1',
+      companyName: 'Nordsjællands Pool & Wellness',
+      contactName: 'Lars Nielsen',
+      email: 'demo@poolcenter.dk',
+      phone: '+45 22 33 44 55',
+      industry: 'Pool & Wellness',
+      size: '11-50',
+      challenges: ['kundeservice','booking','marketing'],
+      currentTools: 'Excel, e-mail, telefonisk booking',
+      budget: 'medium',
+      technicalLevel: 'lav',
+      status: 'implementering',
+      createdAt: '2026-03-15',
+      recommendations: [
+        { id: 'r1', name: 'ChatGPT for Teams', category: 'AI-assistent', icon: '🤖', vendor: 'OpenAI', priority: 'høj', monthlyCost: 'ca. 200 kr/bruger/md.', implementationTime: '1-2 dage', description: 'AI-assistent til at skrive tekster, besvare spørgsmål og spare tid på daglige opgaver.', whyFit: 'Med 11-50 medarbejdere vil ChatGPT Teams spare mærkbar tid på tekstarbejde, kommunikation og daglige opgaver.' },
+        { id: 'r2', name: 'AI-kundeservicechat', category: 'Kundeservice', icon: '💬', vendor: 'Tidio', priority: 'høj', monthlyCost: 'ca. 350 kr/md.', implementationTime: '3-5 dage', description: 'AI-chatbot på hjemmesiden der besvarer kundespørgsmål 24/7 og håndterer bookingforespørgsler.', whyFit: 'Jeres kunder har mange gentagende spørgsmål om åbningstider, priser og booking – en AI-chat håndterer dem automatisk.' },
+        { id: 'r3', name: 'AI-bookingsystem', category: 'Booking', icon: '📅', vendor: 'Simplybook.me', priority: 'høj', monthlyCost: 'ca. 250 kr/md.', implementationTime: '3-4 dage', description: 'Intelligent bookingsystem med automatiske påmindelser og kapacitetsstyring.', whyFit: 'Telefonisk booking er tidskrævende og risikerer fejl. Et AI-bookingsystem frigiver medarbejdertid og reducerer no-shows.' },
+        { id: 'r4', name: 'AI til Marketing & Content', category: 'Marketing', icon: '✍️', vendor: 'ChatGPT / Canva AI', priority: 'mellem', monthlyCost: 'ca. 200 kr/md.', implementationTime: '2-3 dage', description: 'AI-drevet content-produktion til sociale medier, nyhedsbreve og kampagner.', whyFit: 'Regelmæssigt indhold på sociale medier er vigtig for wellness-virksomheder – AI gør det hurtigere og mere konsistent.' }
+      ],
+      tasks: [
+        { id: 't1', title: 'Oprette ChatGPT Teams-konto', description: 'Opsætning af administrator-konto og tilføjelse af relevante brugere', tool: 'ChatGPT for Teams', status: 'done', createdAt: '2026-03-16' },
+        { id: 't2', title: 'Oplæringsworkshop – ChatGPT', description: 'Online session på 1-2 timer for medarbejdere i daglig brug', tool: 'ChatGPT for Teams', status: 'done', createdAt: '2026-03-16' },
+        { id: 't3', title: 'Prompt-bibliotek til Pool & Wellness', description: 'Vi skriver 20+ skabeloner og prompts tilpasset jeres branche og opgaver', tool: 'ChatGPT for Teams', status: 'done', createdAt: '2026-03-16' },
+        { id: 't4', title: 'Installere Tidio chat på hjemmeside', description: 'Installation af chat-widget og initial konfigurering', tool: 'AI-kundeservicechat', status: 'in_progress', createdAt: '2026-03-22' },
+        { id: 't5', title: 'Træne chatbot med jeres FAQ', description: 'Indlæse spørgsmål/svar om åbningstider, priser, behandlinger og booking', tool: 'AI-kundeservicechat', status: 'in_progress', createdAt: '2026-03-22' },
+        { id: 't6', title: 'Opsætte Simplybook.me', description: 'Konfigurering af ydelser, tider og kapacitet', tool: 'AI-bookingsystem', status: 'todo', createdAt: '2026-03-22' },
+        { id: 't7', title: 'Automatiske SMS-bekræftelser', description: 'Opsæt bekræftelse og påmindelsesflow for bookinger', tool: 'AI-bookingsystem', status: 'todo', createdAt: '2026-03-22' },
+        { id: 't8', title: 'Integrere booking på hjemmeside', description: 'Embed booking-widget på klaiai.dk/booking', tool: 'AI-bookingsystem', status: 'todo', createdAt: '2026-03-22' },
+        { id: 't9', title: 'Content-strategi og AI-skabeloner', description: 'Udarbejde månedlig content-plan og AI-prompts til SoMe', tool: 'AI til Marketing & Content', status: 'todo', createdAt: '2026-03-22' }
+      ],
+      messages: [
+        { id: 'm1', from: 'admin', text: 'Hej Lars! Vi har nu oprettet din konto og er klar til at gå i gang med at implementere AI i Nordsjællands Pool & Wellness. Vi starter med ChatGPT Teams – jeg sender dig et link til onboarding-sessionen i morgen.', timestamp: '2026-03-16T09:00:00' },
+        { id: 'm2', from: 'client', text: 'Super, glæder mig! Vi har haft en del gentagende spørgsmål om priser og åbningstider på telefonen – er det noget AI kan hjælpe med?', timestamp: '2026-03-16T10:30:00' },
+        { id: 'm3', from: 'admin', text: 'Ja, det er præcis det AI-chatten på jeres hjemmeside vil håndtere – de 80% af kundespørgsmålene der stilles igen og igen. Jeres personale kan så fokusere på de mere komplekse henvendelser. Vi sætter det op inden for et par dage.', timestamp: '2026-03-16T11:00:00' },
+        { id: 'm4', from: 'client', text: 'Perfekt. En ting jeg også tænkte på – kan vi bruge AI til vores Instagram? Vi mangler tid til at lave indhold.', timestamp: '2026-03-20T14:15:00' },
+        { id: 'm5', from: 'admin', text: 'Absolut – det er faktisk en del af planen (Marketing-punktet). Vi laver et prompt-bibliotek til jer specifikt til wellness-content, og guider jer i at bruge AI til at generere opslag, billedtekster og nyhedsbreve. Det sparer typisk 3-4 timer om ugen.', timestamp: '2026-03-20T14:45:00' }
+      ]
+    }];
+
+    const users = [
+      { id: 'u_admin', email: 'admin@klaiai.dk', password: 'klaiai2026', role: 'admin', name: 'KlarAI Team', clientId: null },
+      { id: 'u_c1', email: 'demo@poolcenter.dk', password: 'demo123', role: 'client', name: 'Lars Nielsen', clientId: 'c1' }
+    ];
+
+    localStorage.setItem('klaiai_clients', JSON.stringify(clients));
+    localStorage.setItem('klaiai_users', JSON.stringify(users));
+    localStorage.setItem('klaiai_initialized', '1');
+  }
+
+  seedData();
+
+  // ── LOGIN ─────────────────────────────────────────────────
+  document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const password = document.getElementById('password').value;
+    const users = JSON.parse(localStorage.getItem('klaiai_users') || '[]');
+    const user = users.find(u => u.email.toLowerCase() === email && u.password === password);
+    if (!user) {
+      document.getElementById('loginError').textContent = 'Forkert e-mail eller adgangskode.';
+      return;
+    }
+    localStorage.setItem('klaiai_current_user', user.id);
+    window.location.href = user.role === 'admin' ? 'admin.html' : 'client.html';
+  });
+
+  function fillDemo(role) {
+    if (role === 'admin') {
+      document.getElementById('email').value = 'admin@klaiai.dk';
+      document.getElementById('password').value = 'klaiai2026';
+    } else {
+      document.getElementById('email').value = 'demo@poolcenter.dk';
+      document.getElementById('password').value = 'demo123';
+    }
+    document.getElementById('loginError').textContent = '';
+  }
+</script>
+</body>
+</html>
