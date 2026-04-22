@@ -556,6 +556,7 @@
         <div class="tab" data-tab="products" onclick="switchTab('products')">Produkter</div>
         <div class="tab" data-tab="agents" onclick="switchTab('agents')">🤖 Agenter</div>
         <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver</div>
+        <div class="tab" data-tab="chatbot-test" onclick="switchTab('chatbot-test')">💬 Test chatbot</div>
         <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
       </div>
 
@@ -594,6 +595,55 @@
           <button class="btn btn-generate btn-sm" onclick="activateAllAgents()">⚡ Aktivér alle agenter</button>
         </div>
         <div class="agent-grid" id="clientAgentGrid"></div>
+      </div>
+
+      <!-- Tab: Test chatbot -->
+      <div id="tab-chatbot-test" class="hidden">
+        <div style="display:grid; grid-template-columns:1fr 340px; gap:1.25rem; align-items:start">
+
+          <!-- Chat interface -->
+          <div class="card" style="padding:1.25rem">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
+              <div>
+                <div style="font-size:.9rem; font-weight:700">Test chatbot</div>
+                <div style="font-size:.75rem; color:var(--muted); margin-top:.1rem">Chatter med klientens AI-agent som en rigtig kunde ville</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="clearTestChat()">🗑 Ryd chat</button>
+            </div>
+
+            <!-- Status indikator -->
+            <div id="agentStatusBar" style="display:flex; align-items:center; gap:.5rem; padding:.6rem .9rem; border-radius:8px; background:var(--bg); margin-bottom:1rem; font-size:.78rem">
+              <span id="agentStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0"></span>
+              <span id="agentStatusText">Tjekker forbindelse til chatbot-agent...</span>
+            </div>
+
+            <div class="chat-messages" id="testChatMessages" style="min-height:320px; max-height:400px; overflow-y:auto; display:flex; flex-direction:column; gap:.65rem; padding:1rem; background:var(--bg); border:1px solid var(--border); border-radius:12px; margin-bottom:.75rem"></div>
+            <div class="chat-input-row">
+              <input class="chat-input" id="testChatInput" placeholder="Skriv som en kunde ville skrive..." onkeydown="if(event.key==='Enter')sendTestMsg()"/>
+              <button class="btn btn-primary" onclick="sendTestMsg()">Send</button>
+            </div>
+          </div>
+
+          <!-- Konfiguration panel -->
+          <div style="display:flex; flex-direction:column; gap:1rem">
+            <div class="card" style="padding:1.25rem">
+              <div style="font-size:.88rem; font-weight:700; margin-bottom:1rem">Chatbot info</div>
+              <div id="chatbotInfoDisplay" style="display:flex; flex-direction:column; gap:.6rem"></div>
+              <button class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; margin-top:1rem" onclick="showView('gen-chatbot')">✏️ Rediger info</button>
+            </div>
+
+            <div class="card" style="padding:1.25rem; background:linear-gradient(135deg,#05080f,#0a1628); border:none; color:#fff">
+              <div style="font-size:.85rem; font-weight:700; margin-bottom:.75rem">Sådan virker det</div>
+              <div style="font-size:.75rem; color:rgba(255,255,255,0.55); line-height:1.7">
+                <div style="margin-bottom:.5rem">1️⃣ Du udfylder info i <strong style="color:#fff">Chatbot Generator</strong></div>
+                <div style="margin-bottom:.5rem">2️⃣ Info gemmes og sendes til <strong style="color:#fff">chatbot-agenten</strong></div>
+                <div style="margin-bottom:.5rem">3️⃣ Klientens kunder chatter via <strong style="color:#fff">widget på hjemmesiden</strong></div>
+                <div>4️⃣ Agenten svarer 24/7 baseret på den info du gav</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <!-- Tab: Opgaver -->
@@ -1150,7 +1200,7 @@ function showView(v) {
 }
 
 function switchTab(t) {
-  ['overview','products','tasks','chat'].forEach(id => {
+  ['overview','products','agents','tasks','chatbot-test','chat'].forEach(id => {
     document.getElementById('tab-'+id)?.classList.add('hidden');
   });
   document.getElementById('tab-'+t)?.classList.remove('hidden');
@@ -1161,6 +1211,7 @@ function switchTab(t) {
   if (t === 'agents' && currentClient) renderClientAgents();
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
+  if (t === 'chatbot-test' && currentClient) initTestChat();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────
@@ -1849,6 +1900,140 @@ function activateAllAgentsGlobal() {
   });
   saveClients();
   renderAllAgents();
+}
+
+// ── TEST CHATBOT ──────────────────────────────────────
+const AGENT_URL = 'http://localhost:5001';
+let testChatHistory = [];
+
+async function initTestChat() {
+  const box = document.getElementById('testChatMessages');
+  box.innerHTML = '';
+  testChatHistory = [];
+
+  // Vis chatbot info
+  renderChatbotInfo();
+
+  // Tjek om agenten kører
+  try {
+    const res = await fetch(AGENT_URL + '/health', { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      setAgentStatus(true);
+      // Hent velkomst fra agenten
+      const cfg = await fetch(`${AGENT_URL}/widget/${currentClient.id}`).then(r => r.json()).catch(() => null);
+      const velkomst = cfg?.velkomst || currentClient.chatbotConfig?.velkomst || 'Hej! Hvordan kan jeg hjælpe dig?';
+      const navn = cfg?.navn || currentClient.chatbotConfig?.chatbot_navn || 'Chatbot';
+      addTestMsg('bot', velkomst, navn);
+    } else {
+      setAgentStatus(false);
+    }
+  } catch {
+    setAgentStatus(false);
+  }
+}
+
+function setAgentStatus(online) {
+  const dot = document.getElementById('agentStatusDot');
+  const txt = document.getElementById('agentStatusText');
+  if (online) {
+    dot.style.background = 'var(--green)';
+    txt.textContent = 'Chatbot-agent kører — klar til test';
+  } else {
+    dot.style.background = 'var(--red)';
+    txt.innerHTML = 'Agent offline — start den med: <code style="background:var(--bg2);padding:.1rem .4rem;border-radius:4px">python3 agents/chatbot_agent.py</code>';
+  }
+}
+
+function renderChatbotInfo() {
+  const c = currentClient;
+  const cfg = c.chatbotConfig || {};
+  const info = cfg.info || {};
+  const display = document.getElementById('chatbotInfoDisplay');
+  if (!cfg.chatbot_navn) {
+    display.innerHTML = '<div style="font-size:.8rem;color:var(--muted)">Ingen chatbot konfigureret endnu — gå til Chatbot Generator</div>';
+    return;
+  }
+  const rows = [
+    ['Navn', cfg.chatbot_navn],
+    ['Åbningstider', info.åbningstider],
+    ['Kontakt', info.kontakt],
+    ['Ydelser', info.ydelser],
+    ['Priser', info.priser],
+    ['Adresse', info.adresse],
+    ['Andet', info.andet],
+  ].filter(([,v]) => v);
+  display.innerHTML = rows.map(([k,v]) => `
+    <div style="display:flex;gap:.5rem;font-size:.78rem">
+      <span style="color:var(--muted);min-width:80px;flex-shrink:0">${k}</span>
+      <span style="font-weight:500;word-break:break-word">${v}</span>
+    </div>`).join('');
+}
+
+async function sendTestMsg() {
+  const input = document.getElementById('testChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  addTestMsg('user', text);
+  testChatHistory.push({ role: 'user', content: text });
+
+  const typing = showTestTyping();
+
+  try {
+    const res = await fetch(`${AGENT_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client: currentClient.id,
+        message: text,
+        history: testChatHistory.slice(-8)
+      })
+    });
+    const data = await res.json();
+    typing.remove();
+    if (data.reply) {
+      addTestMsg('bot', data.reply, data.chatbot_navn);
+      testChatHistory.push({ role: 'assistant', content: data.reply });
+    }
+  } catch {
+    typing.remove();
+    addTestMsg('bot', '⚠️ Kunne ikke forbinde til agenten. Er den startet?', 'System');
+  }
+}
+
+function addTestMsg(type, text, navn) {
+  const box = document.getElementById('testChatMessages');
+  const time = new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
+  const el = document.createElement('div');
+  el.className = `msg msg-${type === 'bot' ? 'client' : 'admin'}`;
+  el.innerHTML = `
+    ${type === 'bot' && navn ? `<div style="font-size:.7rem;color:var(--muted);margin-bottom:.2rem">${navn}</div>` : ''}
+    <div class="msg-bubble">${text}</div>
+    <div class="msg-time">${time}</div>`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function showTestTyping() {
+  const box = document.getElementById('testChatMessages');
+  const el = document.createElement('div');
+  el.className = 'msg msg-client';
+  el.innerHTML = `<div class="msg-bubble" style="display:flex;gap:4px;align-items:center">
+    <span style="animation:pulse 1s infinite">●</span>
+    <span style="animation:pulse 1s .2s infinite">●</span>
+    <span style="animation:pulse 1s .4s infinite">●</span>
+  </div>`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function clearTestChat() {
+  testChatHistory = [];
+  document.getElementById('testChatMessages').innerHTML = '';
+  const cfg = currentClient.chatbotConfig;
+  if (cfg?.velkomst) addTestMsg('bot', cfg.velkomst, cfg.chatbot_navn);
 }
 
 // ── SLET KLIENT ──────────────────────────────────────
