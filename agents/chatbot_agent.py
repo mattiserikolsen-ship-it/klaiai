@@ -15,44 +15,29 @@ CORS(app)
 
 client = anthropic.Anthropic()
 
-# Klient-konfigurationer (i fremtiden fra database)
-KLIENTER = {
-    "demo": {
-        "navn": "Demo Virksomhed",
-        "chatbot_navn": "Alma",
-        "velkomst": "Hej! Jeg er Alma. Hvordan kan jeg hjælpe dig?",
-        "info": """
-Åbningstider: Mandag-fredag 8:00-17:00, lørdag 9:00-13:00
-Kontakt: info@demo.dk | +45 12 34 56 78
-Vi tilbyder: Eksempel ydelse 1, Eksempel ydelse 2
-Priser: Fra 499 kr.
-Levering: 2-3 hverdage
-        """.strip(),
-        "farve": "#0a2463"
-    },
-    "pool": {
-        "navn": "Petersens Pool Service",
-        "chatbot_navn": "Max",
-        "velkomst": "Hej! Jeg er Max fra Petersens Pool Service 🏊 Kan jeg hjælpe dig med noget?",
-        "info": """
-Vi tilbyder: Poolrengøring, kemikalier, vinterlukning, sæsonåbning
-Område: Storkøbenhavn (Gentofte, Lyngby, Hellerup, Charlottenlund)
-Åbningstider: Man-fre 7:00-18:00, lør 8:00-14:00
-Priser: Rengøring fra 895 kr., Sæsonpakke fra 3.995 kr./år
-Kontakt: info@petersenspool.dk | +45 98 76 54 32
-Booking: Vi kan oftest komme inden for 2-3 hverdage
-        """.strip(),
-        "farve": "#0077b6"
-    }
-}
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
+
+def load_klienter():
+    """Indlæser klient-konfigurationer fra JSON-fil."""
+    try:
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def get_klient(klient_id: str) -> dict:
+    klienter = load_klienter()
+    return klienter.get(klient_id, klienter.get('demo', {}))
 
 def byg_system_prompt(klient: dict) -> str:
-    return f"""Du er {klient['chatbot_navn']}, en hjælpsom AI-assistent for {klient['navn']}.
+    info = klient.get('info', {})
+    info_tekst = '\n'.join([f"{k.capitalize()}: {v}" for k, v in info.items() if v])
+    return f"""Du er {klient.get('chatbot_navn','Alma')}, en hjælpsom AI-assistent for {klient.get('navn','virksomheden')}.
 
 Din opgave er at besvare kundehenvendelser professionelt, venligt og præcist på dansk.
 
 Information om virksomheden:
-{klient['info']}
+{info_tekst}
 
 Regler:
 - Svar altid på dansk
@@ -73,7 +58,7 @@ def chat():
     if not besked:
         return jsonify({'error': 'Ingen besked'}), 400
 
-    klient = KLIENTER.get(klient_id, KLIENTER['demo'])
+    klient = get_klient(klient_id)
 
     # Byg besked-historik
     messages = []
@@ -105,7 +90,7 @@ def chat():
 @app.route('/widget/<klient_id>', methods=['GET'])
 def widget_config(klient_id):
     """Returnerer konfiguration til chatbot widget"""
-    klient = KLIENTER.get(klient_id, KLIENTER['demo'])
+    klient = get_klient(klient_id)
     return jsonify({
         'navn': klient['chatbot_navn'],
         'velkomst': klient['velkomst'],

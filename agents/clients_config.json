@@ -1,0 +1,32 @@
+{
+  "demo": {
+    "navn": "Demo Virksomhed",
+    "chatbot_navn": "Alma",
+    "velkomst": "Hej! Jeg er Alma. Hvordan kan jeg hjælpe dig?",
+    "farve": "#0a2463",
+    "info": {
+      "åbningstider": "Mandag-fredag 8:00-17:00",
+      "kontakt": "info@demo.dk | +45 12 34 56 78",
+      "ydelser": "Eksempel ydelse 1, Eksempel ydelse 2",
+      "priser": "Fra 499 kr.",
+      "levering": "2-3 hverdage",
+      "adresse": "",
+      "andet": ""
+    }
+  },
+  "pool": {
+    "navn": "Petersens Pool Service",
+    "chatbot_navn": "Max",
+    "velkomst": "Hej! Jeg er Max fra Petersens Pool Service 🏊 Kan jeg hjælpe dig?",
+    "farve": "#0077b6",
+    "info": {
+      "åbningstider": "Mandag-fredag 7:00-18:00, lørdag 8:00-14:00",
+      "kontakt": "info@petersenspool.dk | +45 98 76 54 32",
+      "ydelser": "Poolrengøring, kemikalier, vinterlukning, sæsonåbning",
+      "priser": "Rengøring fra 895 kr., Sæsonpakke fra 3.995 kr./år",
+      "levering": "Vi kan oftest komme inden for 2-3 hverdage",
+      "adresse": "Storkøbenhavn (Gentofte, Lyngby, Hellerup, Charlottenlund)",
+      "andet": ""
+    }
+  }
+}

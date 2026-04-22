@@ -717,10 +717,6 @@
                 <label class="form-label">Velkomsthilsen</label>
                 <input class="form-input" id="chatbotGreeting" placeholder="Hej! Hvordan kan jeg hjælpe?"/>
               </div>
-              <div class="form-group full">
-                <label class="form-label">Vigtige informationer (åbningstider, priser, FAQ)</label>
-                <textarea class="form-input" id="chatbotFaq" placeholder="Åbningstider: Man-fre 8-17&#10;Priser: fra 499 kr.&#10;Levering: 2-3 hverdage..."></textarea>
-              </div>
               <div class="form-group">
                 <label class="form-label">Primær farve (hex)</label>
                 <input class="form-input" id="chatbotColor" placeholder="#0a2463"/>
@@ -734,11 +730,49 @@
               </div>
             </div>
           </div>
-          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateChatbot()">✨ Generer chatbot</button>
+
+          <div class="generator-section">
+            <div class="generator-section-title">Klientens information — det chatbotten ved</div>
+            <div style="font-size:.78rem; color:var(--muted); margin-bottom:.75rem">Jo mere du udfylder, jo bedre svar giver chatbotten. Den bruger kun info herfra.</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Åbningstider</label>
+                <input class="form-input" id="cb_aabning" placeholder="Man-fre 8-17, lør 9-13"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Telefon & email</label>
+                <input class="form-input" id="cb_kontakt" placeholder="+45 12 34 56 78 | info@firma.dk"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Ydelser / produkter</label>
+                <input class="form-input" id="cb_ydelser" placeholder="Fx: Poolrengøring, kemikalier, vinterlukning"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Priser</label>
+                <input class="form-input" id="cb_priser" placeholder="Fx: Rengøring fra 895 kr., Sæsonpakke fra 3.995 kr."/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Adresse / område</label>
+                <input class="form-input" id="cb_adresse" placeholder="Fx: Storkøbenhavn, Gentofte, Lyngby"/>
+              </div>
+              <div class="form-group full">
+                <label class="form-label">Andet (FAQ, særlige tilbud, politikker)</label>
+                <textarea class="form-input" id="cb_andet" placeholder="Fx: Vi tilbyder gratis besigtigelse. Betaling via MobilePay eller faktura..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateChatbot()">✨ Gem konfiguration & generer embed kode</button>
           <div id="chatbotResult" class="hidden" style="margin-top:1.25rem">
             <div class="generator-section-title">Embed kode — indsæt på klientens hjemmeside</div>
             <div class="generated-embed" id="chatbotEmbed"></div>
-            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('chatbotEmbed')">📋 Kopiér kode</button>
+            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('chatbotEmbed')">📋 Kopiér embed kode</button>
+          </div>
+          <div id="chatbotConfigWrap" class="hidden" style="margin-top:1rem">
+            <div class="generator-section-title" style="margin-top:1rem">Agent konfiguration — kopiér til agents/clients_config.json</div>
+            <div style="font-size:.75rem; color:var(--muted); margin-bottom:.5rem">Indsæt dette i <code>clients_config.json</code> filen for at aktivere AI-chatbotten</div>
+            <div class="generated-embed" id="chatbotConfigJson"></div>
+            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('chatbotConfigJson')">📋 Kopiér konfiguration</button>
           </div>
         </div>
       </div>
@@ -1446,6 +1480,26 @@ function generateChatbot() {
   const color = document.getElementById('chatbotColor').value || '#0a2463';
   const pos = document.getElementById('chatbotPos').value;
 
+  // Gem chatbot-konfiguration på klienten
+  const chatbotConfig = {
+    chatbot_navn: name,
+    velkomst: greeting,
+    farve: color,
+    info: {
+      åbningstider: document.getElementById('cb_aabning').value,
+      kontakt: document.getElementById('cb_kontakt').value,
+      ydelser: document.getElementById('cb_ydelser').value,
+      priser: document.getElementById('cb_priser').value,
+      adresse: document.getElementById('cb_adresse').value,
+      andet: document.getElementById('cb_andet').value
+    }
+  };
+
+  if (client) {
+    client.chatbotConfig = chatbotConfig;
+    saveClients();
+  }
+
   const embed = `<!-- KlarAI Chatbot ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/chatbot.js"
   data-name="${name}"
@@ -1460,7 +1514,15 @@ function generateChatbot() {
 
   if (client) {
     markProductGenerated(client.id, 'chatbot');
-    alert(`✅ Chatbot genereret til ${client.name}!`);
+    // Vis også JSON-konfigurationen så man kan kopiere til agents/clients_config.json
+    const jsonOutput = JSON.stringify({
+      [client.id]: {
+        navn: client.name,
+        ...chatbotConfig
+      }
+    }, null, 2);
+    document.getElementById('chatbotConfigJson').textContent = jsonOutput;
+    document.getElementById('chatbotConfigWrap').classList.remove('hidden');
   }
 }
 
