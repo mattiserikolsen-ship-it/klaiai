@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Chatbot Test — KlarAI</title>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f7f8fc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .page { text-align: center; }
+    h1 { font-size: 2rem; color: #0a2463; }
+    p { color: #6b7a99; margin-top: .5rem; }
+    .badge { display: inline-block; background: #dcfce7; color: #16a34a; padding: .3rem .8rem; border-radius: 99px; font-size: .8rem; font-weight: 700; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Petersens Pool Service</h1>
+    <p>Eksempel klientside — chatbot-widgetten er aktiv nede i højre hjørne 👇</p>
+    <div class="badge">● KlarAI Chatbot aktiv</div>
+  </div>
+
+  <!-- KlarAI Chatbot Widget -->
+  <script src="/chatbot.js"
+    data-client="pool"
+    data-color="#0077b6"
+    data-api="http://localhost:5001">
+  </script>
+</body>
+</html>
