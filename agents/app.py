@@ -509,6 +509,24 @@ def test_mail():
     except Exception as e:
         return jsonify({'sendt': False, 'fejl': str(e), 'body': str(getattr(e, 'body', ''))}), 500
 
+@app.route('/chatbot.js', methods=['GET'])
+def serve_chatbot_js():
+    from flask import send_from_directory
+    js_dir = os.path.join(os.path.dirname(__file__), '..')
+    return send_from_directory(js_dir, 'chatbot.js', mimetype='application/javascript')
+
+@app.route('/lead-form.js', methods=['GET'])
+def serve_lead_form_js():
+    from flask import send_from_directory
+    js_dir = os.path.join(os.path.dirname(__file__), '..')
+    return send_from_directory(js_dir, 'lead-form.js', mimetype='application/javascript')
+
+@app.route('/booking-widget.js', methods=['GET'])
+def serve_booking_widget_js():
+    from flask import send_from_directory
+    js_dir = os.path.join(os.path.dirname(__file__), '..')
+    return send_from_directory(js_dir, 'booking-widget.js', mimetype='application/javascript')
+
 @app.route('/', methods=['GET'])
 def index():
     return jsonify({'app': 'KlarAI Agent Server', 'version': '1.0', 'endpoints': ['/chat', '/lead', '/widget/<id>', '/health']})
