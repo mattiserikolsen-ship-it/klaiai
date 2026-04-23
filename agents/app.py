@@ -347,6 +347,54 @@ Med venlig hilsen
 
 # ── GENERAL ────────────────────────────────────────────
 
+@app.route('/stats', methods=['GET'])
+def stats():
+    """Henter brugsstatistik fra Supabase"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    try:
+        # Leads per klient
+        leads_res = db.table('leads').select('klient_id, oprettet').execute()
+        leads = leads_res.data or []
+
+        # Bookinger per klient
+        book_res = db.table('bookinger').select('klient_id, oprettet').execute()
+        bookinger = book_res.data or []
+
+        # Klienter
+        klient_res = db.table('klienter').select('id, navn').execute()
+        klienter = {k['id']: k['navn'] for k in (klient_res.data or [])}
+
+        # Aggreger per klient
+        from collections import defaultdict
+        lead_count = defaultdict(int)
+        book_count = defaultdict(int)
+
+        for l in leads:
+            lead_count[l['klient_id']] += 1
+        for b in bookinger:
+            book_count[b['klient_id']] += 1
+
+        result = []
+        for kid, navn in klienter.items():
+            result.append({
+                'klient_id': kid,
+                'navn': navn,
+                'leads': lead_count.get(kid, 0),
+                'bookinger': book_count.get(kid, 0)
+            })
+
+        # Totaler
+        return jsonify({
+            'klienter': result,
+            'total_leads': len(leads),
+            'total_bookinger': len(bookinger),
+            'total_klienter': len(klienter)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/health', methods=['GET'])
 def health():
     klienter = load_klienter()

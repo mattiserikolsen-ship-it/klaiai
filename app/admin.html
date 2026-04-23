@@ -418,6 +418,29 @@
           </div>
         </div>
       </div>
+
+      <!-- STATISTIK -->
+      <div class="card" style="margin-top:1.25rem; padding:1.25rem">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
+          <div style="font-size:.95rem; font-weight:700">Live aktivitet</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadStats()">↻ Opdater</button>
+        </div>
+        <div class="stats-row" style="margin-bottom:1.25rem">
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-num" id="statTotalLeads">—</div>
+            <div class="stat-label">Leads i alt</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-num" id="statTotalBookinger">—</div>
+            <div class="stat-label">Bookinger i alt</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-num" id="statTotalKlienter">—</div>
+            <div class="stat-label">Klienter i Supabase</div>
+          </div>
+        </div>
+        <div id="statsKlientTable" style="font-size:.85rem; color:var(--muted); text-align:center; padding:.5rem">Klik "Opdater" for at hente statistik</div>
+      </div>
     </div>
 
     <!-- ── ALLE KLIENTER ── -->
@@ -2383,8 +2406,55 @@ function updateEkstraViden() {
   textarea.value = ferdigeDocs.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n');
 }
 
+// ── STATISTIK ─────────────────────────────────────────
+async function loadStats() {
+  document.getElementById('statsKlientTable').innerHTML = '<span style="color:var(--muted)">Henter data...</span>';
+  try {
+    const res = await fetch(AGENT_URL + '/stats');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+
+    document.getElementById('statTotalLeads').textContent = data.total_leads ?? '—';
+    document.getElementById('statTotalBookinger').textContent = data.total_bookinger ?? '—';
+    document.getElementById('statTotalKlienter').textContent = data.total_klienter ?? '—';
+
+    if (!data.klienter || data.klienter.length === 0) {
+      document.getElementById('statsKlientTable').innerHTML = '<span style="color:var(--muted)">Ingen klientdata endnu</span>';
+      return;
+    }
+
+    const rows = data.klienter.map(k => `
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:.6rem .5rem; font-weight:500">${k.navn}</td>
+        <td style="padding:.6rem .5rem; text-align:center">
+          <span style="background:#dbeafe; color:#1e40af; padding:.2rem .6rem; border-radius:20px; font-size:.78rem; font-weight:600">${k.leads} leads</span>
+        </td>
+        <td style="padding:.6rem .5rem; text-align:center">
+          <span style="background:#dcfce7; color:#166534; padding:.2rem .6rem; border-radius:20px; font-size:.78rem; font-weight:600">${k.bookinger} bookinger</span>
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('statsKlientTable').innerHTML = `
+      <table style="width:100%; border-collapse:collapse; font-size:.85rem">
+        <thead>
+          <tr>
+            <th style="text-align:left; padding:.5rem; color:var(--muted); font-weight:600; font-size:.75rem">Klient</th>
+            <th style="text-align:center; padding:.5rem; color:var(--muted); font-weight:600; font-size:.75rem">Leads</th>
+            <th style="text-align:center; padding:.5rem; color:var(--muted); font-weight:600; font-size:.75rem">Bookinger</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  } catch(e) {
+    document.getElementById('statsKlientTable').innerHTML = '<span style="color:var(--red)">Kunne ikke hente statistik — tjek at serveren kører</span>';
+  }
+}
+
 // Init
 renderDashboard();
+loadStats();
 </script>
 </body>
 </html>
