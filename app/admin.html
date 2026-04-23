@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KlarAI – Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -812,17 +813,28 @@
             </div>
           </div>
 
-          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateChatbot()">✨ Gem konfiguration & generer embed kode</button>
+          <!-- PDF Upload sektion -->
+          <div class="generator-section" style="margin-top:1rem">
+            <div class="generator-section-title">Dokumenter & filer</div>
+            <div style="font-size:.8rem; color:var(--muted); margin-bottom:.75rem">Upload PDF'er, prislister eller andet materiale — teksten udtrækkes automatisk og chatbotten bruger det som viden.</div>
+            <div id="pdfDropZone" style="border:2px dashed #d1d5db; border-radius:12px; padding:1.5rem; text-align:center; cursor:pointer; transition:border-color .2s; background:#fafafa" onclick="document.getElementById('pdfInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='#d1d5db'" ondrop="handlePdfDrop(event)">
+              <div style="font-size:1.5rem; margin-bottom:.4rem">📄</div>
+              <div style="font-size:.85rem; font-weight:600; color:var(--text)">Klik eller træk filer hertil</div>
+              <div style="font-size:.75rem; color:var(--muted); margin-top:.25rem">PDF, TXT — op til 10 MB per fil</div>
+              <input type="file" id="pdfInput" multiple accept=".pdf,.txt" style="display:none" onchange="handlePdfFiles(this.files)"/>
+            </div>
+            <div id="pdfFileList" style="margin-top:.75rem; display:flex; flex-direction:column; gap:.5rem"></div>
+            <div id="pdfExtractedWrap" class="hidden" style="margin-top:.75rem">
+              <label class="form-label">Udtrukket tekst (kan redigeres)</label>
+              <textarea class="form-input" id="cb_ekstra_viden" rows="6" placeholder="Tekst fra uploadede dokumenter vises her..."></textarea>
+            </div>
+          </div>
+
+          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem; margin-top:1rem" onclick="generateChatbot()">✨ Gem konfiguration & generer embed kode</button>
           <div id="chatbotResult" class="hidden" style="margin-top:1.25rem">
             <div class="generator-section-title">Embed kode — indsæt på klientens hjemmeside</div>
             <div class="generated-embed" id="chatbotEmbed"></div>
             <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('chatbotEmbed')">📋 Kopiér embed kode</button>
-          </div>
-          <div id="chatbotConfigWrap" class="hidden" style="margin-top:1rem">
-            <div class="generator-section-title" style="margin-top:1rem">Agent konfiguration — kopiér til agents/clients_config.json</div>
-            <div style="font-size:.75rem; color:var(--muted); margin-bottom:.5rem">Indsæt dette i <code>clients_config.json</code> filen for at aktivere AI-chatbotten</div>
-            <div class="generated-embed" id="chatbotConfigJson"></div>
-            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('chatbotConfigJson')">📋 Kopiér konfiguration</button>
           </div>
         </div>
       </div>
@@ -1205,7 +1217,8 @@ async function syncChatbotConfigToDB(clientId, cfg) {
         ydelser: cfg.info?.ydelser || '',
         priser: cfg.info?.priser || '',
         adresse: cfg.info?.adresse || '',
-        andet: cfg.info?.andet || ''
+        andet: cfg.info?.andet || '',
+        ekstra_viden: cfg.ekstra_viden || ''
       })
     });
   } catch(e) { console.warn('Chatbot config sync fejlede:', e); }
@@ -1587,7 +1600,8 @@ function generateChatbot() {
       priser: document.getElementById('cb_priser').value,
       adresse: document.getElementById('cb_adresse').value,
       andet: document.getElementById('cb_andet').value
-    }
+    },
+    ekstra_viden: document.getElementById('cb_ekstra_viden').value
   };
 
   if (client) {
@@ -2237,6 +2251,78 @@ function printInvoice() {
     win.focus();
     setTimeout(() => win.print(), 300);
   }, 100);
+}
+
+// ── PDF UPLOAD ────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let uploadedDocs = []; // { name, text }
+
+function handlePdfDrop(e) {
+  e.preventDefault();
+  document.getElementById('pdfDropZone').style.borderColor = '#d1d5db';
+  handlePdfFiles(e.dataTransfer.files);
+}
+
+async function handlePdfFiles(files) {
+  for (const file of files) {
+    if (uploadedDocs.find(d => d.name === file.name)) continue;
+    const item = { name: file.name, text: '', status: 'loading' };
+    uploadedDocs.push(item);
+    renderPdfFileList();
+    try {
+      if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        item.text = await extractPdfText(file);
+      } else {
+        item.text = await file.text();
+      }
+      item.status = 'done';
+    } catch(e) {
+      item.status = 'error';
+      item.text = '';
+    }
+    renderPdfFileList();
+    updateEkstraViden();
+  }
+}
+
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    fullText += content.items.map(s => s.str).join(' ') + '\n';
+  }
+  return fullText.trim();
+}
+
+function renderPdfFileList() {
+  const list = document.getElementById('pdfFileList');
+  list.innerHTML = uploadedDocs.map((d, i) => `
+    <div style="display:flex; align-items:center; gap:.6rem; padding:.5rem .75rem; background:#f3f4f6; border-radius:8px; font-size:.82rem">
+      <span>${d.status === 'loading' ? '⏳' : d.status === 'error' ? '❌' : '✅'}</span>
+      <span style="flex:1; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${d.name}</span>
+      ${d.status === 'done' ? `<span style="color:var(--muted)">${Math.round(d.text.length/4)} ord</span>` : ''}
+      <button onclick="removeDoc(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:0">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeDoc(i) {
+  uploadedDocs.splice(i, 1);
+  renderPdfFileList();
+  updateEkstraViden();
+}
+
+function updateEkstraViden() {
+  const wrap = document.getElementById('pdfExtractedWrap');
+  const textarea = document.getElementById('cb_ekstra_viden');
+  const ferdigeDocs = uploadedDocs.filter(d => d.status === 'done');
+  if (ferdigeDocs.length === 0) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  textarea.value = ferdigeDocs.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n');
 }
 
 // Init

@@ -57,7 +57,8 @@ def get_klient(klient_id):
                         'priser': cfg.get('priser', ''),
                         'adresse': cfg.get('adresse', ''),
                         'andet': cfg.get('andet', '')
-                    }
+                    },
+                    'ekstra_viden': cfg.get('ekstra_viden', '')
                 }
         except:
             pass
@@ -68,10 +69,12 @@ def get_klient(klient_id):
 def byg_chatbot_prompt(klient):
     info = klient.get('info', {})
     info_tekst = '\n'.join([f"{k.capitalize()}: {v}" for k, v in info.items() if v])
+    ekstra = klient.get('ekstra_viden', '').strip()
+    ekstra_sektion = f"\n\nEkstra viden fra dokumenter:\n{ekstra}" if ekstra else ""
     return f"""Du er {klient.get('chatbot_navn','Alma')}, AI-assistent for {klient.get('navn','virksomheden')}.
 
 Virksomhedsinfo:
-{info_tekst}
+{info_tekst}{ekstra_sektion}
 
 Regler: Svar på dansk. Vær kort (max 3-4 sætninger). Vær venlig. Hvis du ikke ved svaret, henvis til kontaktinfo. Tilbyd aldrig priser der ikke fremgår af info."""
 
@@ -281,6 +284,7 @@ def gem_chatbot_config():
             'priser': data.get('priser', ''),
             'adresse': data.get('adresse', ''),
             'andet': data.get('andet', ''),
+            'ekstra_viden': data.get('ekstra_viden', ''),
             'opdateret': 'now()'
         }
         res = db.table('chatbot_config').upsert(cfg, on_conflict='klient_id').execute()
