@@ -133,8 +133,23 @@ def modtag_lead():
     if not lead.get('email') and not lead.get('navn'):
         return jsonify({'error': 'Lead mangler email eller navn'}), 400
 
-    klienter = load_klienter()
-    klient = klienter.get(klient_id, {})
+    # Gem lead i Supabase
+    if db:
+        try:
+            db.table('leads').insert({
+                'klient_id': klient_id,
+                'navn': lead.get('navn', ''),
+                'email': lead.get('email', ''),
+                'telefon': lead.get('telefon', ''),
+                'virksomhed': lead.get('virksomhed', ''),
+                'besked': lead.get('besked', ''),
+                'status': 'ny'
+            }).execute()
+        except Exception as e:
+            print(f"Lead DB fejl: {e}")
+
+    # Hent klientinfo fra Supabase eller JSON
+    klient = get_klient(klient_id)
     klient_info = {
         'navn': klient.get('navn', 'Virksomheden'),
         'ydelser': klient.get('info', {}).get('ydelser', ''),

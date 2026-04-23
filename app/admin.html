@@ -878,6 +878,12 @@
           <div id="leadResult" class="hidden" style="margin-top:1.25rem">
             <div class="generator-section-title">Genereret mail-sekvens</div>
             <div id="leadFlowSteps" class="flow-steps"></div>
+            <div style="margin-top:1.5rem">
+              <div class="generator-section-title">Embed kode — sæt formularen på klientens hjemmeside</div>
+              <div style="font-size:.8rem; color:var(--muted); margin-bottom:.5rem">Klienten indsætter denne kode på sin hjemmeside. Når en besøgende udfylder formularen, modtager de automatisk opfølgningsmails.</div>
+              <div class="generated-embed" id="leadEmbedCode"></div>
+              <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('leadEmbedCode')">📋 Kopiér embed kode</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1658,7 +1664,19 @@ function generateLead() {
     </div>`).join('');
 
   document.getElementById('leadResult').classList.remove('hidden');
-  if (client) { markProductGenerated(client.id, 'lead'); }
+  if (client) {
+    markProductGenerated(client.id, 'lead');
+    const color = client.chatbotConfig?.farve || '#0a2463';
+    const embed = `<!-- KlarAI Lead Form · ${client.name} -->
+<script src="https://klaiai.dk/lead-form.js"
+  data-client="${client.id}"
+  data-color="${color}"
+  data-title="Kontakt os"
+  data-subtitle="Udfyld formularen og vi vender tilbage hurtigst muligt."
+  data-btn="Send besked">
+<\/script>`;
+    document.getElementById('leadEmbedCode').textContent = embed;
+  }
 }
 
 // MAIL FLOW
