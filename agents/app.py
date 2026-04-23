@@ -203,6 +203,27 @@ def health():
         'mail': bool(SENDGRID_API_KEY)
     })
 
+@app.route('/test-mail', methods=['GET'])
+def test_mail():
+    """Test SendGrid direkte"""
+    til = request.args.get('email', '')
+    if not til:
+        return jsonify({'error': 'Tilføj ?email=din@email.dk'}), 400
+    if not SENDGRID_API_KEY or not SENDGRID_FROM:
+        return jsonify({'error': 'SENDGRID_API_KEY eller SENDGRID_FROM mangler', 'key_sat': bool(SENDGRID_API_KEY), 'from_sat': bool(SENDGRID_FROM)}), 500
+    try:
+        message = Mail(
+            from_email=(SENDGRID_FROM, 'KlarAI Test'),
+            to_emails=til,
+            subject='KlarAI test mail',
+            plain_text_content='Denne mail bekræfter at KlarAI mail-systemet virker.',
+        )
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        return jsonify({'sendt': True, 'status': response.status_code, 'fra': SENDGRID_FROM, 'til': til})
+    except Exception as e:
+        return jsonify({'sendt': False, 'fejl': str(e), 'body': str(getattr(e, 'body', ''))}), 500
+
 @app.route('/', methods=['GET'])
 def index():
     return jsonify({'app': 'KlarAI Agent Server', 'version': '1.0', 'endpoints': ['/chat', '/lead', '/widget/<id>', '/health']})
