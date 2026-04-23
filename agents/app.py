@@ -14,7 +14,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from supabase import create_client
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../app', static_url_path='/app')
 CORS(app)
 
 ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
@@ -512,6 +512,19 @@ def test_mail():
 @app.route('/', methods=['GET'])
 def index():
     return jsonify({'app': 'KlarAI Agent Server', 'version': '1.0', 'endpoints': ['/chat', '/lead', '/widget/<id>', '/health']})
+
+@app.route('/portal/<klient_id>', methods=['GET'])
+def klient_portal(klient_id):
+    """Sender klientportalen med klient_id som parameter"""
+    from flask import send_from_directory, make_response
+    import os
+    app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
+    with open(os.path.join(app_dir, 'client.html'), 'r', encoding='utf-8') as f:
+        html = f.read()
+    html = html.replace("params.get('id') || ''", f"'{klient_id}'")
+    response = make_response(html)
+    response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return response
 
 
 if __name__ == '__main__':
