@@ -4,203 +4,253 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KlarAI – Min portal</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --accent: #0a2463; --accent2: #1e4fcf; --bg: #f4f6fb; --bg2: #eaeff8;
-      --text: #0a1628; --muted: #4a5568; --border: rgba(10,25,80,0.1);
-      --card: #fff; --green: #22863a; --green-bg: #e6f4ea;
-      --orange: #d97706; --orange-bg: #fef3c7; --blue-bg: #dbeafe;
+      --accent: #0a2463; --accent2: #1e4fcf;
+      --bg: #f7f8fc; --card: #ffffff;
+      --border: rgba(10,25,80,0.08);
+      --text: #0a1628; --muted: #6b7a99;
+      --green: #16a34a; --green-bg: #dcfce7;
+      --orange: #d97706; --orange-bg: #fef3c7;
+      --red: #dc2626; --red-bg: #fee2e2;
+      --blue-bg: #dbeafe;
     }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+    .hidden { display: none !important; }
 
-    /* SIDEBAR */
-    .sidebar { width: 240px; background: var(--accent); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 10; }
-    .sidebar-logo { padding: 1.5rem 1.25rem 1rem; font-size: 1.3rem; font-weight: 800; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .sidebar-logo span { font-size: .7rem; display: block; opacity: .6; font-weight: 500; margin-top: .1rem; }
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 240px; background: var(--accent); color: #fff;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; height: 100vh; z-index: 20;
+    }
+    .sidebar-logo { padding: 1.4rem 1.25rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .sidebar-logo-text { font-size: 1.2rem; font-weight: 800; }
+    .sidebar-logo-sub { font-size: .65rem; opacity: .5; font-weight: 500; margin-top: .1rem; text-transform: uppercase; letter-spacing: .5px; }
     .sidebar-company { padding: .85rem 1.25rem; background: rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .sidebar-company-name { font-size: .85rem; font-weight: 700; }
-    .sidebar-company-sub { font-size: .72rem; opacity: .6; margin-top: .1rem; }
-    .sidebar-nav { flex: 1; padding: 1rem 0; }
-    .nav-item { display: flex; align-items: center; gap: .6rem; padding: .65rem 1.25rem; cursor: pointer; font-size: .88rem; font-weight: 500; opacity: .75; transition: opacity .15s, background .15s; }
-    .nav-item:hover { opacity: 1; background: rgba(255,255,255,0.07); }
-    .nav-item.active { opacity: 1; background: rgba(255,255,255,0.12); font-weight: 600; }
-    .nav-item .icon { width: 18px; text-align: center; }
+    .sidebar-company-name { font-size: .88rem; font-weight: 700; }
+    .sidebar-company-sub { font-size: .72rem; opacity: .55; margin-top: .15rem; }
+    .sidebar-nav { flex: 1; padding: .75rem 0; }
+    .nav-item {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .65rem 1.25rem; cursor: pointer;
+      font-size: .85rem; font-weight: 500;
+      color: rgba(255,255,255,0.55);
+      transition: all .15s;
+    }
+    .nav-item:hover { color: #fff; background: rgba(255,255,255,0.07); }
+    .nav-item.active { color: #fff; background: rgba(255,255,255,0.12); font-weight: 600; }
+    .nav-item .ni { font-size: 1rem; width: 20px; text-align: center; }
     .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); }
-    .logout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: .6rem 1rem; border-radius: 8px; width: 100%; font-family: 'Inter', sans-serif; font-size: .85rem; cursor: pointer; opacity: .7; transition: opacity .2s; }
-    .logout-btn:hover { opacity: 1; }
+    .powered { font-size: .68rem; color: rgba(255,255,255,0.3); text-align: center; margin-top: .5rem; }
 
-    /* MAIN */
-    .main { margin-left: 240px; flex: 1; }
-    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 1rem 2rem; position: sticky; top: 0; z-index: 5; }
+    /* ── MAIN ── */
+    .main { margin-left: 240px; flex: 1; min-height: 100vh; }
+    .topbar {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem; position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+    }
     .topbar-title { font-size: 1rem; font-weight: 700; }
-    .topbar-sub { font-size: .8rem; color: var(--muted); }
-    .content { padding: 2rem; }
+    .topbar-sub { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+    .topbar-refresh { background: none; border: 1px solid var(--border); border-radius: 8px; padding: .4rem .8rem; font-size: .78rem; cursor: pointer; color: var(--muted); font-family: inherit; transition: all .15s; }
+    .topbar-refresh:hover { border-color: var(--accent); color: var(--accent); }
+    .content { padding: 1.75rem 2rem; }
 
-    /* CARDS */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; }
-    .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    /* ── CARDS ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.25rem; }
+    .card-title { font-size: .95rem; font-weight: 700; margin-bottom: 1rem; }
 
-    /* BADGE */
-    .badge { display: inline-flex; align-items: center; padding: .25rem .7rem; border-radius: 99px; font-size: .73rem; font-weight: 700; }
+    /* ── STATS ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; }
+    .stat-num { font-size: 2rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; font-weight: 500; }
+    .stat-sub { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── BADGE ── */
+    .badge { display: inline-flex; align-items: center; padding: .2rem .65rem; border-radius: 99px; font-size: .72rem; font-weight: 700; }
     .badge-green { background: var(--green-bg); color: var(--green); }
     .badge-orange { background: var(--orange-bg); color: var(--orange); }
     .badge-blue { background: var(--blue-bg); color: var(--accent2); }
+    .badge-gray { background: #f3f4f6; color: #6b7280; }
 
-    /* PROGRESS */
-    .progress-big { height: 12px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
-    .progress-big-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .6s; }
+    /* ── WELCOME ── */
+    .welcome-card {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      color: #fff; border-radius: 16px; padding: 1.75rem; margin-bottom: 1.25rem;
+      border: none;
+    }
+    .welcome-title { font-size: 1.3rem; font-weight: 800; margin-bottom: .4rem; }
+    .welcome-sub { font-size: .88rem; opacity: .8; line-height: 1.6; }
 
-    /* RECS */
-    .rec-grid { display: flex; flex-direction: column; gap: .8rem; }
-    .rec-card { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; display: flex; gap: 1rem; }
-    .rec-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
-    .rec-body { flex: 1; }
-    .rec-name { font-weight: 700; font-size: .95rem; }
-    .rec-vendor { font-size: .78rem; color: var(--muted); margin-bottom: .3rem; }
-    .rec-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; margin-bottom: .45rem; }
-    .rec-why { font-size: .83rem; color: var(--accent); background: var(--blue-bg); border-radius: 8px; padding: .4rem .7rem; display: inline-block; }
-    .rec-meta { display: flex; gap: .75rem; margin-top: .5rem; flex-wrap: wrap; }
-    .rec-meta-item { font-size: .75rem; color: var(--muted); }
-    .rec-meta-item strong { color: var(--text); }
-    .priority-høj { color: #dc2626; }
-    .priority-mellem { color: var(--orange); }
-    .priority-lav { color: var(--muted); }
+    /* ── LEAD LISTE ── */
+    .lead-item {
+      display: flex; align-items: flex-start; gap: 1rem;
+      padding: 1rem; border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .lead-item:last-child { border-bottom: none; }
+    .lead-item:hover { background: #fafbff; }
+    .lead-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--blue-bg); color: var(--accent2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .9rem; flex-shrink: 0;
+    }
+    .lead-body { flex: 1; min-width: 0; }
+    .lead-name { font-weight: 600; font-size: .9rem; }
+    .lead-contact { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+    .lead-msg { font-size: .82rem; color: var(--text); margin-top: .35rem; line-height: 1.5; background: #f8f9fc; border-radius: 8px; padding: .5rem .75rem; }
+    .lead-time { font-size: .72rem; color: var(--muted); flex-shrink: 0; margin-top: .2rem; }
 
-    /* TASKS */
-    .task-group { margin-bottom: 1.5rem; }
-    .task-group-title { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid var(--border); }
-    .task-item { display: flex; align-items: flex-start; gap: .85rem; padding: .9rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 11px; margin-bottom: .5rem; }
-    .task-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-    .task-dot-todo { background: var(--bg2); border: 2px solid var(--border); }
-    .task-dot-in_progress { background: var(--orange); }
-    .task-dot-done { background: var(--green); }
-    .task-title { font-size: .9rem; font-weight: 600; }
-    .task-title.done-text { text-decoration: line-through; color: var(--muted); }
-    .task-desc { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
-    .task-tool { font-size: .73rem; background: var(--bg2); color: var(--muted); padding: .15rem .5rem; border-radius: 5px; margin-left: auto; flex-shrink: 0; }
-    .task-status-label { font-size: .72rem; font-weight: 600; padding: .15rem .5rem; border-radius: 5px; flex-shrink: 0; }
-    .task-status-todo { background: var(--bg2); color: var(--muted); }
-    .task-status-in_progress { background: var(--orange-bg); color: var(--orange); }
-    .task-status-done { background: var(--green-bg); color: var(--green); }
+    /* ── BOOKING LISTE ── */
+    .booking-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem; border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .booking-item:last-child { border-bottom: none; }
+    .booking-item:hover { background: #fafbff; }
+    .booking-date {
+      width: 52px; text-align: center; flex-shrink: 0;
+      background: var(--accent); color: #fff; border-radius: 10px; padding: .5rem .4rem;
+    }
+    .booking-date-day { font-size: 1.2rem; font-weight: 800; line-height: 1; }
+    .booking-date-month { font-size: .6rem; text-transform: uppercase; letter-spacing: .5px; opacity: .8; margin-top: .1rem; }
+    .booking-body { flex: 1; min-width: 0; }
+    .booking-name { font-weight: 600; font-size: .9rem; }
+    .booking-detail { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
+    .booking-right { text-align: right; flex-shrink: 0; }
 
-    /* CHAT */
-    .chat-wrap { display: flex; flex-direction: column; height: 520px; }
-    .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; }
-    .msg { max-width: 75%; }
-    .msg-admin { align-self: flex-start; }
-    .msg-client { align-self: flex-end; }
-    .msg-bubble { padding: .65rem .9rem; border-radius: 14px; font-size: .88rem; line-height: 1.5; }
-    .msg-client .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-    .msg-admin .msg-bubble { background: var(--card); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
-    .msg-time { font-size: .7rem; color: var(--muted); margin-top: .2rem; }
-    .msg-client .msg-time { text-align: right; }
-    .chat-input-row { display: flex; gap: .75rem; }
-    .chat-input { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1rem; font-family: 'Inter', sans-serif; font-size: .9rem; color: var(--text); outline: none; transition: border-color .2s; }
-    .chat-input:focus { border-color: var(--accent2); }
-    .btn-primary { background: var(--accent); color: #fff; border: none; padding: .7rem 1.25rem; border-radius: 9px; font-family: 'Inter', sans-serif; font-size: .88rem; font-weight: 600; cursor: pointer; transition: opacity .2s; }
-    .btn-primary:hover { opacity: .88; }
+    /* ── AGENT STATUS ── */
+    .agent-card {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.25rem; border: 1px solid var(--border);
+      border-radius: 12px; margin-bottom: .75rem; background: var(--card);
+    }
+    .agent-icon { font-size: 1.4rem; width: 44px; height: 44px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .agent-name { font-weight: 600; font-size: .9rem; }
+    .agent-desc { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+    .agent-status { margin-left: auto; flex-shrink: 0; }
+    .online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: .3rem; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-    /* OVERVIEW */
-    .welcome-card { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); color: #fff; border-radius: 16px; padding: 1.75rem; margin-bottom: 1rem; }
-    .welcome-title { font-size: 1.2rem; font-weight: 800; margin-bottom: .35rem; }
-    .welcome-sub { font-size: .9rem; opacity: .8; line-height: 1.5; }
-    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
-    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem; text-align: center; }
-    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
-    .stat-label { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+    /* ── EMPTY ── */
+    .empty { text-align: center; padding: 2.5rem; color: var(--muted); }
+    .empty-icon { font-size: 2rem; margin-bottom: .75rem; }
+    .empty-text { font-size: .88rem; }
 
-    /* CHAT BADGE */
-    .chat-new { display: inline-block; background: #dc2626; color: #fff; width: 18px; height: 18px; border-radius: 50%; font-size: .65rem; font-weight: 800; text-align: center; line-height: 18px; margin-left: .3rem; }
+    /* ── LOADING ── */
+    .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: .85rem; }
 
-    .hidden { display: none !important; }
-    .empty { text-align: center; padding: 2.5rem; color: var(--muted); font-size: .9rem; }
+    /* ── PROGRESS ── */
+    .progress-bar { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .6s; }
   </style>
 </head>
 <body>
 
 <nav class="sidebar">
-  <div class="sidebar-logo">KlarAI <span>Klientportal</span></div>
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-text">KlarAI</div>
+    <div class="sidebar-logo-sub">Klientportal</div>
+  </div>
   <div class="sidebar-company">
-    <div class="sidebar-company-name" id="sidebarCompany">—</div>
-    <div class="sidebar-company-sub" id="sidebarContact">—</div>
+    <div class="sidebar-company-name" id="sidebarName">Indlæser...</div>
+    <div class="sidebar-company-sub" id="sidebarSub">klaiai.dk</div>
   </div>
   <div class="sidebar-nav">
-    <div class="nav-item active" data-view="overview" onclick="showView('overview')"><span class="icon">🏠</span> Overblik</div>
-    <div class="nav-item" data-view="plan" onclick="showView('plan')"><span class="icon">🤖</span> Min AI-plan</div>
-    <div class="nav-item" data-view="tasks" onclick="showView('tasks')"><span class="icon">✅</span> Implementering</div>
-    <div class="nav-item" data-view="chat" onclick="showView('chat')"><span class="icon">💬</span> Chat med KlarAI <span class="chat-new hidden" id="chatNewBadge">!</span></div>
+    <div class="nav-item active" data-view="overblik" onclick="showView('overblik')">
+      <span class="ni">🏠</span> Overblik
+    </div>
+    <div class="nav-item" data-view="leads" onclick="showView('leads')">
+      <span class="ni">🎯</span> Leads <span id="leadBadge" class="hidden" style="margin-left:auto;background:var(--red);color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:99px"></span>
+    </div>
+    <div class="nav-item" data-view="bookinger" onclick="showView('bookinger')">
+      <span class="ni">📅</span> Bookinger
+    </div>
+    <div class="nav-item" data-view="agenter" onclick="showView('agenter')">
+      <span class="ni">🤖</span> Mine agenter
+    </div>
   </div>
   <div class="sidebar-footer">
-    <button class="logout-btn" onclick="logout()">Log ud</button>
+    <div class="powered">Drevet af KlarAI</div>
   </div>
 </nav>
 
 <div class="main">
   <div class="topbar">
-    <div class="topbar-title" id="topbarTitle">Overblik</div>
-    <div class="topbar-sub" id="topbarSub">Din AI-implementeringsportal</div>
+    <div>
+      <div class="topbar-title" id="topbarTitle">Overblik</div>
+      <div class="topbar-sub" id="topbarSub">Din KlarAI portal</div>
+    </div>
+    <button class="topbar-refresh" onclick="loadData()">↻ Opdater</button>
   </div>
   <div class="content">
 
-    <!-- OVERVIEW -->
-    <div id="view-overview">
+    <!-- OVERBLIK -->
+    <div id="view-overblik">
       <div class="welcome-card">
         <div class="welcome-title" id="welcomeTitle">Hej! 👋</div>
-        <div class="welcome-sub" id="welcomeSub">KlarAI er i gang med at implementere AI i jeres virksomhed. Følg fremgangen herunder.</div>
+        <div class="welcome-sub" id="welcomeSub">Herunder kan du følge med i hvad der sker med dine KlarAI agenter.</div>
       </div>
       <div class="stats-row">
-        <div class="stat-card"><div class="stat-num" id="statRecs">0</div><div class="stat-label">AI-systemer planlagt</div></div>
-        <div class="stat-card"><div class="stat-num" id="statTasks">0</div><div class="stat-label">Opgaver i alt</div></div>
-        <div class="stat-card"><div class="stat-num" id="statDone">0</div><div class="stat-label">Afsluttede opgaver</div></div>
+        <div class="stat-card">
+          <div class="stat-num" id="ovLeads">—</div>
+          <div class="stat-label">Leads modtaget</div>
+          <div class="stat-sub">via din hjemmeside</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="ovBookinger">—</div>
+          <div class="stat-label">Bookinger</div>
+          <div class="stat-sub">bekræftet automatisk</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="ovAgenter">—</div>
+          <div class="stat-label">Aktive agenter</div>
+          <div class="stat-sub">kører 24/7</div>
+        </div>
       </div>
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-          <div class="card-title" style="margin:0">Samlet fremgang</div>
-          <div style="font-weight:800;color:var(--accent)" id="overviewPct">0%</div>
-        </div>
-        <div class="progress-big"><div class="progress-big-fill" id="overviewBar" style="width:0%"></div></div>
-        <div style="font-size:.8rem;color:var(--muted);margin-top:.6rem" id="overviewStatus">—</div>
+        <div class="card-title">Seneste leads</div>
+        <div id="ovLeadList"><div class="loading">Henter data...</div></div>
       </div>
+    </div>
+
+    <!-- LEADS -->
+    <div id="view-leads" class="hidden">
+      <div class="card" style="padding:0; overflow:hidden">
+        <div style="padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between">
+          <div class="card-title" style="margin:0">Alle leads</div>
+          <span id="leadCount" style="font-size:.8rem; color:var(--muted)"></span>
+        </div>
+        <div id="leadList"><div class="loading">Henter leads...</div></div>
+      </div>
+    </div>
+
+    <!-- BOOKINGER -->
+    <div id="view-bookinger" class="hidden">
+      <div class="card" style="padding:0; overflow:hidden">
+        <div style="padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between">
+          <div class="card-title" style="margin:0">Alle bookinger</div>
+          <span id="bookingCount" style="font-size:.8rem; color:var(--muted)"></span>
+        </div>
+        <div id="bookingList"><div class="loading">Henter bookinger...</div></div>
+      </div>
+    </div>
+
+    <!-- AGENTER -->
+    <div id="view-agenter" class="hidden">
       <div class="card">
-        <div class="card-title">Næste skridt fra KlarAI</div>
-        <div id="nextTasks"></div>
+        <div class="card-title">Dine aktive agenter</div>
+        <div id="agentList"><div class="loading">Henter agenter...</div></div>
       </div>
-    </div>
-
-    <!-- AI PLAN -->
-    <div id="view-plan" class="hidden">
-      <div class="card" style="margin-bottom:1rem">
-        <div class="card-title">Jeres personlige AI-plan</div>
-        <p style="font-size:.88rem;color:var(--muted);line-height:1.6">Nedenfor er de AI-systemer vi har anbefalet til jeres virksomhed. KlarAI implementerer dem for jer – I behøver ikke at gøre noget selv.</p>
-      </div>
-      <div class="rec-grid" id="planRecs"></div>
-    </div>
-
-    <!-- TASKS -->
-    <div id="view-tasks" class="hidden">
-      <div class="card" style="margin-bottom:1rem">
-        <div class="card-title">Implementeringsoversigt</div>
-        <p style="font-size:.88rem;color:var(--muted);line-height:1.6">KlarAI håndterer alle opgaverne for jer. Her kan I følge med i hvad vi er i gang med og hvad der er klaret.</p>
-      </div>
-      <div id="tasksContent"></div>
-    </div>
-
-    <!-- CHAT -->
-    <div id="view-chat" class="hidden">
-      <div class="card" style="margin-bottom:1rem">
-        <div class="card-title">Chat med KlarAI</div>
-        <p style="font-size:.88rem;color:var(--muted)">Har I spørgsmål eller ønsker? Vi svarer hurtigst muligt.</p>
-      </div>
-      <div class="card" style="padding:0">
-        <div class="chat-wrap" style="padding:1.5rem">
-          <div class="chat-messages" id="chatMessages"></div>
-          <div class="chat-input-row">
-            <input class="chat-input" id="chatInput" placeholder="Skriv en besked..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"/>
-            <button class="btn-primary" onclick="sendMessage()">Send</button>
-          </div>
-        </div>
+      <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-color:#86efac">
+        <div style="font-size:.88rem; font-weight:700; color:var(--green); margin-bottom:.4rem">✅ Alt kører automatisk</div>
+        <div style="font-size:.82rem; color:#166534; line-height:1.6">Dine agenter arbejder 24/7. Chatbotten svarer på spørgsmål, leads modtager automatiske opfølgningsmails og bookinger bekræftes øjeblikkeligt. Du behøver ikke gøre noget.</div>
       </div>
     </div>
 
@@ -208,166 +258,192 @@
 </div>
 
 <script>
-// ── AUTH ──────────────────────────────────────────────────────
-let currentUser = null;
-let clientData = null;
+const API = 'https://klaiai.onrender.com';
+const params = new URLSearchParams(window.location.search);
+const CLIENT_ID = params.get('id') || '';
 
-(function() {
-  const uid = localStorage.getItem('klaiai_current_user');
-  const users = JSON.parse(localStorage.getItem('klaiai_users') || '[]');
-  const user = users.find(u => u.id === uid);
-  if (!user || user.role !== 'client') { window.location.href = 'login.html'; return; }
-  currentUser = user;
-  const clients = JSON.parse(localStorage.getItem('klaiai_clients') || '[]');
-  clientData = clients.find(c => c.id === user.clientId);
-  if (!clientData) { window.location.href = 'login.html'; return; }
-  document.getElementById('sidebarCompany').textContent = clientData.companyName;
-  document.getElementById('sidebarContact').textContent = clientData.contactName;
-})();
+let data = { leads: [], bookinger: [], klient: null, chatbot: null };
 
-function logout() { localStorage.removeItem('klaiai_current_user'); window.location.href = 'login.html'; }
-
-function refreshClient() {
-  const clients = JSON.parse(localStorage.getItem('klaiai_clients') || '[]');
-  clientData = clients.find(c => c.id === currentUser.clientId);
+if (!CLIENT_ID) {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#6b7a99">Intet klient-ID angivet i URL. Tilføj ?id=KLIENT_ID</div>';
 }
 
-function formatTime(ts) {
-  const d = new Date(ts);
-  return d.toLocaleDateString('da-DK', { day:'numeric', month:'short' }) + ' ' + d.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' });
-}
+// ── VIEWS ────────────────────────────────────────────
+const views = ['overblik','leads','bookinger','agenter'];
+const titles = {
+  overblik: ['Overblik', 'Din KlarAI portal'],
+  leads: ['Leads', 'Kunder der har henvendt sig'],
+  bookinger: ['Bookinger', 'Bekræftede bookinger'],
+  agenter: ['Mine agenter', 'AI-agenter der kører for dig']
+};
 
-function getProgress() {
-  const tasks = clientData.tasks || [];
-  if (!tasks.length) return 0;
-  return Math.round(tasks.filter(t => t.status === 'done').length / tasks.length * 100);
-}
-
-// ── VIEWS ─────────────────────────────────────────────────────
-function showView(view) {
-  refreshClient();
-  ['overview','plan','tasks','chat'].forEach(v => {
-    document.getElementById('view-'+v).classList.add('hidden');
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+function showView(v) {
+  views.forEach(id => {
+    document.getElementById('view-'+id)?.classList.add('hidden');
+    document.querySelector(`[data-view="${id}"]`)?.classList.remove('active');
   });
-  document.getElementById('view-'+view).classList.remove('hidden');
-  document.querySelector('[data-view="'+view+'"]')?.classList.add('active');
-
-  const titles = { overview: ['Overblik','Din AI-implementeringsportal'], plan: ['Min AI-plan','AI-systemer vi implementerer for jer'], tasks: ['Implementering','Status på alle opgaver'], chat: ['Chat med KlarAI','Stil spørgsmål og følg med i forløbet'] };
-  const [title, sub] = titles[view];
-  document.getElementById('topbarTitle').textContent = title;
-  document.getElementById('topbarSub').textContent = sub;
-
-  if (view === 'overview') renderOverview();
-  if (view === 'plan') renderPlan();
-  if (view === 'tasks') renderTasks();
-  if (view === 'chat') { renderChat(); document.getElementById('chatNewBadge').classList.add('hidden'); }
+  document.getElementById('view-'+v)?.classList.remove('hidden');
+  document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
+  document.getElementById('topbarTitle').textContent = titles[v][0];
+  document.getElementById('topbarSub').textContent = titles[v][1];
 }
 
-function renderOverview() {
-  const tasks = clientData.tasks || [];
-  const recs = clientData.recommendations || [];
-  const pct = getProgress();
-  const done = tasks.filter(t => t.status === 'done').length;
+// ── LOAD DATA ────────────────────────────────────────
+async function loadData() {
+  if (!CLIENT_ID) return;
+  try {
+    const [statsRes, configRes] = await Promise.all([
+      fetch(`${API}/stats`),
+      fetch(`${API}/widget/${CLIENT_ID}`)
+    ]);
 
-  document.getElementById('welcomeTitle').textContent = `Hej ${clientData.contactName.split(' ')[0]}! 👋`;
-  document.getElementById('welcomeSub').textContent = `KlarAI er i gang med at implementere AI i ${clientData.companyName}. ${pct}% af implementeringen er fuldført.`;
-  document.getElementById('statRecs').textContent = recs.length;
-  document.getElementById('statTasks').textContent = tasks.length;
-  document.getElementById('statDone').textContent = done;
-  document.getElementById('overviewPct').textContent = pct + '%';
-  document.getElementById('overviewBar').style.width = pct + '%';
+    const stats = await statsRes.json();
+    const klient = stats.klienter?.find(k => k.klient_id === CLIENT_ID);
+    data.klient = klient;
 
-  const statusMap = { ny: 'Forløbet er netop oprettet.', analyse: 'AI-analysen er i gang.', plan_klar: 'AI-planen er klar — implementering starter snart.', implementering: 'KlarAI er aktivt i gang med implementeringen.', afsluttet: 'Alle AI-systemer er implementeret. Tillykke!' };
-  document.getElementById('overviewStatus').textContent = statusMap[clientData.status] || '';
+    if (configRes.ok) data.chatbot = await configRes.json();
 
-  const next = tasks.filter(t => t.status !== 'done').slice(0,3);
-  document.getElementById('nextTasks').innerHTML = next.length ? next.map(t => `
-    <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem 0;border-bottom:1px solid var(--border)">
-      <div style="width:10px;height:10px;border-radius:50%;background:${t.status==='in_progress'?'var(--orange)':'var(--bg2)'};border:${t.status==='todo'?'2px solid var(--border)':'none'};flex-shrink:0"></div>
-      <div style="flex:1">
-        <div style="font-size:.88rem;font-weight:600">${t.title}</div>
-        <div style="font-size:.75rem;color:var(--muted)">${t.tool}</div>
-      </div>
-      <span style="font-size:.73rem;font-weight:600;padding:.15rem .5rem;border-radius:5px;background:${t.status==='in_progress'?'var(--orange-bg)':'var(--bg2)'};color:${t.status==='in_progress'?'var(--orange)':'var(--muted)'}">${t.status==='in_progress'?'I gang':'Ikke startet'}</span>
+    // Sæt navn
+    const navn = data.klient?.navn || data.chatbot?.navn || 'din virksomhed';
+    document.getElementById('sidebarName').textContent = navn;
+    document.getElementById('welcomeTitle').textContent = `Hej, ${navn.split(' ')[0]}! 👋`;
+    document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine KlarAI agenter laver for dig.`;
+    document.title = `KlarAI – ${navn}`;
+
+    // Stats
+    const leads = klient?.leads || 0;
+    const bookinger = klient?.bookinger || 0;
+    document.getElementById('ovLeads').textContent = leads;
+    document.getElementById('ovBookinger').textContent = bookinger;
+    document.getElementById('ovAgenter').textContent = '2'; // chatbot + lead
+
+    // Lead badge
+    if (leads > 0) {
+      document.getElementById('leadBadge').textContent = leads;
+      document.getElementById('leadBadge').classList.remove('hidden');
+    }
+
+    renderOverblikLeads();
+    renderLeads();
+    renderBookinger();
+    renderAgenter();
+
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ── RENDER OVERBLIK LEADS ────────────────────────────
+function renderOverblikLeads() {
+  const el = document.getElementById('ovLeadList');
+  const leads = data.leads;
+  if (!leads.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Ingen leads endnu — de dukker op her når kunder udfylder formularen på din hjemmeside.</div></div>`;
+    return;
+  }
+  el.innerHTML = leads.slice(0,3).map(l => leadHTML(l)).join('');
+}
+
+// ── RENDER LEADS ─────────────────────────────────────
+function renderLeads() {
+  const leads = data.leads;
+  document.getElementById('leadCount').textContent = leads.length ? `${leads.length} lead${leads.length !== 1 ? 's' : ''}` : '';
+  const el = document.getElementById('leadList');
+  if (!leads.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Ingen leads endnu.<br>Når kunder udfylder formularen på din hjemmeside, vises de her.</div></div>`;
+    return;
+  }
+  el.innerHTML = leads.map(l => leadHTML(l)).join('');
+}
+
+function leadHTML(l) {
+  const initials = (l.navn || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+  return `<div class="lead-item">
+    <div class="lead-avatar">${initials}</div>
+    <div class="lead-body">
+      <div class="lead-name">${l.navn || '—'}</div>
+      <div class="lead-contact">${l.email || ''} ${l.telefon ? '· ' + l.telefon : ''} ${l.virksomhed ? '· ' + l.virksomhed : ''}</div>
+      ${l.besked ? `<div class="lead-msg">"${l.besked}"</div>` : ''}
     </div>
-  `).join('') : '<div style="font-size:.88rem;color:var(--green);font-weight:600;padding:.5rem 0">✓ Alle opgaver er afsluttet!</div>';
+    <div class="lead-time">${dato}</div>
+  </div>`;
 }
 
-function renderPlan() {
-  const recs = clientData.recommendations || [];
-  document.getElementById('planRecs').innerHTML = recs.length ? recs.map(r => `
-    <div class="rec-card">
-      <div class="rec-icon">${r.icon}</div>
-      <div class="rec-body">
-        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.2rem">
-          <div class="rec-name">${r.name}</div>
-          <span class="badge ${r.priority==='høj'?'badge-orange':r.priority==='lav'?'badge-green':'badge-blue'}">${r.priority} prioritet</span>
-        </div>
-        <div class="rec-vendor">${r.vendor} · ${r.category}</div>
-        <div class="rec-desc">${r.description}</div>
-        <div class="rec-why">💡 ${r.whyFit}</div>
-        <div class="rec-meta">
-          <div class="rec-meta-item"><strong>Månedlig pris:</strong> ${r.monthlyCost}</div>
-          <div class="rec-meta-item"><strong>Implementeringstid:</strong> ${r.implementationTime}</div>
-        </div>
+// ── RENDER BOOKINGER ─────────────────────────────────
+function renderBookinger() {
+  const bookinger = data.bookinger;
+  document.getElementById('bookingCount').textContent = bookinger.length ? `${bookinger.length} booking${bookinger.length !== 1 ? 'er' : ''}` : '';
+  const el = document.getElementById('bookingList');
+  if (!bookinger.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">Ingen bookinger endnu.<br>Når kunder booker via din hjemmeside, vises de her.</div></div>`;
+    return;
+  }
+  el.innerHTML = bookinger.map(b => {
+    const dato = b.dato ? new Date(b.dato) : null;
+    const dag = dato ? dato.getDate() : '—';
+    const mdr = dato ? dato.toLocaleDateString('da-DK', { month:'short' }) : '';
+    return `<div class="booking-item">
+      <div class="booking-date">
+        <div class="booking-date-day">${dag}</div>
+        <div class="booking-date-month">${mdr}</div>
       </div>
-    </div>
-  `).join('') : '<div class="empty">AI-planen er ikke klar endnu. KlarAI arbejder på den.</div>';
-}
-
-function renderTasks() {
-  const tasks = clientData.tasks || [];
-  const groups = { in_progress: { label: '🔶 I gang', items: [] }, todo: { label: '⬜ Ikke startet', items: [] }, done: { label: '✅ Afsluttet', items: [] } };
-  tasks.forEach(t => groups[t.status].items.push(t));
-
-  const html = Object.entries(groups).map(([status, group]) => {
-    if (!group.items.length) return '';
-    return `<div class="task-group">
-      <div class="task-group-title">${group.label} (${group.items.length})</div>
-      ${group.items.map(t => `
-        <div class="task-item">
-          <div class="task-dot task-dot-${t.status}"></div>
-          <div style="flex:1">
-            <div class="task-title ${t.status==='done'?'done-text':''}">${t.title}</div>
-            <div class="task-desc">${t.description}</div>
-          </div>
-          <span class="task-tool">${t.tool}</span>
-          <span class="task-status-label task-status-${t.status}">${{todo:'Ikke startet',in_progress:'I gang',done:'Afsluttet'}[t.status]}</span>
-        </div>
-      `).join('')}
+      <div class="booking-body">
+        <div class="booking-name">${b.navn || '—'}</div>
+        <div class="booking-detail">Kl. ${b.tid || '—'} ${b.ydelse ? '· ' + b.ydelse : ''} ${b.telefon ? '· ' + b.telefon : ''}</div>
+      </div>
+      <div class="booking-right">
+        <span class="badge badge-green">Bekræftet</span>
+        ${b.email ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">${b.email}</div>` : ''}
+      </div>
     </div>`;
   }).join('');
-  document.getElementById('tasksContent').innerHTML = html || '<div class="empty">Ingen opgaver endnu.</div>';
 }
 
-function renderChat() {
-  const msgs = clientData.messages || [];
-  const container = document.getElementById('chatMessages');
-  container.innerHTML = msgs.map(m => `
-    <div class="msg msg-${m.from}">
-      <div class="msg-bubble">${m.text}</div>
-      <div class="msg-time">${m.from === 'admin' ? 'KlarAI' : clientData.contactName} · ${formatTime(m.timestamp)}</div>
+// ── RENDER AGENTER ───────────────────────────────────
+function renderAgenter() {
+  const agenter = [
+    { icon: '💬', navn: 'Chatbot', desc: 'Svarer på spørgsmål om din virksomhed 24/7 på din hjemmeside', aktiv: true },
+    { icon: '🎯', navn: 'Lead-agent', desc: 'Sender automatiske opfølgningsmails til nye leads', aktiv: true },
+    { icon: '📅', navn: 'Booking-agent', desc: 'Modtager og bekræfter bookinger automatisk', aktiv: data.bookinger?.length > 0 || true },
+  ];
+
+  document.getElementById('agentList').innerHTML = agenter.map(a => `
+    <div class="agent-card">
+      <div class="agent-icon">${a.icon}</div>
+      <div style="flex:1">
+        <div class="agent-name">${a.navn}</div>
+        <div class="agent-desc">${a.desc}</div>
+      </div>
+      <div class="agent-status">
+        ${a.aktiv
+          ? `<span class="badge badge-green"><span class="online-dot"></span>Aktiv</span>`
+          : `<span class="badge badge-gray">Inaktiv</span>`}
+      </div>
     </div>
   `).join('');
-  container.scrollTop = container.scrollHeight;
 }
 
-function sendMessage() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
-  const clients = JSON.parse(localStorage.getItem('klaiai_clients') || '[]');
-  const client = clients.find(c => c.id === clientData.id);
-  client.messages.push({ id: 'msg_'+Date.now(), from: 'client', text, timestamp: new Date().toISOString() });
-  localStorage.setItem('klaiai_clients', JSON.stringify(clients));
-  clientData = client;
-  input.value = '';
-  renderChat();
+// ── LEADS FRA SUPABASE via nyt endpoint ──────────────
+async function loadLeadsOgBookinger() {
+  try {
+    const [lr, br] = await Promise.all([
+      fetch(`${API}/leads/${CLIENT_ID}`),
+      fetch(`${API}/bookinger/${CLIENT_ID}`)
+    ]);
+    if (lr.ok) data.leads = (await lr.json()).leads || [];
+    if (br.ok) data.bookinger = (await br.json()).bookinger || [];
+  } catch(e) {}
+  renderOverblikLeads();
+  renderLeads();
+  renderBookinger();
 }
 
 // Init
-showView('overview');
+if (CLIENT_ID) {
+  loadData().then(() => loadLeadsOgBookinger());
+}
+showView('overblik');
 </script>
 </body>
 </html>

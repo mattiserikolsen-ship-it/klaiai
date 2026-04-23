@@ -345,6 +345,32 @@ Med venlig hilsen
     return jsonify({'success': True, 'booking': booking.get('navn')})
 
 
+# ── KLIENT PORTAL ENDPOINTS ────────────────────────────
+
+@app.route('/leads/<klient_id>', methods=['GET'])
+def get_leads(klient_id):
+    """Henter leads for en klient"""
+    if not db:
+        return jsonify({'leads': []})
+    try:
+        res = db.table('leads').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        return jsonify({'leads': res.data or []})
+    except Exception as e:
+        return jsonify({'leads': [], 'error': str(e)})
+
+
+@app.route('/bookinger/<klient_id>', methods=['GET'])
+def get_bookinger(klient_id):
+    """Henter bookinger for en klient"""
+    if not db:
+        return jsonify({'bookinger': []})
+    try:
+        res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        return jsonify({'bookinger': res.data or []})
+    except Exception as e:
+        return jsonify({'bookinger': [], 'error': str(e)})
+
+
 # ── GENERAL ────────────────────────────────────────────
 
 @app.route('/stats', methods=['GET'])
