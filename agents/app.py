@@ -10,9 +10,8 @@ from flask_cors import CORS
 import anthropic
 import json
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 app = Flask(__name__)
 CORS(app)
@@ -20,8 +19,8 @@ CORS(app)
 ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
-GMAIL_USER = os.environ.get('GMAIL_USER', '')
-GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
+SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')  # din verificerede email
 
 
 # ── HELPERS ────────────────────────────────────────────
@@ -114,7 +113,7 @@ def modtag_lead():
     mails = []
     for nr in [1, 2, 3]:
         mail = generer_lead_mail(lead, klient_info, nr)
-        if send_nu and lead.get('email') and GMAIL_USER:
+        if send_nu and lead.get('email') and SENDGRID_API_KEY:
             sendt = send_mail(lead['email'], mail['emne'], mail['tekst'], klient_info['navn'])
             mail['sendt'] = sendt
         else:
@@ -171,19 +170,22 @@ TEKST:
 
 
 def send_mail(til, emne, tekst, fra_navn):
-    if not GMAIL_USER or not GMAIL_APP_PASSWORD:
+    if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return False
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = emne
-        msg['From'] = f"{fra_navn} <{GMAIL_USER}>"
-        msg['To'] = til
-        msg.attach(MIMEText(tekst, 'plain', 'utf-8'))
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
-            s.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            s.sendmail(GMAIL_USER, til, msg.as_string())
+        html = '<br>'.join(tekst.split('\n'))
+        message = Mail(
+            from_email=(SENDGRID_FROM, fra_navn),
+            to_emails=til,
+            subject=emne,
+            plain_text_content=tekst,
+            html_content=f'<div style="font-family:Arial,sans-serif;max-width:600px;padding:20px">{html}</div>'
+        )
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        sg.send(message)
         return True
-    except:
+    except Exception as e:
+        print(f"SendGrid fejl: {e}")
         return False
 
 
@@ -195,7 +197,7 @@ def health():
     return jsonify({
         'status': 'ok',
         'klienter': list(klienter.keys()),
-        'gmail': bool(GMAIL_USER)
+        'mail': bool(SENDGRID_API_KEY)
     })
 
 @app.route('/', methods=['GET'])
