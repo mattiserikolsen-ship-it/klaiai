@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <title>KlarAI — Installationsguide til Berlepool og Spa</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a2e; background: #fff; padding: 48px; max-width: 800px; margin: 0 auto; }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
+
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 2px solid #0a5c8a; }
+    .logo { font-size: 1.5rem; font-weight: 800; color: #0a2463; }
+    .logo span { color: #0a5c8a; }
+    .header-sub { font-size: .8rem; color: #888; text-align: right; }
+
+    h1 { font-size: 1.6rem; font-weight: 800; color: #0a2463; margin-bottom: .4rem; }
+    .intro { font-size: .95rem; color: #555; line-height: 1.6; margin-bottom: 36px; }
+
+    .section { margin-bottom: 36px; }
+    .section-badge {
+      display: inline-block; background: #0a5c8a; color: #fff;
+      font-size: .7rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+      padding: .25rem .7rem; border-radius: 20px; margin-bottom: .75rem;
+    }
+    h2 { font-size: 1.1rem; font-weight: 700; color: #0a2463; margin-bottom: .5rem; }
+    p { font-size: .88rem; color: #444; line-height: 1.65; margin-bottom: .75rem; }
+
+    .steps { counter-reset: step; }
+    .step { display: flex; gap: 1rem; margin-bottom: 1rem; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #0a5c8a; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; flex-shrink: 0; margin-top: .1rem;
+    }
+    .step-body { flex: 1; }
+    .step-title { font-size: .88rem; font-weight: 600; color: #0a2463; margin-bottom: .2rem; }
+    .step-desc { font-size: .82rem; color: #555; line-height: 1.55; }
+
+    .code-box {
+      background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 1rem 1.25rem; margin: .75rem 0;
+      font-family: 'Courier New', monospace; font-size: .75rem;
+      color: #1e3a5f; line-height: 1.6; word-break: break-all;
+    }
+
+    .tip {
+      background: #eff8ff; border-left: 3px solid #0a5c8a;
+      padding: .75rem 1rem; border-radius: 0 8px 8px 0;
+      font-size: .82rem; color: #1e3a5f; margin: .75rem 0; line-height: 1.55;
+    }
+
+    .result-box {
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+      padding: 1rem 1.25rem; margin-top: .75rem;
+    }
+    .result-box p { color: #166534; margin: 0; font-size: .85rem; }
+
+    .divider { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
+
+    .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+    .footer p { font-size: .75rem; color: #aaa; }
+
+    .print-btn {
+      background: #0a2463; color: #fff; border: none; padding: .7rem 1.5rem;
+      border-radius: 8px; font-size: .9rem; font-weight: 600; cursor: pointer;
+      margin-bottom: 32px; display: block;
+    }
+    .print-btn:hover { opacity: .88; }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn no-print" onclick="window.print()">🖨 Gem som PDF / Print</button>
+
+  <div class="header">
+    <div>
+      <div class="logo">Klar<span>AI</span></div>
+      <div style="font-size:.75rem;color:#888;margin-top:.2rem">AI-agenter til din virksomhed</div>
+    </div>
+    <div class="header-sub">
+      Installationsguide<br>
+      <strong>Berlepool og Spa</strong><br>
+      swimmingpool.dk
+    </div>
+  </div>
+
+  <h1>Kom i gang på 10 minutter</h1>
+  <p class="intro">Denne guide viser dig hvordan du installerer KlarAI på swimmingpool.dk. Du behøver ikke en udvikler — det kan gøres direkte i WordPress admin. Når det er sat op, svarer chatbotten automatisk på kundespørgsmål og lead-formularen sender opfølgningsmails automatisk.</p>
+
+  <!-- DEL 1: CHATBOT -->
+  <div class="section">
+    <div class="section-badge">Del 1 af 2</div>
+    <h2>Chatbot — vises på alle sider</h2>
+    <p>Chatbotten er en lille chat-knap der dukker op i hjørnet af hjemmesiden. Den svarer automatisk på spørgsmål om priser, ydelser, åbningstider og mere.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Installer plugin: WPCode</div>
+          <div class="step-desc">Gå til <strong>WordPress Admin → Plugins → Tilføj ny</strong>. Søg efter <strong>WPCode</strong> og tryk "Installer" og derefter "Aktiver".</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Åbn Header & Footer indstillinger</div>
+          <div class="step-desc">I venstre menu vises nu <strong>WPCode</strong>. Klik på det og vælg <strong>Header & Footer</strong>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Indsæt koden i Footer-feltet</div>
+          <div class="step-desc">Kopiér koden nedenfor og indsæt den i feltet der hedder <strong>Footer</strong>. Tryk "Gem ændringer".</div>
+          <div class="code-box">&lt;script src="https://klaiai.dk/chatbot.js"
+  data-client="550e8400-e29b-41d4-a716-446655440001"
+  data-color="#0a5c8a"&gt;
+&lt;/script&gt;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-box">
+      <p>✅ Chatbotten er nu aktiv på hele swimmingpool.dk. Besøgende ser en chat-knap i hjørnet og kan stille spørgsmål 24/7.</p>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- DEL 2: LEAD FORMULAR -->
+  <div class="section">
+    <div class="section-badge">Del 2 af 2</div>
+    <h2>Lead formular — erstat "Kontakt os" formularen</h2>
+    <p>Formularen erstatter jeres eksisterende kontaktformular. Når en kunde sender en forespørgsel, modtager de et automatisk svar inden for sekunder — og 2 opfølgningsmails over de næste dage.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Åbn kontaktsiden i WordPress</div>
+          <div class="step-desc">Gå til <strong>WordPress Admin → Sider</strong> og åbn den side hvor jeres kontaktformular sidder (typisk "Kontakt" eller "Få et tilbud").</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Tilføj en "Tilpasset HTML" blok</div>
+          <div class="step-desc">I sideeditoren — klik på <strong>+</strong> for at tilføje en ny blok. Søg efter <strong>"Tilpasset HTML"</strong> og vælg den. Placer den der hvor formularen skal vises.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Indsæt koden</div>
+          <div class="step-desc">Kopiér koden nedenfor og indsæt den i HTML-blokken. Tryk "Opdater" eller "Udgiv".</div>
+          <div class="code-box">&lt;script src="https://klaiai.dk/lead-form.js"
+  data-client="550e8400-e29b-41d4-a716-446655440001"
+  data-color="#0a5c8a"
+  data-title="Få et uforpligtende tilbud"
+  data-subtitle="Udfyld formularen og vi vender tilbage hurtigst muligt."
+  data-btn="Send forespørgsel"&gt;
+&lt;/script&gt;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>Tip:</strong> Slet eller skjul jeres gamle kontaktformular så der ikke er to formularer på samme side.
+    </div>
+
+    <div class="result-box">
+      <p>✅ Alle nye forespørgsler besvares automatisk. I behøver kun tage over når kunden er klar til at købe.</p>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- HVAD SKER DER NU -->
+  <div class="section">
+    <h2>Hvad sker der nu?</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">✉</div>
+        <div class="step-body">
+          <div class="step-title">Automatisk svar inden for sekunder</div>
+          <div class="step-desc">Kunden modtager en personlig mail fra Berlepool og Spa umiddelbart efter de sender forespørgslen.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">📅</div>
+        <div class="step-body">
+          <div class="step-title">2 opfølgningsmails over de næste dage</div>
+          <div class="step-desc">Kunder der ikke har svaret får automatisk en venlig opfølgning — ingen leads går tabt.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">💬</div>
+        <div class="step-body">
+          <div class="step-title">Chatbot svarer 24/7</div>
+          <div class="step-desc">Spørgsmål om priser, ydelser og åbningstider besvares automatisk — også udenfor arbejdstid.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>KlarAI — AI-agenter til danske virksomheder</p>
+    <p>Spørgsmål? Kontakt Mattis</p>
+  </div>
+
+</body>
+</html>
