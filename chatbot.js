@@ -6,7 +6,7 @@
   const script = document.currentScript || document.querySelector('script[data-client]');
   const CLIENT_ID = script?.getAttribute('data-client') || 'demo';
   const COLOR = script?.getAttribute('data-color') || '#0a2463';
-  const API_URL = script?.getAttribute('data-api') || 'http://localhost:5001';
+  const API_URL = script?.getAttribute('data-api') || 'https://klaiai.onrender.com';
 
   let history = [];
   let isOpen = false;
