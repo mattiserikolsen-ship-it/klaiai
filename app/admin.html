@@ -946,35 +946,60 @@
             <select class="form-input form-select" id="bookingClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
           </div>
           <div class="generator-section">
-            <div class="generator-section-title">Booking indstillinger</div>
+            <div class="generator-section-title">Grundindstillinger</div>
             <div class="form-grid">
               <div class="form-group">
-                <label class="form-label">Ydelsesnavn</label>
-                <input class="form-input" id="bookingService" placeholder="Fx: Poolrengøring, Konsultation"/>
+                <label class="form-label">Widget titel</label>
+                <input class="form-input" id="bk_titel" placeholder="Book en tid" value="Book en tid"/>
               </div>
               <div class="form-group">
-                <label class="form-label">Varighed (minutter)</label>
-                <input class="form-input" id="bookingDuration" type="number" placeholder="60"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Åbningstid (fra)</label>
-                <input class="form-input" id="bookingFrom" type="time" value="08:00"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Åbningstid (til)</label>
-                <input class="form-input" id="bookingTo" type="time" value="17:00"/>
-              </div>
-              <div class="form-group full">
-                <label class="form-label">Bekræftelsesmail tekst</label>
-                <textarea class="form-input" id="bookingConfirm" placeholder="Din booking er bekræftet! Vi glæder os til at se dig..."></textarea>
+                <label class="form-label">Primær farve</label>
+                <input class="form-input" id="bk_farve" type="color" value="#0a2463"/>
               </div>
             </div>
           </div>
-          <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem" onclick="generateBooking()">✨ Generer booking widget</button>
+          <div class="generator-section">
+            <div class="generator-section-title">Ydelser</div>
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:.5rem">Én ydelse per linje</div>
+            <textarea class="form-input" id="bk_ydelser" rows="4" placeholder="Poolrengøring&#10;Kemikaliecheck&#10;Vinterlukning&#10;Åbning af pool"></textarea>
+          </div>
+          <div class="generator-section">
+            <div class="generator-section-title">Tilgængelighed</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Åbner kl.</label>
+                <input class="form-input" id="bk_start" type="time" value="09:00"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Lukker kl.</label>
+                <input class="form-input" id="bk_slut" type="time" value="17:00"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Varighed (min)</label>
+                <input class="form-input" id="bk_varighed" type="number" value="60" min="15" step="15"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Buffer mellem tider (min)</label>
+                <input class="form-input" id="bk_buffer" type="number" value="0" min="0" step="15"/>
+              </div>
+            </div>
+            <div style="margin-top:.75rem">
+              <label class="form-label">Tilgængelige dage</label>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem">
+                ${['Man','Tir','Ons','Tor','Fre','Lør','Søn'].map((d,i) => `
+                  <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;cursor:pointer">
+                    <input type="checkbox" value="${i+1}" class="bk_dag" ${i<5?'checked':''}/>
+                    ${d}
+                  </label>`).join('')}
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-generate" style="width:100%;justify-content:center;padding:1rem;font-size:.95rem" onclick="generateBooking()">✨ Gem konfiguration & generer embed kode</button>
           <div id="bookingResult" class="hidden" style="margin-top:1.25rem">
-            <div class="generator-section-title">Embed kode</div>
+            <div class="generator-section-title">Embed kode — indsæt på klientens hjemmeside</div>
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:.5rem">Klienten indsætter denne kode det sted på siden, hvor bookingwidgetten skal vises.</div>
             <div class="generated-embed" id="bookingEmbed"></div>
-            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('bookingEmbed')">📋 Kopiér kode</button>
+            <button class="btn btn-secondary btn-sm copy-btn" style="margin-top:.75rem" onclick="copyEmbed('bookingEmbed')">📋 Kopiér embed kode</button>
           </div>
         </div>
       </div>
@@ -1729,25 +1754,40 @@ function generateMailFlow() {
 }
 
 // BOOKING
-function generateBooking() {
+async function generateBooking() {
   const client = clients.find(c => c.id === document.getElementById('bookingClientSel').value);
-  const service = document.getElementById('bookingService').value || 'Konsultation';
-  const duration = document.getElementById('bookingDuration').value || '60';
-  const from = document.getElementById('bookingFrom').value || '08:00';
-  const to = document.getElementById('bookingTo').value || '17:00';
+  const titel = document.getElementById('bk_titel').value || 'Book en tid';
+  const farve = document.getElementById('bk_farve').value || '#0a2463';
+  const ydelser = document.getElementById('bk_ydelser').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const dage = [...document.querySelectorAll('.bk_dag:checked')].map(el => parseInt(el.value));
+  const start_tid = document.getElementById('bk_start').value || '09:00';
+  const slut_tid = document.getElementById('bk_slut').value || '17:00';
+  const varighed = parseInt(document.getElementById('bk_varighed').value) || 60;
+  const buffer = parseInt(document.getElementById('bk_buffer').value) || 0;
+
+  if (ydelser.length === 0) ydelser.push('Konsultation');
+
+  const bookingCfg = { titel, farve, ydelser, dage, start_tid, slut_tid, varighed, buffer };
+
+  // Gem i Supabase
+  if (client) {
+    try {
+      await fetch(AGENT_URL + '/booking-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ klient_id: client.id, ...bookingCfg })
+      });
+    } catch(e) { console.warn('Booking config sync fejlede:', e); }
+    markProductGenerated(client.id, 'booking');
+  }
 
   const embed = `<!-- KlarAI Booking Widget ${client?'· '+client.name:''} -->
-<iframe
-  src="https://klaiai.dk/booking?client=${client?.id||'demo'}&service=${encodeURIComponent(service)}&duration=${duration}&from=${from}&to=${to}"
-  width="100%"
-  height="600"
-  frameborder="0"
-  style="border-radius:12px; box-shadow:0 4px 24px rgba(0,0,0,0.1)">
-</iframe>`;
+<script src="https://klaiai.dk/booking-widget.js"
+  data-client="${client?.id||'demo'}">
+<\/script>`;
 
   document.getElementById('bookingEmbed').textContent = embed;
   document.getElementById('bookingResult').classList.remove('hidden');
-  if (client) { markProductGenerated(client.id, 'booking'); alert(`✅ Booking genereret til ${client.name}!`); }
 }
 
 // RAPPORT

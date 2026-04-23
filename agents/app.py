@@ -239,6 +239,112 @@ def send_mail(til, emne, tekst, fra_navn):
         return False
 
 
+# ── BOOKING ENDPOINTS ──────────────────────────────────
+
+@app.route('/booking-config/<klient_id>', methods=['GET'])
+def get_booking_config(klient_id):
+    """Henter booking konfiguration for en klient"""
+    if db:
+        try:
+            res = db.table('booking_config').select('*').eq('klient_id', klient_id).single().execute()
+            if res.data:
+                cfg = res.data
+                return jsonify({
+                    'titel': cfg.get('titel', 'Book en tid'),
+                    'farve': cfg.get('farve', '#0a2463'),
+                    'ydelser': cfg.get('ydelser', ['Konsultation']),
+                    'dage': cfg.get('dage', [1,2,3,4,5]),
+                    'start_tid': cfg.get('start_tid', '09:00'),
+                    'slut_tid': cfg.get('slut_tid', '17:00'),
+                    'varighed': cfg.get('varighed', 60),
+                    'buffer': cfg.get('buffer', 0)
+                })
+        except:
+            pass
+    return jsonify({'titel': 'Book en tid', 'farve': '#0a2463', 'ydelser': ['Konsultation'], 'dage': [1,2,3,4,5], 'start_tid': '09:00', 'slut_tid': '17:00', 'varighed': 60, 'buffer': 0})
+
+
+@app.route('/booking-config', methods=['POST'])
+def gem_booking_config():
+    """Gemmer booking konfiguration"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    data = request.json
+    klient_id = data.get('klient_id')
+    if not klient_id:
+        return jsonify({'error': 'klient_id mangler'}), 400
+    try:
+        cfg = {
+            'klient_id': klient_id,
+            'titel': data.get('titel', 'Book en tid'),
+            'farve': data.get('farve', '#0a2463'),
+            'ydelser': data.get('ydelser', ['Konsultation']),
+            'dage': data.get('dage', [1,2,3,4,5]),
+            'start_tid': data.get('start_tid', '09:00'),
+            'slut_tid': data.get('slut_tid', '17:00'),
+            'varighed': data.get('varighed', 60),
+            'buffer': data.get('buffer', 0)
+        }
+        res = db.table('booking_config').upsert(cfg, on_conflict='klient_id').execute()
+        return jsonify({'success': True, 'config': res.data[0] if res.data else {}})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/booking', methods=['POST'])
+def modtag_booking():
+    """Modtager en ny booking og sender bekræftelsesmail"""
+    data = request.json
+    booking = data.get('booking', {})
+    klient_id = data.get('client', 'demo')
+
+    if not booking.get('email') or not booking.get('navn'):
+        return jsonify({'error': 'Booking mangler email eller navn'}), 400
+
+    # Gem i Supabase
+    if db:
+        try:
+            db.table('bookinger').insert({
+                'klient_id': klient_id,
+                'navn': booking.get('navn', ''),
+                'email': booking.get('email', ''),
+                'telefon': booking.get('telefon', ''),
+                'ydelse': booking.get('ydelse', ''),
+                'dato': booking.get('dato', ''),
+                'tid': booking.get('tid', ''),
+                'besked': booking.get('besked', ''),
+                'status': 'bekræftet'
+            }).execute()
+        except Exception as e:
+            print(f"Booking DB fejl: {e}")
+
+    # Hent klientnavn
+    klient = get_klient(klient_id)
+    klient_navn = klient.get('navn', 'Virksomheden')
+
+    # Send bekræftelsesmail til kunden
+    if SENDGRID_API_KEY and booking.get('email'):
+        dato_str = booking.get('dato', '')
+        tid_str = booking.get('tid', '')
+        ydelse_str = booking.get('ydelse', '')
+        emne = f"Bookingbekræftelse — {klient_navn}"
+        tekst = f"""Hej {booking.get('navn', '')},
+
+Din booking er bekræftet!
+
+Dato: {dato_str}
+Tidspunkt: {tid_str}
+{f'Ydelse: {ydelse_str}' if ydelse_str else ''}
+
+Vi glæder os til at se dig. Har du spørgsmål, er du altid velkommen til at kontakte os.
+
+Med venlig hilsen
+{klient_navn}"""
+        send_mail(booking['email'], emne, tekst, klient_navn)
+
+    return jsonify({'success': True, 'booking': booking.get('navn')})
+
+
 # ── GENERAL ────────────────────────────────────────────
 
 @app.route('/health', methods=['GET'])
