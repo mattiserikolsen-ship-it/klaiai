@@ -1168,6 +1168,49 @@ const PRODUCTS = {
 
 function saveClients() { localStorage.setItem('klarai_clients', JSON.stringify(clients)); }
 
+async function syncKlientToDB(client) {
+  try {
+    await fetch(AGENT_URL + '/klient', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: client.id,
+        navn: client.name,
+        email: client.email || '',
+        kontakt: client.contact || '',
+        telefon: client.phone || '',
+        hjemmeside: client.website || '',
+        beskrivelse: client.desc || '',
+        startpris: client.startpris || 0,
+        mdpris: client.mdpris || 0,
+        status: client.status || 'opsætning',
+        produkter: client.products || []
+      })
+    });
+  } catch(e) { console.warn('DB sync fejlede:', e); }
+}
+
+async function syncChatbotConfigToDB(clientId, cfg) {
+  try {
+    await fetch(AGENT_URL + '/chatbot-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        klient_id: clientId,
+        chatbot_navn: cfg.chatbot_navn,
+        velkomst: cfg.velkomst,
+        farve: cfg.farve,
+        åbningstider: cfg.info?.åbningstider || '',
+        kontakt: cfg.info?.kontakt || '',
+        ydelser: cfg.info?.ydelser || '',
+        priser: cfg.info?.priser || '',
+        adresse: cfg.info?.adresse || '',
+        andet: cfg.info?.andet || ''
+      })
+    });
+  } catch(e) { console.warn('Chatbot config sync fejlede:', e); }
+}
+
 // ── NAVIGATION ────────────────────────────────────────
 const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
 const topbarInfo = {
@@ -1323,6 +1366,7 @@ function createClient() {
 
   clients.push(client);
   saveClients();
+  syncKlientToDB(client);
 
   // Reset form
   ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris'].forEach(id => document.getElementById(id).value = '');
@@ -1549,6 +1593,7 @@ function generateChatbot() {
   if (client) {
     client.chatbotConfig = chatbotConfig;
     saveClients();
+    syncChatbotConfigToDB(client.id, chatbotConfig);
   }
 
   const embed = `<!-- KlarAI Chatbot ${client?'· '+client.name:''} -->
@@ -1565,15 +1610,6 @@ function generateChatbot() {
 
   if (client) {
     markProductGenerated(client.id, 'chatbot');
-    // Vis også JSON-konfigurationen så man kan kopiere til agents/clients_config.json
-    const jsonOutput = JSON.stringify({
-      [client.id]: {
-        navn: client.name,
-        ...chatbotConfig
-      }
-    }, null, 2);
-    document.getElementById('chatbotConfigJson').textContent = jsonOutput;
-    document.getElementById('chatbotConfigWrap').classList.remove('hidden');
   }
 }
 
@@ -2080,6 +2116,7 @@ function saveEditClient() {
   currentClient.mdpris = document.getElementById('edit_mdpris').value;
   currentClient.status = document.getElementById('edit_status').value;
   saveClients();
+  syncKlientToDB(currentClient);
   closeEditModal();
   openClient(currentClient.id);
 }
