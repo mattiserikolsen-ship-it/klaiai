@@ -182,10 +182,13 @@ def send_mail(til, emne, tekst, fra_navn):
             html_content=f'<div style="font-family:Arial,sans-serif;max-width:600px;padding:20px">{html}</div>'
         )
         sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
-        return True
+        response = sg.send(message)
+        print(f"SendGrid status: {response.status_code}")
+        return response.status_code in [200, 202]
     except Exception as e:
         print(f"SendGrid fejl: {e}")
+        if hasattr(e, 'body'):
+            print(f"SendGrid body: {e.body}")
         return False
 
 
