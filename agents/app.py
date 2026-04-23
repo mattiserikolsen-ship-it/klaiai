@@ -12,6 +12,7 @@ import json
 import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from supabase import create_client
 
 app = Flask(__name__)
 CORS(app)
@@ -20,7 +21,11 @@ ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
-SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')  # din verificerede email
+SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
+
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+db = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 
 # ── HELPERS ────────────────────────────────────────────
@@ -33,6 +38,30 @@ def load_klienter():
         return {}
 
 def get_klient(klient_id):
+    # Prøv Supabase først
+    if db:
+        try:
+            res = db.table('chatbot_config').select('*, klienter(*)').eq('klient_id', klient_id).single().execute()
+            if res.data:
+                cfg = res.data
+                klient = cfg.get('klienter', {})
+                return {
+                    'navn': klient.get('navn', ''),
+                    'chatbot_navn': cfg.get('chatbot_navn', 'Alma'),
+                    'velkomst': cfg.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
+                    'farve': cfg.get('farve', '#0a2463'),
+                    'info': {
+                        'åbningstider': cfg.get('aabningsider', ''),
+                        'kontakt': cfg.get('kontakt', ''),
+                        'ydelser': cfg.get('ydelser', ''),
+                        'priser': cfg.get('priser', ''),
+                        'adresse': cfg.get('adresse', ''),
+                        'andet': cfg.get('andet', '')
+                    }
+                }
+        except:
+            pass
+    # Fallback til JSON-fil
     klienter = load_klienter()
     return klienter.get(klient_id, klienter.get('demo', {}))
 
@@ -200,8 +229,65 @@ def health():
     return jsonify({
         'status': 'ok',
         'klienter': list(klienter.keys()),
-        'mail': bool(SENDGRID_API_KEY)
+        'mail': bool(SENDGRID_API_KEY),
+        'database': bool(db)
     })
+
+@app.route('/klient', methods=['POST'])
+def opret_klient():
+    """Opretter eller opdaterer en klient i Supabase"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    data = request.json
+    try:
+        # Upsert klient
+        klient_data = {
+            'id': data.get('id'),
+            'navn': data.get('navn', ''),
+            'email': data.get('email', ''),
+            'kontakt': data.get('kontakt', ''),
+            'telefon': data.get('telefon', ''),
+            'hjemmeside': data.get('hjemmeside', ''),
+            'beskrivelse': data.get('beskrivelse', ''),
+            'startpris': int(data.get('startpris', 0) or 0),
+            'mdpris': int(data.get('mdpris', 0) or 0),
+            'status': data.get('status', 'opsætning'),
+            'produkter': data.get('produkter', [])
+        }
+        res = db.table('klienter').upsert(klient_data).execute()
+        return jsonify({'success': True, 'klient': res.data[0] if res.data else {}})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/chatbot-config', methods=['POST'])
+def gem_chatbot_config():
+    """Gemmer chatbot konfiguration for en klient"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    data = request.json
+    klient_id = data.get('klient_id')
+    if not klient_id:
+        return jsonify({'error': 'klient_id mangler'}), 400
+    try:
+        cfg = {
+            'klient_id': klient_id,
+            'chatbot_navn': data.get('chatbot_navn', 'Alma'),
+            'velkomst': data.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
+            'farve': data.get('farve', '#0a2463'),
+            'aabningsider': data.get('åbningstider', ''),
+            'kontakt': data.get('kontakt', ''),
+            'ydelser': data.get('ydelser', ''),
+            'priser': data.get('priser', ''),
+            'adresse': data.get('adresse', ''),
+            'andet': data.get('andet', ''),
+            'opdateret': 'now()'
+        }
+        res = db.table('chatbot_config').upsert(cfg, on_conflict='klient_id').execute()
+        return jsonify({'success': True, 'config': res.data[0] if res.data else {}})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/test-mail', methods=['GET'])
 def test_mail():
