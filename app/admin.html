@@ -1711,16 +1711,19 @@ function generateChatbot() {
     ekstra_viden: document.getElementById('cb_ekstra_viden').value
   };
 
+  const klientId = client?.id || selVal;
   if (client) {
     client.chatbotConfig = chatbotConfig;
     saveClients();
-    syncChatbotConfigToDB(client.id, chatbotConfig);
-  } else {
-    // Klient fundet via Supabase men ikke i lokal liste — gem direkte til DB
-    syncChatbotConfigToDB(selVal, chatbotConfig);
+  }
+  if (klientId) {
+    syncChatbotConfigToDB(klientId, chatbotConfig).then(() => {
+      const btn = document.querySelector('[onclick="generateChatbot()"]');
+      if (btn) { btn.textContent = '✅ Gemt!'; setTimeout(() => { btn.textContent = '✨ Gem konfiguration & generer embed kode'; }, 2000); }
+    });
   }
 
-  const clientId = client?.id || selVal || 'demo';
+  const clientId = klientId || 'demo';
   const embed = `<!-- KlarAI Chatbot ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/chatbot.js"
   data-name="${name}"
