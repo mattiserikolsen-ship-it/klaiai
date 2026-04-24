@@ -1617,6 +1617,7 @@ function addProduct(key) {
     currentClient.products.push(key);
     currentClient.tasks = [...(currentClient.tasks||[]), ...defaultTasks(key)];
     saveClients();
+    syncKlientToDB(currentClient);
     renderProductTab();
   }
 }
@@ -1625,6 +1626,7 @@ function removeProduct(key) {
   if (!confirm(`Fjern ${PRODUCTS[key].name} fra ${currentClient.name}?`)) return;
   currentClient.products = (currentClient.products||[]).filter(p => p !== key);
   saveClients();
+  syncKlientToDB(currentClient);
   renderProductTab();
 }
 
