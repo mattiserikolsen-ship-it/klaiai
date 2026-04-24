@@ -1245,7 +1245,7 @@
   const token = sessionStorage.getItem('klaiai_token');
   const role = sessionStorage.getItem('klaiai_role');
   if (!token || role !== 'admin') {
-    window.location.href = '/';
+    window.location.href = '/login';
   }
 })();
 

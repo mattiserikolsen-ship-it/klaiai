@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KlarAI — AI-agenter til danske virksomheder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0a2463;
+      --blue: #0a5c8a;
+      --light: #f0f4f8;
+      --white: #ffffff;
+      --text: #1a2340;
+      --muted: #6b7a99;
+      --border: #e2e8f0;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; color: var(--text); background: var(--white); }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 5%;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo { font-size: 1.4rem; font-weight: 900; color: var(--navy); letter-spacing: -.5px; text-decoration: none; }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; align-items: center; gap: 2rem; }
+    .nav-links a { font-size: .875rem; font-weight: 500; color: var(--muted); text-decoration: none; transition: color .15s; }
+    .nav-links a:hover { color: var(--navy); }
+    .nav-login {
+      background: var(--navy); color: #fff !important;
+      padding: .5rem 1.25rem; border-radius: 8px;
+      font-weight: 600 !important; font-size: .85rem !important;
+      transition: opacity .15s !important;
+    }
+    .nav-login:hover { opacity: .85; color: #fff !important; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 140px 5% 100px;
+      text-align: center;
+      background: linear-gradient(160deg, #f8faff 0%, #eef4ff 50%, #f0f8ff 100%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: #dbeafe; color: var(--blue);
+      font-size: .78rem; font-weight: 700; letter-spacing: .5px;
+      padding: .35rem .9rem; border-radius: 99px;
+      margin-bottom: 1.5rem; text-transform: uppercase;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 900; line-height: 1.1;
+      color: var(--navy); margin-bottom: 1.25rem;
+      letter-spacing: -1.5px;
+    }
+    .hero h1 span { color: var(--blue); }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--muted); max-width: 600px;
+      margin: 0 auto 2.5rem; line-height: 1.7;
+    }
+    .hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--navy); color: #fff;
+      padding: .85rem 2rem; border-radius: 10px;
+      font-size: 1rem; font-weight: 700;
+      text-decoration: none; transition: opacity .15s;
+      display: inline-flex; align-items: center; gap: .5rem;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      background: var(--white); color: var(--navy);
+      padding: .85rem 2rem; border-radius: 10px;
+      font-size: 1rem; font-weight: 600;
+      text-decoration: none; border: 1.5px solid var(--border);
+      transition: border-color .15s;
+      display: inline-flex; align-items: center; gap: .5rem;
+    }
+    .btn-secondary:hover { border-color: var(--blue); }
+
+    /* ── SOCIAL PROOF ── */
+    .proof {
+      padding: 2rem 5%;
+      background: var(--white);
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .proof p { font-size: .8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; }
+    .proof-logos { display: flex; gap: 2.5rem; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .proof-logo { font-size: .95rem; font-weight: 700; color: #bbb; }
+
+    /* ── HOW IT WORKS ── */
+    .section { padding: 90px 5%; }
+    .section-label { font-size: .75rem; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 1px; margin-bottom: .75rem; }
+    .section-title { font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 800; color: var(--navy); margin-bottom: 1rem; letter-spacing: -.5px; line-height: 1.2; }
+    .section-sub { font-size: 1rem; color: var(--muted); max-width: 520px; line-height: 1.7; }
+
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; margin-top: 3.5rem; }
+    .step-card { text-align: center; }
+    .step-num {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--navy); color: #fff;
+      font-size: 1.2rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .step-title { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: .5rem; }
+    .step-desc { font-size: .875rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── PRODUCTS ── */
+    .products-bg { background: var(--light); }
+    .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3.5rem; }
+    .product-card {
+      background: var(--white); border-radius: 16px;
+      padding: 2rem; border: 1px solid var(--border);
+      transition: box-shadow .2s, transform .2s;
+    }
+    .product-card:hover { box-shadow: 0 8px 32px rgba(10,36,99,.1); transform: translateY(-3px); }
+    .product-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .product-title { font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: .5rem; }
+    .product-desc { font-size: .875rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── RESULTS ── */
+    .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-top: 3.5rem; }
+    .result-card { text-align: center; }
+    .result-num { font-size: 3rem; font-weight: 900; color: var(--navy); letter-spacing: -2px; }
+    .result-label { font-size: .875rem; color: var(--muted); margin-top: .25rem; }
+
+    /* ── TESTIMONIAL ── */
+    .testimonial-bg { background: var(--navy); color: #fff; }
+    .testimonial-bg .section-label { color: #7dd3fc; }
+    .testimonial-bg .section-title { color: #fff; }
+    .testimonial-card {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 16px; padding: 2rem;
+      margin-top: 3rem; max-width: 700px;
+    }
+    .testimonial-text { font-size: 1.1rem; line-height: 1.7; color: rgba(255,255,255,0.9); margin-bottom: 1.5rem; }
+    .testimonial-author { font-size: .875rem; font-weight: 600; color: rgba(255,255,255,0.6); }
+
+    /* ── PRICING ── */
+    .pricing { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 3.5rem; max-width: 900px; }
+    .price-card {
+      background: var(--white); border-radius: 16px;
+      padding: 2rem; border: 1.5px solid var(--border);
+    }
+    .price-card.featured { border-color: var(--blue); box-shadow: 0 4px 24px rgba(10,92,138,.15); }
+    .price-badge { font-size: .72rem; font-weight: 700; background: var(--blue); color: #fff; padding: .2rem .7rem; border-radius: 99px; display: inline-block; margin-bottom: 1rem; }
+    .price-title { font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: .25rem; }
+    .price-amount { font-size: 2.2rem; font-weight: 900; color: var(--navy); letter-spacing: -1px; margin: .75rem 0 .25rem; }
+    .price-amount span { font-size: 1rem; font-weight: 500; color: var(--muted); }
+    .price-setup { font-size: .8rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .price-features { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .price-features li { font-size: .875rem; color: var(--text); display: flex; align-items: center; gap: .5rem; }
+    .price-features li::before { content: '✓'; color: var(--blue); font-weight: 700; flex-shrink: 0; }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center; padding: 90px 5%;
+      background: linear-gradient(135deg, #0a2463 0%, #0a5c8a 100%);
+      color: #fff;
+    }
+    .cta-section h2 { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 900; margin-bottom: 1rem; letter-spacing: -.5px; }
+    .cta-section p { font-size: 1rem; opacity: .8; margin-bottom: 2.5rem; }
+    .btn-white {
+      background: #fff; color: var(--navy);
+      padding: .9rem 2.5rem; border-radius: 10px;
+      font-size: 1rem; font-weight: 700;
+      text-decoration: none; display: inline-block;
+      transition: opacity .15s;
+    }
+    .btn-white:hover { opacity: .9; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 2.5rem 5%;
+      background: #05080f; color: rgba(255,255,255,0.4);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem;
+      font-size: .8rem;
+    }
+    .footer-logo { font-weight: 800; color: rgba(255,255,255,0.7); font-size: .95rem; }
+    .footer-logo span { color: var(--blue); }
+
+    @media (max-width: 600px) {
+      .nav-links a:not(.nav-login) { display: none; }
+      .hero { padding: 120px 5% 70px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">Klar<span>AI</span></a>
+  <div class="nav-links">
+    <a href="#ydelser">Ydelser</a>
+    <a href="#priser">Priser</a>
+    <a href="#kontakt">Kontakt</a>
+    <a href="/app/login.html" class="nav-login">Log ind →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🤖 AI til danske SMV'er</div>
+  <h1>Din virksomhed arbejder<br><span>24/7 — uden ekstra personale</span></h1>
+  <p>KlarAI installerer AI-agenter på din hjemmeside der svarer kunder, følger op på leads og tager imod bookinger — automatisk.</p>
+  <div class="hero-cta">
+    <a href="#kontakt" class="btn-primary">Få en gratis demo →</a>
+    <a href="#ydelser" class="btn-secondary">Se hvad vi tilbyder</a>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<div class="proof">
+  <p>Bruges allerede af</p>
+  <div class="proof-logos">
+    <span class="proof-logo">Berlepool og Spa</span>
+    <span class="proof-logo">· · ·</span>
+    <span class="proof-logo">Din virksomhed?</span>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="start">
+  <div class="section-label">Sådan virker det</div>
+  <div class="section-title">Op og køre på 10 minutter</div>
+  <p class="section-sub">Ingen udvikler nødvendig. Vi klarer opsætningen — du får mere tid til det der tæller.</p>
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-title">Vi sætter det op</div>
+      <div class="step-desc">Du sender os info om din virksomhed. Vi konfigurerer AI-agenterne til at svare præcist på dine kunders spørgsmål.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-title">Én linje kode</div>
+      <div class="step-desc">Du indsætter ét script-tag på din hjemmeside. Det tager 5 minutter — og virker på WordPress, Shopify og alle andre platforme.</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-title">AI'en arbejder</div>
+      <div class="step-desc">Dine kunder møder en AI-chatbot der svarer, følger op og booker — helt automatisk. Du ser alt i din portal.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="section products-bg" id="ydelser">
+  <div class="section-label">Ydelser</div>
+  <div class="section-title">Tre agenter — ét abonnement</div>
+  <p class="section-sub">Vælg de agenter der passer til din virksomhed. Alt leveres som en samlet løsning.</p>
+  <div class="products">
+    <div class="product-card">
+      <div class="product-icon">💬</div>
+      <div class="product-title">AI Chatbot</div>
+      <div class="product-desc">Svarer på kundespørgsmål om priser, ydelser og åbningstider — 24/7, på dit eget website. Konfigureret med din virksomheds viden.</div>
+    </div>
+    <div class="product-card">
+      <div class="product-icon">🎯</div>
+      <div class="product-title">Lead-opfølgning</div>
+      <div class="product-desc">Når en kunde udfylder en formular, sender AI'en automatisk et personligt svar inden for sekunder — og 2 opfølgningsmails de næste dage.</div>
+    </div>
+    <div class="product-card">
+      <div class="product-icon">📅</div>
+      <div class="product-title">Booking-agent</div>
+      <div class="product-desc">Lad kunderne booke tid direkte på din hjemmeside. Bekræftelsesmail sendes automatisk — ingen telefonopkald nødvendigt.</div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="section">
+  <div class="section-label">Resultater</div>
+  <div class="section-title">Hvad det betyder i praksis</div>
+  <div class="results">
+    <div class="result-card">
+      <div class="result-num">24/7</div>
+      <div class="result-label">Kunderservice uden pause</div>
+    </div>
+    <div class="result-card">
+      <div class="result-num">&lt;10s</div>
+      <div class="result-label">Svartid på henvendelser</div>
+    </div>
+    <div class="result-card">
+      <div class="result-num">0 kr</div>
+      <div class="result-label">Ekstra personaleomkostninger</div>
+    </div>
+    <div class="result-card">
+      <div class="result-num">10 min</div>
+      <div class="result-label">Fra aftale til live</div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIAL -->
+<section class="section testimonial-bg">
+  <div class="section-label">Kundecitat</div>
+  <div class="section-title">Hvad vores kunder siger</div>
+  <div class="testimonial-card">
+    <div class="testimonial-text">"Vi fik sat KlarAI op på swimmingpool.dk på under en time. Chatbotten svarer nu på alle de spørgsmål vi før brugte timer på at besvare pr. mail."</div>
+    <div class="testimonial-author">— Berlepool og Spa · swimmingpool.dk</div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="section" id="priser">
+  <div class="section-label">Priser</div>
+  <div class="section-title">Enkle, transparente priser</div>
+  <p class="section-sub">Ingen skjulte gebyrer. Fast månedlig pris — opsig når du vil.</p>
+  <div class="pricing">
+    <div class="price-card">
+      <div class="price-title">Starter</div>
+      <div class="price-amount">5.500 <span>kr/md</span></div>
+      <div class="price-setup">+ 9.995 kr opsætning</div>
+      <ul class="price-features">
+        <li>AI Chatbot på din hjemmeside</li>
+        <li>Lead-opfølgning (3 mails)</li>
+        <li>Klientportal med overblik</li>
+        <li>Opsætning inkluderet</li>
+        <li>Support via email</li>
+      </ul>
+    </div>
+    <div class="price-card featured">
+      <div class="price-badge">Mest populær</div>
+      <div class="price-title">Vækst</div>
+      <div class="price-amount">9.500 <span>kr/md</span></div>
+      <div class="price-setup">+ 14.995 kr opsætning</div>
+      <ul class="price-features">
+        <li>Alt i Starter</li>
+        <li>Booking-agent</li>
+        <li>Månedlige rapporter</li>
+        <li>Prioriteret support</li>
+        <li>Løbende optimering</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="kontakt">
+  <h2>Klar til at spare tid og vinde flere kunder?</h2>
+  <p>Book en gratis 30-minutters demo — vi viser dig præcis hvad AI kan gøre for din virksomhed.</p>
+  <a href="mailto:kontakt@klaiai.dk" class="btn-white">Kontakt os i dag →</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Klar<span>AI</span></div>
+  <div>kontakt@klaiai.dk</div>
+  <div>© 2026 KlarAI · AI-agenter til danske virksomheder</div>
+</footer>
+
+</body>
+</html>

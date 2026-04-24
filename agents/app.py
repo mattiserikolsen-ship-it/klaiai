@@ -643,6 +643,12 @@ def login():
 def index():
     from flask import send_from_directory
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
+    return send_from_directory(app_dir, 'index.html')
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    from flask import send_from_directory
+    app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     return send_from_directory(app_dir, 'login.html')
 
 @app.route('/portal/<klient_id>', methods=['GET'])
