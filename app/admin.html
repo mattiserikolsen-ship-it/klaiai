@@ -874,7 +874,7 @@
         <div class="card">
           <div class="generator-section">
             <div class="generator-section-title">Vælg klient</div>
-            <select class="form-input form-select" id="leadClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+            <select class="form-input form-select" id="leadClientSel" style="width:100%" onchange="loadLeadConfig(this.value)"><option value="">— Vælg klient —</option></select>
           </div>
           <div class="generator-section">
             <div class="generator-section-title">Opfølgningsstrategi</div>
@@ -966,7 +966,7 @@
         <div class="card">
           <div class="generator-section">
             <div class="generator-section-title">Vælg klient</div>
-            <select class="form-input form-select" id="bookingClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+            <select class="form-input form-select" id="bookingClientSel" style="width:100%" onchange="loadBookingConfig(this.value)"><option value="">— Vælg klient —</option></select>
           </div>
           <div class="generator-section">
             <div class="generator-section-title">Grundindstillinger</div>
@@ -1656,6 +1656,29 @@ async function loadChatbotConfig(klientId) {
       document.getElementById('pdfExtractedWrap').classList.remove('hidden');
     }
   } catch(e) { console.warn('Kunne ikke loade chatbot config:', e); }
+}
+
+async function loadLeadConfig(klientId) {
+  if (!klientId) return;
+  const client = clients.find(c => c.id === klientId);
+  if (!client) return;
+  if (client.name) document.getElementById('leadProduct').value = client.desc || '';
+}
+
+async function loadBookingConfig(klientId) {
+  if (!klientId) return;
+  try {
+    const res = await fetch(`${AGENT_URL}/booking-config/${klientId}`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (cfg.titel) document.getElementById('bk_titel').value = cfg.titel;
+    if (cfg.farve) document.getElementById('bk_farve').value = cfg.farve;
+    if (cfg.ydelser) document.getElementById('bk_ydelser').value = Array.isArray(cfg.ydelser) ? cfg.ydelser.join('\n') : cfg.ydelser;
+    if (cfg.start_tid) document.getElementById('bk_start').value = cfg.start_tid;
+    if (cfg.slut_tid) document.getElementById('bk_slut').value = cfg.slut_tid;
+    if (cfg.varighed) document.getElementById('bk_varighed').value = cfg.varighed;
+    if (cfg.buffer !== undefined) document.getElementById('bk_buffer').value = cfg.buffer;
+  } catch(e) { console.warn('Kunne ikke loade booking config:', e); }
 }
 
 // CHATBOT
