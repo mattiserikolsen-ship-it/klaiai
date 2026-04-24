@@ -5,7 +5,7 @@ Samlet Flask-app med Chatbot Agent + Lead Agent
 Klar til deployment på Render / Railway
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import anthropic
 import json
@@ -13,9 +13,25 @@ import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from supabase import create_client
+import functools
 
 app = Flask(__name__, static_folder='../app', static_url_path='/app')
 CORS(app)
+
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'klaiai2024')
+
+def require_auth(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or auth.password != ADMIN_PASSWORD:
+            return Response(
+                'Adgang kræver login.',
+                401,
+                {'WWW-Authenticate': 'Basic realm="KlarAI Admin"'}
+            )
+        return f(*args, **kwargs)
+    return decorated
 
 ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
@@ -528,12 +544,14 @@ def serve_booking_widget_js():
     return send_from_directory(js_dir, 'booking-widget.js', mimetype='application/javascript')
 
 @app.route('/', methods=['GET'])
+@require_auth
 def index():
     from flask import send_from_directory
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     return send_from_directory(app_dir, 'hub.html')
 
 @app.route('/portal/<klient_id>', methods=['GET'])
+@require_auth
 def klient_portal(klient_id):
     """Sender klientportalen med klient_id som parameter"""
     from flask import send_from_directory, make_response
