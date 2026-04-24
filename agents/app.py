@@ -129,10 +129,20 @@ def chat():
 @app.route('/widget/<klient_id>', methods=['GET'])
 def widget_config(klient_id):
     klient = get_klient(klient_id)
+    info = klient.get('info', {})
     return jsonify({
         'navn': klient.get('chatbot_navn', 'Alma'),
         'velkomst': klient.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
-        'farve': klient.get('farve', '#0a2463')
+        'farve': klient.get('farve', '#0a2463'),
+        'ekstra_viden': klient.get('ekstra_viden', ''),
+        'info': {
+            'åbningstider': info.get('åbningstider', ''),
+            'kontakt': info.get('kontakt', ''),
+            'ydelser': info.get('ydelser', ''),
+            'priser': info.get('priser', ''),
+            'adresse': info.get('adresse', ''),
+            'andet': info.get('andet', '')
+        }
     })
 
 
