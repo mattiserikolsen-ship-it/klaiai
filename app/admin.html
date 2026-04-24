@@ -585,6 +585,7 @@
           <span class="badge badge-green" id="detailStatus">Aktiv</span>
           <button class="btn btn-secondary btn-sm" onclick="openEditModal()">✏️ Rediger</button>
           <button class="btn btn-secondary btn-sm" onclick="openClientPortal()">Åbn portal →</button>
+          <button id="toggleAktivBtn" class="btn btn-sm" onclick="toggleKlientAktiv()" style="background:var(--orange-bg);color:var(--orange)">⏸ Deaktiver</button>
           <button class="btn btn-danger btn-sm" onclick="deleteClient()">🗑 Slet</button>
         </div>
       </div>
@@ -1525,8 +1526,46 @@ function openClient(id) {
   document.getElementById('topbarTitle').textContent = currentClient.name;
   document.getElementById('topbarSub').textContent = `${(currentClient.products||[]).length} produkter · oprettet ${new Date(currentClient.created).toLocaleDateString('da-DK')}`;
 
+  // Opdater aktiv/inaktiv knap
+  const btn = document.getElementById('toggleAktivBtn');
+  const badge = document.getElementById('detailStatus');
+  if (currentClient.aktiv === false) {
+    btn.textContent = '▶ Aktiver';
+    btn.style.background = 'var(--green-bg)';
+    btn.style.color = 'var(--green)';
+    badge.textContent = 'Inaktiv';
+    badge.className = 'badge badge-orange';
+  } else {
+    btn.textContent = '⏸ Deaktiver';
+    btn.style.background = 'var(--orange-bg)';
+    btn.style.color = 'var(--orange)';
+    badge.textContent = 'Aktiv';
+    badge.className = 'badge badge-green';
+  }
+
   switchTab('overview');
   showView('client-detail');
+}
+
+async function toggleKlientAktiv() {
+  if (!currentClient) return;
+  const nyStatus = currentClient.aktiv === false ? true : false;
+  currentClient.aktiv = nyStatus;
+  saveClients();
+
+  // Gem i Supabase
+  if (db || true) {
+    try {
+      await fetch(AGENT_URL + '/klient-aktiv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentClient.id, aktiv: nyStatus })
+      });
+    } catch(e) { console.warn('Kunne ikke opdatere aktiv status:', e); }
+  }
+
+  // Opdater UI
+  openClient(currentClient.id);
 }
 
 function openClientPortal() {
@@ -2579,6 +2618,9 @@ async function initAdmin() {
             mdpris: k.mdpris || 0,
             status: k.status || 'opsætning',
             products: k.produkter || [],
+            aktiv: k.aktiv !== false,
+            login_email: k.email || '',
+            login_password: k.password || '',
           };
         });
         clients = loaded;

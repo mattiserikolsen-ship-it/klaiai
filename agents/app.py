@@ -39,6 +39,18 @@ def require_auth(f):
 
 ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
+def er_klient_aktiv(klient_id):
+    """Returnerer True hvis klienten er aktiv, False hvis deaktiveret"""
+    if not db:
+        return True  # Ingen DB = tillad (fail open)
+    try:
+        res = db.table('klienter').select('aktiv').eq('id', klient_id).single().execute()
+        if res.data:
+            return res.data.get('aktiv', True)
+    except:
+        pass
+    return True
+
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
@@ -111,6 +123,9 @@ def chat():
     if not besked:
         return jsonify({'error': 'Ingen besked'}), 400
 
+    if klient_id != 'demo' and not er_klient_aktiv(klient_id):
+        return jsonify({'svar': 'Denne chatbot er ikke tilgængelig i øjeblikket.'}), 403
+
     klient = get_klient(klient_id)
     messages = [{'role': m['role'], 'content': m['content']} for m in historik[-10:]]
     messages.append({'role': 'user', 'content': besked})
@@ -132,6 +147,8 @@ def chat():
 
 @app.route('/widget/<klient_id>', methods=['GET'])
 def widget_config(klient_id):
+    if not er_klient_aktiv(klient_id):
+        return jsonify({'error': 'inaktiv'}), 403
     klient = get_klient(klient_id)
     info = klient.get('info', {})
     return jsonify({
@@ -159,6 +176,9 @@ def modtag_lead():
     lead = data.get('lead', {})
     klient_id = data.get('client', 'demo')
     send_nu = data.get('send', False)
+
+    if klient_id != 'demo' and not er_klient_aktiv(klient_id):
+        return jsonify({'error': 'Denne service er ikke tilgængelig'}), 403
 
     if not lead.get('email') and not lead.get('navn'):
         return jsonify({'error': 'Lead mangler email eller navn'}), 400
@@ -328,6 +348,9 @@ def modtag_booking():
     booking = data.get('booking', {})
     klient_id = data.get('client', 'demo')
 
+    if klient_id != 'demo' and not er_klient_aktiv(klient_id):
+        return jsonify({'error': 'Denne service er ikke tilgængelig'}), 403
+
     if not booking.get('email') or not booking.get('navn'):
         return jsonify({'error': 'Booking mangler email eller navn'}), 400
 
@@ -472,6 +495,20 @@ def hent_klienter():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/klient-aktiv', methods=['POST'])
+def opdater_klient_aktiv():
+    """Aktiverer eller deaktiverer en klient"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    data = request.json
+    klient_id = data.get('id')
+    aktiv = data.get('aktiv', True)
+    try:
+        db.table('klienter').update({'aktiv': aktiv}).eq('id', klient_id).execute()
+        return jsonify({'success': True, 'aktiv': aktiv})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/klient', methods=['POST'])
 def opret_klient():
     """Opretter eller opdaterer en klient i Supabase"""
@@ -587,9 +624,11 @@ def login():
     # Klient login — tjek Supabase
     if db:
         try:
-            res = db.table('klienter').select('id, navn, email, password').eq('email', email).single().execute()
+            res = db.table('klienter').select('id, navn, email, password, aktiv').eq('email', email).single().execute()
             if res.data:
                 klient = res.data
+                if klient.get('aktiv') == False:
+                    return jsonify({'error': 'Adgang er deaktiveret. Kontakt KlarAI.'}), 403
                 klient_pw = klient.get('password', '')
                 if klient_pw and password == klient_pw:
                     token = secrets.token_hex(32)
