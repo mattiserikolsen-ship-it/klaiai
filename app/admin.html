@@ -1636,11 +1636,17 @@ document.querySelectorAll('.product-opt').forEach(el => {
 
 // CHATBOT
 function generateChatbot() {
-  const client = clients.find(c => c.id === document.getElementById('chatbotClientSel').value);
+  const selVal = document.getElementById('chatbotClientSel').value;
+  const client = clients.find(c => c.id === selVal);
   const name = document.getElementById('chatbotName').value || 'Alma';
   const greeting = document.getElementById('chatbotGreeting').value || 'Hej! Hvordan kan jeg hjælpe dig?';
   const color = document.getElementById('chatbotColor').value || '#0a2463';
   const pos = document.getElementById('chatbotPos').value;
+
+  if (!selVal) {
+    alert('Vælg en klient først');
+    return;
+  }
 
   // Gem chatbot-konfiguration på klienten
   const chatbotConfig = {
@@ -1662,15 +1668,19 @@ function generateChatbot() {
     client.chatbotConfig = chatbotConfig;
     saveClients();
     syncChatbotConfigToDB(client.id, chatbotConfig);
+  } else {
+    // Klient fundet via Supabase men ikke i lokal liste — gem direkte til DB
+    syncChatbotConfigToDB(selVal, chatbotConfig);
   }
 
+  const clientId = client?.id || selVal || 'demo';
   const embed = `<!-- KlarAI Chatbot ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/chatbot.js"
   data-name="${name}"
   data-greeting="${greeting}"
   data-color="${color}"
   data-position="${pos}"
-  data-client="${client?.id||'demo'}">
+  data-client="${clientId}">
 <\/script>`;
 
   document.getElementById('chatbotEmbed').textContent = embed;
