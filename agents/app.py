@@ -491,7 +491,8 @@ def opret_klient():
             'startpris': int(data.get('startpris', 0) or 0),
             'mdpris': int(data.get('mdpris', 0) or 0),
             'status': data.get('status', 'opsætning'),
-            'produkter': data.get('produkter', [])
+            'produkter': data.get('produkter', []),
+            'password': data.get('password', '') or ''
         }
         res = db.table('klienter').upsert(klient_data).execute()
         return jsonify({'success': True, 'klient': res.data[0] if res.data else {}})

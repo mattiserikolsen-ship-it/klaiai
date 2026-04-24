@@ -550,6 +550,20 @@
             </div>
           </div>
 
+          <div class="generator-section">
+            <div class="generator-section-title">Portal login</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Login email</label>
+                <input class="form-input" type="email" id="nc_login_email" placeholder="klient@firma.dk"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Adgangskode til portal</label>
+                <input class="form-input" type="text" id="nc_login_password" placeholder="F.eks. Firma2024"/>
+              </div>
+            </div>
+          </div>
+
           <div style="display:flex; gap:.75rem; justify-content:flex-end">
             <button class="btn btn-secondary" onclick="showView('clients')">Annuller</button>
             <button class="btn btn-generate" onclick="createClient()">✨ Opret klient & generer portal</button>
@@ -1208,6 +1222,14 @@
           <option value="pause">Pause</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Portal login email</label>
+        <input class="form-input" type="email" id="edit_login_email" placeholder="klient@firma.dk"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Portal adgangskode</label>
+        <input class="form-input" type="text" id="edit_login_password" placeholder="F.eks. Firma2024"/>
+      </div>
     </div>
     <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem">
       <button class="btn btn-secondary" onclick="closeEditModal()">Annuller</button>
@@ -1251,7 +1273,7 @@ async function syncKlientToDB(client) {
       body: JSON.stringify({
         id: client.id,
         navn: client.name,
-        email: client.email || '',
+        email: client.login_email || client.email || '',
         kontakt: client.contact || '',
         telefon: client.phone || '',
         hjemmeside: client.website || '',
@@ -1259,7 +1281,8 @@ async function syncKlientToDB(client) {
         startpris: client.startpris || 0,
         mdpris: client.mdpris || 0,
         status: client.status || 'opsætning',
-        produkter: client.products || []
+        produkter: client.products || [],
+        password: client.login_password || ''
       })
     });
   } catch(e) { console.warn('DB sync fejlede:', e); }
@@ -1423,6 +1446,9 @@ function createClient() {
 
   const prods = [...document.querySelectorAll('.product-opt input:checked')].map(i => i.value);
 
+  const loginEmail = document.getElementById('nc_login_email').value.trim() || email;
+  const loginPassword = document.getElementById('nc_login_password').value.trim();
+
   const client = {
     id: Date.now().toString(),
     name, email,
@@ -1432,6 +1458,8 @@ function createClient() {
     desc: document.getElementById('nc_desc').value.trim(),
     startpris: document.getElementById('nc_startpris').value,
     mdpris: document.getElementById('nc_mdpris').value,
+    login_email: loginEmail,
+    login_password: loginPassword,
     products: prods,
     status: 'opsætning',
     progress: 0,
@@ -1445,7 +1473,7 @@ function createClient() {
   syncKlientToDB(client);
 
   // Reset form
-  ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris'].forEach(id => document.getElementById(id).value = '');
+  ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris','nc_login_email','nc_login_password'].forEach(id => document.getElementById(id).value = '');
   document.querySelectorAll('.product-opt').forEach(el => el.classList.remove('selected'));
   document.querySelectorAll('.product-opt input').forEach(el => el.checked = false);
 
@@ -2259,6 +2287,8 @@ function openEditModal() {
   document.getElementById('edit_startpris').value = c.startpris || '';
   document.getElementById('edit_mdpris').value = c.mdpris || '';
   document.getElementById('edit_status').value = c.status || 'aktiv';
+  document.getElementById('edit_login_email').value = c.login_email || c.email || '';
+  document.getElementById('edit_login_password').value = c.login_password || '';
   document.getElementById('editModal').classList.remove('hidden');
 }
 
@@ -2279,6 +2309,10 @@ function saveEditClient() {
   currentClient.startpris = document.getElementById('edit_startpris').value;
   currentClient.mdpris = document.getElementById('edit_mdpris').value;
   currentClient.status = document.getElementById('edit_status').value;
+  const loginEmail = document.getElementById('edit_login_email').value.trim();
+  const loginPassword = document.getElementById('edit_login_password').value.trim();
+  if (loginEmail) currentClient.login_email = loginEmail;
+  if (loginPassword) currentClient.login_password = loginPassword;
   saveClients();
   syncKlientToDB(currentClient);
   closeEditModal();
