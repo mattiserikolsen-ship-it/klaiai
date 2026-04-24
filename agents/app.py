@@ -500,7 +500,7 @@ def gem_chatbot_config():
             'chatbot_navn': data.get('chatbot_navn', 'Alma'),
             'velkomst': data.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
             'farve': data.get('farve', '#0a2463'),
-            'aabningsider': data.get('åbningstider', ''),
+            'aabningsider': data.get('aabning', '') or data.get('åbningstider', ''),
             'kontakt': data.get('kontakt', ''),
             'ydelser': data.get('ydelser', ''),
             'priser': data.get('priser', ''),
