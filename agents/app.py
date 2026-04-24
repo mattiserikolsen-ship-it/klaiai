@@ -447,6 +447,17 @@ def health():
         'database': bool(db)
     })
 
+@app.route('/klienter', methods=['GET'])
+def hent_klienter():
+    """Henter alle klienter fra Supabase"""
+    if not db:
+        return jsonify([])
+    try:
+        res = db.table('klienter').select('*').order('navn').execute()
+        return jsonify(res.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/klient', methods=['POST'])
 def opret_klient():
     """Opretter eller opdaterer en klient i Supabase"""

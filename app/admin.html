@@ -2452,9 +2452,44 @@ async function loadStats() {
   }
 }
 
-// Init
-renderDashboard();
-loadStats();
+// ── INIT: Load klienter fra Supabase ──────────────────
+async function initAdmin() {
+  try {
+    const res = await fetch(AGENT_URL + '/klienter');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        // Map Supabase format → lokalt format
+        const loaded = data.map(k => {
+          // Prøv at finde eksisterende lokal klient for at bevare local-only felter
+          const existing = clients.find(c => c.id === k.id) || {};
+          return {
+            ...existing,
+            id: k.id,
+            name: k.navn,
+            email: k.email || '',
+            contact: k.kontakt || '',
+            phone: k.telefon || '',
+            website: k.hjemmeside || '',
+            desc: k.beskrivelse || '',
+            startpris: k.startpris || 0,
+            mdpris: k.mdpris || 0,
+            status: k.status || 'opsætning',
+            products: k.produkter || [],
+          };
+        });
+        clients = loaded;
+        saveClients();
+      }
+    }
+  } catch(e) {
+    console.warn('Kunne ikke loade klienter fra server:', e);
+  }
+  renderDashboard();
+  loadStats();
+}
+
+initAdmin();
 </script>
 </body>
 </html>
