@@ -258,6 +258,12 @@
 </div>
 
 <script>
+// ── AUTH GUARD ────────────────────────────────────────
+(function() {
+  const token = sessionStorage.getItem('klaiai_token');
+  if (!token) window.location.href = '/';
+})();
+
 const API = 'https://klaiai.onrender.com';
 const params = new URLSearchParams(window.location.search);
 const CLIENT_ID = params.get('id') || '';

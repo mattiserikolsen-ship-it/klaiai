@@ -10,10 +10,14 @@ from flask_cors import CORS
 import anthropic
 import json
 import os
+import secrets
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from supabase import create_client
 import functools
+
+# ── TOKEN STORE (in-memory) ────────────────────────────
+active_tokens = {}  # token -> {'role': 'admin'/'client', 'klient_id': ...}
 
 app = Flask(__name__, static_folder='../app', static_url_path='/app')
 CORS(app)
@@ -564,19 +568,46 @@ def serve_booking_widget_js():
     js_dir = os.path.join(os.path.dirname(__file__), '..')
     return send_from_directory(js_dir, 'booking-widget.js', mimetype='application/javascript')
 
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@klaiai.dk').lower()
+    admin_pw = os.environ.get('ADMIN_PASSWORD', 'klaiai2024')
+
+    # Admin login
+    if email == admin_email and password == admin_pw:
+        token = secrets.token_hex(32)
+        active_tokens[token] = {'role': 'admin'}
+        return jsonify({'token': token, 'role': 'admin'})
+
+    # Klient login — tjek Supabase
+    if db:
+        try:
+            res = db.table('klienter').select('id, navn, email, password').eq('email', email).single().execute()
+            if res.data:
+                klient = res.data
+                klient_pw = klient.get('password', '')
+                if klient_pw and password == klient_pw:
+                    token = secrets.token_hex(32)
+                    active_tokens[token] = {'role': 'client', 'klient_id': klient['id']}
+                    return jsonify({'token': token, 'role': 'client', 'klient_id': klient['id']})
+        except:
+            pass
+
+    return jsonify({'error': 'Forkert email eller adgangskode'}), 401
+
 @app.route('/', methods=['GET'])
-@require_auth
 def index():
     from flask import send_from_directory
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
-    return send_from_directory(app_dir, 'hub.html')
+    return send_from_directory(app_dir, 'login.html')
 
 @app.route('/portal/<klient_id>', methods=['GET'])
-@require_auth
 def klient_portal(klient_id):
-    """Sender klientportalen med klient_id som parameter"""
     from flask import send_from_directory, make_response
-    import os
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     with open(os.path.join(app_dir, 'client.html'), 'r', encoding='utf-8') as f:
         html = f.read()
