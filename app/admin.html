@@ -1553,17 +1553,23 @@ async function toggleKlientAktiv() {
   currentClient.aktiv = nyStatus;
   saveClients();
 
-  // Gem i Supabase
-  if (db || true) {
-    try {
-      await fetch(AGENT_URL + '/klient-aktiv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: currentClient.id, aktiv: nyStatus })
-      });
-    } catch(e) { console.warn('Kunne ikke opdatere aktiv status:', e); }
+  const btn = document.getElementById('toggleAktivBtn');
+  btn.disabled = true;
+  btn.textContent = 'Gemmer...';
+
+  try {
+    const res = await fetch(AGENT_URL + '/klient-aktiv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: currentClient.id, aktiv: nyStatus })
+    });
+    const data = await res.json();
+    if (!res.ok) console.warn('Fejl fra server:', data);
+  } catch(e) {
+    console.warn('Kunne ikke opdatere aktiv status:', e);
   }
 
+  btn.disabled = false;
   // Opdater UI
   openClient(currentClient.id);
 }
