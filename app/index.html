@@ -8,19 +8,17 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --dark:   #0f172a;
-      --dark2:  #1e293b;
-      --indigo: #6366f1;
-      --indigo2:#4f46e5;
-      --cyan:   #06b6d4;
-      --white:  #ffffff;
-      --light:  #f8fafc;
-      --border: #e2e8f0;
-      --text:   #1e293b;
-      --muted:  #64748b;
+      --bg:      #ffffff;
+      --bg-warm: #f5f4f0;
+      --bg-alt:  #eeece7;
+      --dark:    #1a1918;
+      --mid:     #4a4845;
+      --muted:   #9a9590;
+      --border:  #e3e1dc;
+      --accent:  #1a1918;
     }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', sans-serif; color: var(--text); background: #fff; overflow-x: hidden; }
+    body { font-family: 'Inter', sans-serif; color: var(--dark); background: var(--bg); overflow-x: hidden; }
 
     /* ── NAV ── */
     nav {
@@ -30,29 +28,25 @@
       transition: background .3s, border-color .3s;
     }
     nav.scrolled {
-      background: rgba(255,255,255,0.97);
+      background: rgba(255,255,255,0.96);
       backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
     }
-    .nav-logo { font-size: 1.5rem; font-weight: 900; color: #fff; letter-spacing: -.5px; text-decoration: none; transition: color .3s; }
+    .nav-logo { font-size: 1.4rem; font-weight: 900; color: #fff; letter-spacing: -.5px; text-decoration: none; transition: color .3s; }
     nav.scrolled .nav-logo { color: var(--dark); }
-    .nav-logo span { color: #a5b4fc; }
-    nav.scrolled .nav-logo span { color: var(--indigo); }
     .nav-links { display: flex; align-items: center; gap: 2.5rem; }
-    .nav-links a { font-size: .875rem; font-weight: 500; color: rgba(255,255,255,0.75); text-decoration: none; transition: color .2s; }
+    .nav-links a { font-size: .875rem; font-weight: 500; color: rgba(255,255,255,0.7); text-decoration: none; transition: color .2s; }
     nav.scrolled .nav-links a { color: var(--muted); }
     .nav-links a:hover { color: #fff; }
     nav.scrolled .nav-links a:hover { color: var(--dark); }
     .nav-login {
-      background: rgba(255,255,255,0.12) !important;
-      color: #fff !important;
-      padding: .5rem 1.3rem; border-radius: 8px;
+      background: rgba(255,255,255,0.15) !important; color: #fff !important;
+      padding: .5rem 1.3rem; border-radius: 6px;
       font-weight: 600 !important;
-      border: 1px solid rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.3);
     }
-    .nav-login:hover { background: rgba(255,255,255,0.22) !important; }
-    nav.scrolled .nav-login { background: var(--indigo) !important; color: #fff !important; border-color: var(--indigo); }
-    nav.scrolled .nav-login:hover { background: var(--indigo2) !important; }
+    .nav-login:hover { background: rgba(255,255,255,0.25) !important; }
+    nav.scrolled .nav-login { background: var(--dark) !important; color: #fff !important; border-color: var(--dark); }
 
     /* ── HERO ── */
     .hero {
@@ -69,304 +63,282 @@
     @keyframes slowzoom { from { transform: scale(1.05); } to { transform: scale(1.0); } }
     .hero-overlay {
       position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(15,23,42,0.88) 0%, rgba(79,70,229,0.45) 100%);
+      background: linear-gradient(to right, rgba(26,25,24,0.80) 0%, rgba(26,25,24,0.45) 100%);
     }
-    .hero-content {
-      position: relative; z-index: 2;
-      padding: 0 8%; max-width: 860px;
-    }
+    .hero-content { position: relative; z-index: 2; padding: 0 8%; max-width: 820px; }
     .hero-tag {
-      display: inline-flex; align-items: center; gap: .5rem;
-      background: rgba(99,102,241,0.25);
-      border: 1px solid rgba(165,180,252,0.35);
-      color: #c7d2fe;
-      font-size: .75rem; font-weight: 600; letter-spacing: .8px; text-transform: uppercase;
-      padding: .4rem 1rem; border-radius: 99px; margin-bottom: 1.75rem;
+      display: inline-block;
+      font-size: .72rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 1.75rem;
     }
     .hero h1 {
       font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-      font-weight: 900; line-height: 1.07;
+      font-weight: 800; line-height: 1.07;
       color: #fff; letter-spacing: -2px; margin-bottom: 1.5rem;
     }
-    .hero h1 em { font-style: normal; color: #a5b4fc; }
     .hero p {
-      font-size: clamp(1rem, 1.8vw, 1.2rem);
-      color: rgba(255,255,255,0.72); max-width: 520px;
-      line-height: 1.75; margin-bottom: 2.5rem; font-weight: 400;
+      font-size: clamp(1rem, 1.6vw, 1.15rem);
+      color: rgba(255,255,255,0.65); max-width: 480px;
+      line-height: 1.8; margin-bottom: 2.5rem; font-weight: 400;
     }
     .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
     .btn-hero {
-      padding: .9rem 2.2rem; border-radius: 10px;
-      font-size: 1rem; font-weight: 700;
+      padding: .85rem 2rem; border-radius: 6px;
+      font-size: .95rem; font-weight: 600;
       text-decoration: none; transition: all .2s;
       display: inline-flex; align-items: center; gap: .5rem;
     }
-    .btn-hero-primary { background: var(--indigo); color: #fff; }
-    .btn-hero-primary:hover { background: var(--indigo2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,.4); }
-    .btn-hero-ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.35); }
-    .btn-hero-ghost:hover { background: rgba(255,255,255,0.1); }
+    .btn-hero-primary { background: #fff; color: var(--dark); }
+    .btn-hero-primary:hover { background: #f0ede8; }
+    .btn-hero-ghost { background: transparent; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.3); }
+    .btn-hero-ghost:hover { background: rgba(255,255,255,0.08); }
     .hero-scroll {
       position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: .5rem;
-      color: rgba(255,255,255,0.45); font-size: .7rem; letter-spacing: 1px; text-transform: uppercase;
+      color: rgba(255,255,255,0.35); font-size: .68rem; letter-spacing: 2px; text-transform: uppercase;
     }
     .hero-scroll-line {
-      width: 1px; height: 40px;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.4), transparent);
+      width: 1px; height: 36px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.35), transparent);
       animation: scrollpulse 2s ease-in-out infinite;
     }
-    @keyframes scrollpulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+    @keyframes scrollpulse { 0%,100% { opacity: .35; } 50% { opacity: .8; } }
 
     /* ── STATS BAR ── */
     .stats-bar {
-      background: var(--dark);
+      background: var(--bg-warm);
       padding: 2.5rem 8%;
       display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem;
+      border-bottom: 1px solid var(--border);
     }
     .stat { text-align: center; }
-    .stat-num { font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: -1px; }
-    .stat-num span { color: #a5b4fc; }
-    .stat-label { font-size: .78rem; color: rgba(255,255,255,0.45); margin-top: .2rem; font-weight: 500; }
+    .stat-num { font-size: 2rem; font-weight: 800; color: var(--dark); letter-spacing: -1px; }
+    .stat-label { font-size: .78rem; color: var(--muted); margin-top: .25rem; font-weight: 400; }
 
     /* ── SECTION HELPERS ── */
     section { padding: 100px 8%; }
     .section-eyebrow {
-      display: inline-flex; align-items: center; gap: .5rem;
-      font-size: .72rem; font-weight: 700; color: var(--indigo);
-      text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: .75rem;
+      font-size: .7rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
     }
-    .section-title { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 800; color: var(--dark); line-height: 1.12; letter-spacing: -1px; margin-bottom: 1rem; }
-    .section-sub { font-size: 1.05rem; color: var(--muted); line-height: 1.75; max-width: 500px; }
+    .section-title { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 800; color: var(--dark); line-height: 1.1; letter-spacing: -1px; margin-bottom: 1rem; }
+    .section-sub { font-size: 1rem; color: var(--muted); line-height: 1.8; max-width: 480px; font-weight: 400; }
 
     /* ── SERVICES ── */
     .services-grid {
       display: grid; grid-template-columns: repeat(3, 1fr);
       gap: 1px; background: var(--border);
-      margin-top: 4rem; border-radius: 20px; overflow: hidden;
-      box-shadow: 0 4px 32px rgba(15,23,42,.06);
+      margin-top: 4rem; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
     }
-    .service { background: #fff; padding: 3rem 2.5rem; transition: background .2s; }
-    .service:hover { background: #fafbff; }
+    .service { background: var(--bg); padding: 2.75rem 2.25rem; transition: background .2s; }
+    .service:hover { background: #faf9f6; }
     .service-icon {
-      width: 54px; height: 54px; border-radius: 16px;
-      background: linear-gradient(135deg, #eef2ff, #ddd6fe);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; margin-bottom: 1.5rem;
+      font-size: 1.4rem; margin-bottom: 1.5rem;
+      width: 48px; height: 48px; border-radius: 10px;
+      background: var(--bg-warm); display: flex; align-items: center; justify-content: center;
     }
-    .service-title { font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: .75rem; }
-    .service-desc { font-size: .9rem; color: var(--muted); line-height: 1.72; }
+    .service-title { font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: .65rem; }
+    .service-desc { font-size: .875rem; color: var(--muted); line-height: 1.75; }
     .service-tag {
       display: inline-block; margin-top: 1.25rem;
-      font-size: .72rem; font-weight: 600; color: var(--indigo);
-      background: #eef2ff; padding: .3rem .75rem; border-radius: 99px;
+      font-size: .68rem; font-weight: 600; color: var(--mid);
+      background: var(--bg-warm); padding: .3rem .75rem; border-radius: 4px; letter-spacing: .5px;
     }
 
     /* ── DEMO CHAT ── */
-    .demo-section { background: var(--dark); }
+    .demo-section { background: var(--bg-warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
     .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
-    .demo-text .section-title { color: #fff; }
-    .demo-text .section-eyebrow { color: #a5b4fc; }
-    .demo-text .section-sub { color: rgba(255,255,255,0.55); }
-    .demo-features { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
-    .demo-feat { display: flex; gap: 1rem; align-items: flex-start; }
-    .demo-feat-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: rgba(99,102,241,0.2);
+    .demo-features { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+    .demo-feat { display: flex; gap: 1.25rem; align-items: flex-start; }
+    .demo-feat-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1.5px solid var(--border);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1rem; flex-shrink: 0;
+      font-size: .75rem; font-weight: 700; color: var(--mid); flex-shrink: 0;
     }
-    .demo-feat-title { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: .2rem; }
-    .demo-feat-desc { font-size: .82rem; color: rgba(255,255,255,0.5); line-height: 1.6; }
+    .demo-feat-title { font-size: .9rem; font-weight: 700; color: var(--dark); margin-bottom: .2rem; }
+    .demo-feat-desc { font-size: .82rem; color: var(--muted); line-height: 1.65; }
 
     /* Chat Widget */
     .chat-widget {
-      background: #fff; border-radius: 20px;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      background: var(--bg); border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(26,25,24,.10), 0 2px 8px rgba(26,25,24,.06);
       overflow: hidden; max-width: 360px; margin: 0 auto;
+      border: 1px solid var(--border);
     }
     .chat-header {
-      background: var(--indigo); padding: 1rem 1.25rem;
+      background: var(--dark); padding: 1rem 1.25rem;
       display: flex; align-items: center; gap: .75rem;
     }
     .chat-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      display: flex; align-items: center; justify-content: center; font-size: 1rem;
     }
-    .chat-header-name { font-size: .9rem; font-weight: 700; color: #fff; }
-    .chat-header-status { font-size: .72rem; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: .3rem; }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+    .chat-header-name { font-size: .875rem; font-weight: 700; color: #fff; }
+    .chat-header-status { font-size: .7rem; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: .35rem; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #86efac; }
     .chat-messages {
-      height: 300px;
-      overflow-y: auto;
-      padding: 1rem;
-      display: flex; flex-direction: column; gap: .75rem;
-      background: #f8fafc;
-      scroll-behavior: smooth;
+      height: 300px; overflow-y: auto; padding: 1rem;
+      display: flex; flex-direction: column; gap: .75rem; background: #faf9f7;
     }
-    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar { width: 3px; }
     .chat-messages::-webkit-scrollbar-track { background: transparent; }
-    .chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
-    .cm { max-width: 85%; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .cm { max-width: 86%; }
     .cm.user { align-self: flex-end; }
-    .cm.bot { align-self: flex-start; }
+    .cm.bot  { align-self: flex-start; }
     .cm-bubble {
-      padding: .65rem .9rem; border-radius: 14px;
+      padding: .65rem .9rem; border-radius: 12px;
       font-size: .8rem; line-height: 1.55;
     }
-    .cm.user .cm-bubble { background: var(--indigo); color: #fff; border-bottom-right-radius: 4px; }
-    .cm.bot .cm-bubble { background: #fff; color: var(--dark); border: 1px solid var(--border); border-bottom-left-radius: 4px; font-weight: 500; }
-    .cm-time { font-size: .65rem; color: var(--muted); margin-top: .25rem; }
+    .cm.user .cm-bubble { background: var(--dark); color: #fff; border-bottom-right-radius: 3px; }
+    .cm.bot  .cm-bubble { background: #fff; color: var(--dark); border: 1px solid var(--border); border-bottom-left-radius: 3px; font-weight: 500; }
+    .cm-time { font-size: .62rem; color: var(--muted); margin-top: .25rem; }
     .cm.user .cm-time { text-align: right; }
     .chat-input-bar {
       padding: .75rem 1rem; border-top: 1px solid var(--border);
-      display: flex; gap: .5rem; background: #fff;
+      display: flex; gap: .5rem; background: var(--bg);
     }
     .chat-input-bar input {
-      flex: 1; border: 1px solid var(--border); border-radius: 8px;
-      padding: .5rem .75rem; font-size: .8rem; outline: none; font-family: inherit;
-      color: var(--muted);
+      flex: 1; border: 1px solid var(--border); border-radius: 6px;
+      padding: .5rem .75rem; font-size: .8rem; outline: none; font-family: inherit; color: var(--muted);
+      background: var(--bg-warm);
     }
     .chat-send {
-      width: 34px; height: 34px; border-radius: 8px;
-      background: var(--indigo); border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; color: #fff; font-size: .9rem;
+      width: 34px; height: 34px; border-radius: 6px;
+      background: var(--dark); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85rem;
     }
-    .chat-powered { text-align: center; font-size: .65rem; color: #cbd5e1; padding: .4rem; background: #f8fafc; }
+    .chat-powered { text-align: center; font-size: .62rem; color: var(--border); padding: .4rem; background: var(--bg-warm); letter-spacing: .5px; }
 
-    /* ── HOW ── */
-    .how-bg { background: var(--light); }
+    /* ── HOW + PORTAL ── */
     .how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
     .how-steps { display: flex; flex-direction: column; gap: 2.5rem; margin-top: 3rem; }
     .how-step { display: flex; gap: 1.5rem; align-items: flex-start; }
     .how-step-num {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: var(--indigo); color: #fff;
-      font-size: .85rem; font-weight: 800;
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 1.5px solid var(--border); color: var(--mid);
+      font-size: .8rem; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; margin-top: .1rem;
     }
-    .how-step-title { font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: .35rem; }
-    .how-step-desc { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+    .how-step-title { font-size: .95rem; font-weight: 700; color: var(--dark); margin-bottom: .3rem; }
+    .how-step-desc { font-size: .875rem; color: var(--muted); line-height: 1.7; }
 
-    /* Use case cards */
+    /* Portal preview */
     .usecase-visual {
-      background: var(--dark2); border-radius: 20px;
-      overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.2);
+      background: var(--dark); border-radius: 16px;
+      overflow: hidden; box-shadow: 0 20px 60px rgba(26,25,24,.15);
+      border: 1px solid rgba(255,255,255,0.06);
     }
     .uc-tabs {
-      display: flex; background: rgba(255,255,255,0.05);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
     }
     .uc-tab {
       padding: .75rem 1.25rem;
-      font-size: .75rem; font-weight: 600; color: rgba(255,255,255,0.4);
-      cursor: pointer; transition: color .2s; border-bottom: 2px solid transparent;
-      user-select: none;
+      font-size: .72rem; font-weight: 600; color: rgba(255,255,255,0.35);
+      cursor: pointer; transition: color .2s; border-bottom: 1.5px solid transparent;
+      user-select: none; letter-spacing: .5px;
     }
-    .uc-tab.active { color: #a5b4fc; border-bottom-color: var(--indigo); }
+    .uc-tab.active { color: rgba(255,255,255,0.85); border-bottom-color: rgba(255,255,255,0.4); }
     .uc-body { padding: 1.5rem; }
+    .uc-label { font-size: .65rem; color: rgba(255,255,255,0.3); margin-bottom: .75rem; text-transform: uppercase; letter-spacing: 1.5px; }
     .uc-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .uc-stat { text-align: center; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 1rem; }
-    .uc-stat-val { font-size: 1.5rem; font-weight: 900; color: #a5b4fc; letter-spacing: -.5px; }
-    .uc-stat-lbl { font-size: .68rem; color: rgba(255,255,255,0.4); margin-top: .2rem; }
-    .uc-lead-list { display: flex; flex-direction: column; gap: .6rem; }
+    .uc-stat { text-align: center; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; }
+    .uc-stat-val { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -.5px; }
+    .uc-stat-lbl { font-size: .65rem; color: rgba(255,255,255,0.35); margin-top: .2rem; }
+    .uc-lead-list { display: flex; flex-direction: column; gap: .5rem; }
     .uc-lead {
-      background: rgba(255,255,255,0.05); border-radius: 10px;
+      background: rgba(255,255,255,0.05); border-radius: 8px;
       padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center;
     }
-    .uc-lead-name { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,0.85); }
-    .uc-lead-sub { font-size: .7rem; color: rgba(255,255,255,0.4); margin-top: .1rem; }
-    .uc-badge {
-      font-size: .65rem; font-weight: 700; padding: .25rem .6rem; border-radius: 99px;
-    }
-    .uc-badge.new { background: rgba(99,102,241,0.25); color: #a5b4fc; }
-    .uc-badge.sent { background: rgba(6,182,212,0.15); color: #67e8f9; }
-    .uc-badge.hot { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .uc-lead-name { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,0.8); }
+    .uc-lead-sub { font-size: .68rem; color: rgba(255,255,255,0.35); margin-top: .1rem; }
+    .uc-badge { font-size: .62rem; font-weight: 700; padding: .25rem .6rem; border-radius: 4px; }
+    .uc-badge.new  { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+    .uc-badge.sent { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }
+    .uc-badge.hot  { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }
 
     /* ── TESTIMONIALS ── */
-    .testi-section { background: var(--dark); }
+    .testi-section { background: var(--bg-warm); border-top: 1px solid var(--border); }
     .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 4rem; }
     .testi-card {
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px; padding: 2rem;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 2rem;
     }
-    .testi-stars { color: #fbbf24; font-size: .85rem; margin-bottom: 1rem; letter-spacing: 2px; }
-    .testi-text { font-size: .9rem; line-height: 1.7; color: rgba(255,255,255,0.75); margin-bottom: 1.5rem; }
+    .testi-stars { color: var(--dark); font-size: .8rem; margin-bottom: 1rem; letter-spacing: 3px; }
+    .testi-text { font-size: .875rem; line-height: 1.75; color: var(--mid); margin-bottom: 1.5rem; }
     .testi-author { display: flex; align-items: center; gap: .75rem; }
     .testi-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: rgba(99,102,241,0.25);
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--bg-alt);
       display: flex; align-items: center; justify-content: center;
-      font-size: .9rem; font-weight: 800; color: #a5b4fc;
+      font-size: .875rem; font-weight: 700; color: var(--mid);
     }
-    .testi-name { font-size: .875rem; font-weight: 700; color: #fff; }
-    .testi-company { font-size: .75rem; color: rgba(255,255,255,0.4); }
-    .testi-section .section-title { color: #fff; }
-    .testi-section .section-eyebrow { color: #a5b4fc; }
+    .testi-name { font-size: .875rem; font-weight: 700; color: var(--dark); }
+    .testi-company { font-size: .75rem; color: var(--muted); }
 
     /* ── PRICING ── */
     .pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 4rem; max-width: 800px; }
     .price-card {
-      border-radius: 20px; padding: 2.5rem;
-      border: 1.5px solid var(--border);
-      transition: transform .2s, box-shadow .2s;
+      border-radius: 12px; padding: 2.5rem;
+      border: 1px solid var(--border);
+      transition: box-shadow .2s;
       position: relative;
     }
-    .price-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(99,102,241,.12); }
+    .price-card:hover { box-shadow: 0 8px 32px rgba(26,25,24,.08); }
     .price-card.featured { background: var(--dark); border-color: var(--dark); }
     .price-badge {
-      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
-      background: var(--indigo); color: #fff;
-      font-size: .7rem; font-weight: 700; letter-spacing: .5px;
-      padding: .3rem 1rem; border-radius: 99px; white-space: nowrap;
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--dark); color: #fff;
+      font-size: .68rem; font-weight: 700; letter-spacing: 1px;
+      padding: .3rem 1rem; border-radius: 4px; white-space: nowrap; text-transform: uppercase;
     }
-    .price-tag { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--indigo); margin-bottom: 1rem; }
-    .price-card.featured .price-tag { color: #a5b4fc; }
-    .price-name { font-size: 1.15rem; font-weight: 700; color: var(--dark); margin-bottom: .5rem; }
+    .price-tag { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 1rem; }
+    .price-card.featured .price-tag { color: rgba(255,255,255,0.4); }
+    .price-name { font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: .5rem; }
     .price-card.featured .price-name { color: #fff; }
     .price-amount { font-size: 2.5rem; font-weight: 900; color: var(--dark); letter-spacing: -1.5px; line-height: 1; margin: 1rem 0 .25rem; }
     .price-card.featured .price-amount { color: #fff; }
-    .price-amount sup { font-size: 1.2rem; font-weight: 700; vertical-align: top; margin-top: .5rem; }
-    .price-period { font-size: .8rem; color: var(--muted); margin-bottom: .5rem; }
-    .price-card.featured .price-period { color: rgba(255,255,255,0.45); }
+    .price-amount sup { font-size: 1.1rem; font-weight: 700; vertical-align: top; margin-top: .5rem; }
+    .price-period { font-size: .78rem; color: var(--muted); margin-bottom: .5rem; }
+    .price-card.featured .price-period { color: rgba(255,255,255,0.4); }
     .price-setup { font-size: .78rem; color: var(--muted); margin-bottom: 1.75rem; padding-bottom: 1.75rem; border-bottom: 1px solid var(--border); }
-    .price-card.featured .price-setup { color: rgba(255,255,255,0.35); border-color: rgba(255,255,255,0.1); }
+    .price-card.featured .price-setup { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
     .price-features { list-style: none; display: flex; flex-direction: column; gap: .8rem; }
-    .price-features li { font-size: .875rem; color: var(--text); display: flex; gap: .75rem; align-items: flex-start; }
-    .price-card.featured .price-features li { color: rgba(255,255,255,0.8); }
-    .price-check { color: var(--indigo); font-weight: 700; flex-shrink: 0; }
-    .price-card.featured .price-check { color: #a5b4fc; }
+    .price-features li { font-size: .875rem; color: var(--mid); display: flex; gap: .75rem; align-items: flex-start; }
+    .price-card.featured .price-features li { color: rgba(255,255,255,0.7); }
+    .price-check { color: var(--dark); font-weight: 700; flex-shrink: 0; }
+    .price-card.featured .price-check { color: rgba(255,255,255,0.5); }
 
     /* ── CTA ── */
-    .cta-section {
-      text-align: center;
-      background: linear-gradient(160deg, #eef2ff 0%, #ddd6fe 100%);
-    }
-    .cta-section h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 900; color: var(--dark); letter-spacing: -1px; margin-bottom: 1rem; }
-    .cta-section p { font-size: 1.05rem; color: var(--muted); margin-bottom: 2.5rem; }
+    .cta-section { text-align: center; background: var(--dark); }
+    .cta-section .section-eyebrow { color: rgba(255,255,255,0.4); }
+    .cta-section h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: #fff; letter-spacing: -1px; margin-bottom: 1rem; }
+    .cta-section p { font-size: 1rem; color: rgba(255,255,255,0.5); margin-bottom: 2.5rem; }
     .btn-cta {
       display: inline-flex; align-items: center; gap: .6rem;
-      background: var(--indigo); color: #fff;
-      padding: 1rem 2.5rem; border-radius: 10px;
-      font-size: 1rem; font-weight: 700;
+      background: #fff; color: var(--dark);
+      padding: 1rem 2.5rem; border-radius: 6px;
+      font-size: .95rem; font-weight: 700;
       text-decoration: none; transition: all .2s;
     }
-    .btn-cta:hover { background: var(--indigo2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,.35); }
+    .btn-cta:hover { background: #f0ede8; }
 
     /* ── FOOTER ── */
     footer {
-      padding: 3rem 8%; background: #05080f;
+      padding: 2.5rem 8%; background: #111;
       display: flex; justify-content: space-between; align-items: center;
       flex-wrap: wrap; gap: 1.5rem;
     }
-    .footer-logo { font-size: 1.2rem; font-weight: 900; color: rgba(255,255,255,0.65); }
-    .footer-logo span { color: var(--indigo); }
+    .footer-logo { font-size: 1.1rem; font-weight: 900; color: rgba(255,255,255,0.5); }
     .footer-links { display: flex; gap: 2rem; }
-    .footer-links a { font-size: .8rem; color: rgba(255,255,255,0.3); text-decoration: none; transition: color .2s; }
-    .footer-links a:hover { color: rgba(255,255,255,0.65); }
-    .footer-copy { font-size: .78rem; color: rgba(255,255,255,0.2); }
+    .footer-links a { font-size: .78rem; color: rgba(255,255,255,0.25); text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: rgba(255,255,255,0.6); }
+    .footer-copy { font-size: .75rem; color: rgba(255,255,255,0.18); }
 
     @media (max-width: 900px) {
       .demo-grid, .how-grid { grid-template-columns: 1fr; }
@@ -376,7 +348,6 @@
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
       .services-grid { grid-template-columns: 1fr; }
       .pricing-grid { grid-template-columns: 1fr; }
-      .uc-stat-row { grid-template-columns: repeat(3, 1fr); }
       .nav-links a:not(.nav-login) { display: none; }
     }
   </style>
@@ -385,7 +356,7 @@
 
 <!-- NAV -->
 <nav id="navbar">
-  <a href="/" class="nav-logo">Klar<span>AI</span></a>
+  <a href="/" class="nav-logo">KlarAI</a>
   <div class="nav-links">
     <a href="#ydelser">Ydelser</a>
     <a href="#demo">Demo</a>
@@ -400,8 +371,8 @@
   <div class="hero-bg"></div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
-    <div class="hero-tag">🤖 AI-agenter til danske SMV'er</div>
-    <h1>Din virksomhed<br>arbejder <em>24/7</em><br>— uden ekstra folk</h1>
+    <div class="hero-tag">AI-agenter til danske SMV'er</div>
+    <h1>Din virksomhed<br>arbejder 24/7<br>— uden ekstra folk</h1>
     <p>KlarAI installerer AI-agenter der svarer kunder, følger op på leads og tager imod bookinger. Automatisk. Hele døgnet.</p>
     <div class="hero-cta">
       <a href="#kontakt" class="btn-hero btn-hero-primary">Få en gratis demo →</a>
@@ -416,10 +387,10 @@
 
 <!-- STATS -->
 <div class="stats-bar">
-  <div class="stat"><div class="stat-num"><span>24</span>/7</div><div class="stat-label">Kunderservice uden pause</div></div>
-  <div class="stat"><div class="stat-num">&lt;<span>10s</span></div><div class="stat-label">Svartid på henvendelser</div></div>
-  <div class="stat"><div class="stat-num"><span>10</span> min</div><div class="stat-label">Fra aftale til live</div></div>
-  <div class="stat"><div class="stat-num"><span>0</span> kr</div><div class="stat-label">Ekstra personaleomkostninger</div></div>
+  <div class="stat"><div class="stat-num">24/7</div><div class="stat-label">Kunderservice uden pause</div></div>
+  <div class="stat"><div class="stat-num">&lt;10s</div><div class="stat-label">Svartid på henvendelser</div></div>
+  <div class="stat"><div class="stat-num">10 min</div><div class="stat-label">Fra aftale til live</div></div>
+  <div class="stat"><div class="stat-num">0 kr</div><div class="stat-label">Ekstra personaleomkostninger</div></div>
 </div>
 
 <!-- SERVICES -->
@@ -431,8 +402,8 @@
     <div class="service">
       <div class="service-icon">💬</div>
       <div class="service-title">AI Chatbot</div>
-      <div class="service-desc">Svarer øjeblikkeligt på kundespørgsmål om priser, ydelser, åbningstider og meget mere — på dit eget website, døgnet rundt. Konfigureret med præcis din virksomheds viden.</div>
-      <div class="service-tag">Svar på &lt;3 sekunder</div>
+      <div class="service-desc">Svarer øjeblikkeligt på kundespørgsmål om priser, ydelser, åbningstider og meget mere — på dit website, døgnet rundt. Konfigureret med præcis din virksomheds viden.</div>
+      <div class="service-tag">Svar på under 3 sekunder</div>
     </div>
     <div class="service">
       <div class="service-icon">🎯</div>
@@ -452,27 +423,27 @@
 <!-- LIVE DEMO CHATBOT -->
 <section class="demo-section" id="demo">
   <div class="demo-grid">
-    <div class="demo-text">
-      <div class="section-eyebrow">Live chatbot-demo</div>
+    <div>
+      <div class="section-eyebrow">Live demo</div>
       <div class="section-title">Sådan oplever dine kunder det</div>
       <p class="section-sub">Chatbotten kender din forretning — åbningstider, priser, ydelser og FAQ. Den svarer på sekunder, på dansk, præcis som du ville gøre det selv.</p>
       <div class="demo-features">
         <div class="demo-feat">
-          <div class="demo-feat-icon">🧠</div>
+          <div class="demo-feat-num">1</div>
           <div>
             <div class="demo-feat-title">Trænet på din viden</div>
             <div class="demo-feat-desc">Du giver os info om din virksomhed — chatbotten svarer præcist, og kun på det den ved.</div>
           </div>
         </div>
         <div class="demo-feat">
-          <div class="demo-feat-icon">🌍</div>
+          <div class="demo-feat-num">2</div>
           <div>
             <div class="demo-feat-title">Virker på alle platforme</div>
             <div class="demo-feat-desc">WordPress, Shopify, Squarespace — ét script-tag og den virker.</div>
           </div>
         </div>
         <div class="demo-feat">
-          <div class="demo-feat-icon">📊</div>
+          <div class="demo-feat-num">3</div>
           <div>
             <div class="demo-feat-title">Du ser alle samtaler</div>
             <div class="demo-feat-desc">I din personlige portal kan du følge med i alle chatsamtaler, leads og bookinger.</div>
@@ -481,7 +452,6 @@
       </div>
     </div>
 
-    <!-- Chat Widget -->
     <div>
       <div class="chat-widget">
         <div class="chat-header">
@@ -493,7 +463,7 @@
         </div>
         <div class="chat-messages" id="chatMessages">
           <div class="cm bot">
-            <div class="cm-bubble">Hej! 👋 Jeg er HaldEls AI-assistent. Hvad kan jeg hjælpe dig med i dag?</div>
+            <div class="cm-bubble">Hej! Jeg er HaldEls AI-assistent. Hvad kan jeg hjælpe dig med i dag?</div>
             <div class="cm-time">Nu</div>
           </div>
           <div class="cm user">
@@ -501,7 +471,7 @@
             <div class="cm-time">Nu</div>
           </div>
           <div class="cm bot">
-            <div class="cm-bubble">Prisen afhænger af opgavens størrelse og omfang. Vi tilbyder altid et gratis uforpligtende tilbud. Du er velkommen til at ringe på 86 12 34 56 eller udfylde vores kontaktformular — så kontakter vi dig inden for 24 timer. 🔧</div>
+            <div class="cm-bubble">Prisen afhænger af opgavens størrelse og omfang. Vi tilbyder altid et gratis uforpligtende tilbud. Du er velkommen til at ringe på 86 12 34 56 eller udfylde vores kontaktformular — så kontakter vi dig inden for 24 timer.</div>
             <div class="cm-time">Nu</div>
           </div>
           <div class="cm user">
@@ -517,7 +487,7 @@
             <div class="cm-time">Nu</div>
           </div>
           <div class="cm bot">
-            <div class="cm-bubble">Vi har åbent mandag–fredag kl. 7–16. Akutopgaver i weekenden kan aftales — ring på 86 12 34 56 og vi ser hvad vi kan gøre. ⚡</div>
+            <div class="cm-bubble">Vi har åbent mandag–fredag kl. 7–16. Akutopgaver i weekenden kan aftales — ring på 86 12 34 56 og vi ser hvad vi kan gøre.</div>
             <div class="cm-time">Nu</div>
           </div>
           <div class="cm user">
@@ -525,13 +495,13 @@
             <div class="cm-time">Nu</div>
           </div>
           <div class="cm bot">
-            <div class="cm-bubble">Ved normale opgaver er vi typisk fremme inden 2–3 hverdage. Akutopkald samme dag kan ofte arrangeres — bare ring til os direkte. 🚗</div>
+            <div class="cm-bubble">Ved normale opgaver er vi typisk fremme inden 2–3 hverdage. Akutopkald samme dag kan ofte arrangeres — bare ring til os direkte.</div>
             <div class="cm-time">Nu</div>
           </div>
         </div>
         <div class="chat-input-bar">
           <input type="text" placeholder="Skriv en besked..." readonly/>
-          <button class="chat-send">➤</button>
+          <button class="chat-send">→</button>
         </div>
         <div class="chat-powered">Drevet af KlarAI</div>
       </div>
@@ -540,7 +510,7 @@
 </section>
 
 <!-- HOW IT WORKS + PORTAL PREVIEW -->
-<section class="how-bg">
+<section>
   <div class="how-grid">
     <div>
       <div class="section-eyebrow">Sådan virker det</div>
@@ -564,47 +534,34 @@
           <div class="how-step-num">3</div>
           <div>
             <div class="how-step-title">AI'en arbejder — du følger med</div>
-            <div class="how-step-desc">Se alle leads, bookinger og chatsamtaler i din personlige portal. Du griber kun ind når kunden er varm og klar til at købe.</div>
+            <div class="how-step-desc">Se alle leads, bookinger og chatsamtaler i din personlige portal. Du griber kun ind når kunden er klar til at købe.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Portal preview -->
     <div class="usecase-visual">
       <div class="uc-tabs">
         <div class="uc-tab active" onclick="showTab('leads',this)">Leads</div>
         <div class="uc-tab" onclick="showTab('stats',this)">Statistik</div>
       </div>
       <div class="uc-body" id="tab-leads">
-        <div style="font-size:.7rem;color:rgba(255,255,255,0.35);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:1px;">Nye leads i dag</div>
+        <div class="uc-label">Nye leads i dag</div>
         <div class="uc-lead-list">
           <div class="uc-lead">
-            <div>
-              <div class="uc-lead-name">Søren Kirkegaard</div>
-              <div class="uc-lead-sub">Ny elinstallation · Aarhus C</div>
-            </div>
+            <div><div class="uc-lead-name">Søren Kirkegaard</div><div class="uc-lead-sub">Ny elinstallation · Aarhus C</div></div>
             <div class="uc-badge new">Ny</div>
           </div>
           <div class="uc-lead">
-            <div>
-              <div class="uc-lead-name">Lene Andersen</div>
-              <div class="uc-lead-sub">Skiftepanel · Viby J</div>
-            </div>
+            <div><div class="uc-lead-name">Lene Andersen</div><div class="uc-lead-sub">Skiftepanel · Viby J</div></div>
             <div class="uc-badge sent">Mail sendt</div>
           </div>
           <div class="uc-lead">
-            <div>
-              <div class="uc-lead-name">Thomas Holm</div>
-              <div class="uc-lead-sub">Akutopkald · Brabrand</div>
-            </div>
+            <div><div class="uc-lead-name">Thomas Holm</div><div class="uc-lead-sub">Akutopkald · Brabrand</div></div>
             <div class="uc-badge hot">Varmt lead</div>
           </div>
           <div class="uc-lead">
-            <div>
-              <div class="uc-lead-name">Birgitte Møller</div>
-              <div class="uc-lead-sub">Eleftersyn · Risskov</div>
-            </div>
+            <div><div class="uc-lead-name">Birgitte Møller</div><div class="uc-lead-sub">Eleftersyn · Risskov</div></div>
             <div class="uc-badge sent">Mail sendt</div>
           </div>
         </div>
@@ -615,7 +572,7 @@
           <div class="uc-stat"><div class="uc-stat-val">12</div><div class="uc-stat-lbl">Nye leads</div></div>
           <div class="uc-stat"><div class="uc-stat-val">3</div><div class="uc-stat-lbl">Bookinger</div></div>
         </div>
-        <div style="font-size:.7rem;color:rgba(255,255,255,0.35);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:1px;">Mest stillede spørgsmål</div>
+        <div class="uc-label">Mest stillede spørgsmål</div>
         <div class="uc-lead-list">
           <div class="uc-lead"><div><div class="uc-lead-name">Priser på installation</div></div><div class="uc-badge new">18×</div></div>
           <div class="uc-lead"><div><div class="uc-lead-name">Åbningstider</div></div><div class="uc-badge sent">11×</div></div>
@@ -636,10 +593,7 @@
       <div class="testi-text">Vi fik sat KlarAI op på vores hjemmeside på under en time. Nu svarer chatbotten automatisk på alle de spørgsmål vi før brugte timer på at besvare pr. mail.</div>
       <div class="testi-author">
         <div class="testi-avatar">M</div>
-        <div>
-          <div class="testi-name">Morten Hald</div>
-          <div class="testi-company">HaldEl · Elektriker i Aarhus</div>
-        </div>
+        <div><div class="testi-name">Morten Hald</div><div class="testi-company">HaldEl · Elektriker i Aarhus</div></div>
       </div>
     </div>
     <div class="testi-card">
@@ -647,10 +601,7 @@
       <div class="testi-text">Bookingagenten har sparet os for mindst 2 timer om dagen. Kunderne booker selv, får bekræftelse på sekunder — og vi slipper for telefoner i arbejdstiden.</div>
       <div class="testi-author">
         <div class="testi-avatar">A</div>
-        <div>
-          <div class="testi-name">Anne Svendsen</div>
-          <div class="testi-company">Svendsen Fysioterapi · Odense</div>
-        </div>
+        <div><div class="testi-name">Anne Svendsen</div><div class="testi-company">Svendsen Fysioterapi · Odense</div></div>
       </div>
     </div>
     <div class="testi-card">
@@ -658,10 +609,7 @@
       <div class="testi-text">Lead-agenten begyndte at sende opfølgningsmails samme dag vi gik live. Inden for ugen havde vi lukket tre nye ordrer som ellers ville være druknet i indbakken.</div>
       <div class="testi-author">
         <div class="testi-avatar">K</div>
-        <div>
-          <div class="testi-name">Kasper Juhl</div>
-          <div class="testi-company">Juhl Tømrer & Snedker · Vejle</div>
-        </div>
+        <div><div class="testi-name">Kasper Juhl</div><div class="testi-company">Juhl Tømrer & Snedker · Vejle</div></div>
       </div>
     </div>
   </div>
@@ -715,7 +663,7 @@
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">Klar<span>AI</span></div>
+  <div class="footer-logo">KlarAI</div>
   <div class="footer-links">
     <a href="#ydelser">Ydelser</a>
     <a href="#priser">Priser</a>
@@ -725,21 +673,16 @@
 </footer>
 
 <script>
-  // Navbar scroll
   const navbar = document.getElementById('navbar');
   window.addEventListener('scroll', () => {
     navbar.classList.toggle('scrolled', window.scrollY > 60);
   });
-
-  // Portal tabs
   function showTab(tab, el) {
     document.getElementById('tab-leads').style.display = tab === 'leads' ? '' : 'none';
     document.getElementById('tab-stats').style.display = tab === 'stats' ? '' : 'none';
     document.querySelectorAll('.uc-tab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
   }
-
-  // Auto-scroll chat to bottom
   const cm = document.getElementById('chatMessages');
   if (cm) cm.scrollTop = cm.scrollHeight;
 </script>
