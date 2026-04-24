@@ -529,7 +529,9 @@ def serve_booking_widget_js():
 
 @app.route('/', methods=['GET'])
 def index():
-    return jsonify({'app': 'KlarAI Agent Server', 'version': '1.0', 'endpoints': ['/chat', '/lead', '/widget/<id>', '/health']})
+    from flask import send_from_directory
+    app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
+    return send_from_directory(app_dir, 'hub.html')
 
 @app.route('/portal/<klient_id>', methods=['GET'])
 def klient_portal(klient_id):

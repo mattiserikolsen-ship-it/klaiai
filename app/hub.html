@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KlarAI — Hub</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .logo { font-size: 2rem; font-weight: 900; color: #0a2463; margin-bottom: .25rem; }
+    .logo span { color: #0a5c8a; }
+    .tagline { font-size: .9rem; color: #888; margin-bottom: 48px; }
+
+    .cards {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 800px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 28px;
+      width: 220px;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      transition: transform .15s, box-shadow .15s;
+      cursor: pointer;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    }
+
+    .card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0a2463;
+      margin-bottom: .4rem;
+    }
+    .card-desc {
+      font-size: .78rem;
+      color: #888;
+      line-height: 1.5;
+    }
+
+    .card.admin { border-top: 4px solid #0a2463; }
+    .card.portal { border-top: 4px solid #0a5c8a; }
+    .card.site { border-top: 4px solid #10b981; }
+
+    .version { margin-top: 48px; font-size: .72rem; color: #bbb; }
+  </style>
+</head>
+<body>
+
+  <div class="logo">Klar<span>AI</span></div>
+  <div class="tagline">AI-agenter til danske virksomheder</div>
+
+  <div class="cards">
+
+    <a class="card admin" href="/app/admin.html">
+      <div class="card-icon">⚙️</div>
+      <div class="card-title">Admin panel</div>
+      <div class="card-desc">Opret og administrer klienter, chatbots, leads og fakturaer</div>
+    </a>
+
+    <a class="card portal" href="/app/client.html">
+      <div class="card-icon">👤</div>
+      <div class="card-title">Kundeportal</div>
+      <div class="card-desc">Log ind som kunde og se leads, bookinger og agenter</div>
+    </a>
+
+    <a class="card site" href="https://klaiai.onrender.com/health" target="_blank">
+      <div class="card-icon">🌐</div>
+      <div class="card-title">Server status</div>
+      <div class="card-desc">Tjek om klaai.dk-serveren kører og er online</div>
+    </a>
+
+  </div>
+
+  <div class="version">klaai.dk — KlarAI v1.0</div>
+
+</body>
+</html>
