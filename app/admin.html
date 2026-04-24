@@ -778,7 +778,7 @@
         <div class="card">
           <div class="generator-section">
             <div class="generator-section-title">Vælg klient</div>
-            <select class="form-input form-select" id="chatbotClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+            <select class="form-input form-select" id="chatbotClientSel" style="width:100%" onchange="loadChatbotConfig(this.value)"><option value="">— Vælg klient —</option></select>
           </div>
           <div class="generator-section">
             <div class="generator-section-title">Chatbot indstillinger</div>
@@ -1633,6 +1633,30 @@ document.querySelectorAll('.product-opt').forEach(el => {
 });
 
 // ── GENERATORER ───────────────────────────────────────
+
+async function loadChatbotConfig(klientId) {
+  if (!klientId) return;
+  try {
+    const res = await fetch(`${AGENT_URL}/widget/${klientId}`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (cfg.navn) document.getElementById('chatbotName').value = cfg.navn;
+    if (cfg.velkomst) document.getElementById('chatbotGreeting').value = cfg.velkomst;
+    if (cfg.farve) document.getElementById('chatbotColor').value = cfg.farve;
+    if (cfg.info) {
+      if (cfg.info.åbningstider) document.getElementById('cb_aabning').value = cfg.info.åbningstider;
+      if (cfg.info.kontakt) document.getElementById('cb_kontakt').value = cfg.info.kontakt;
+      if (cfg.info.ydelser) document.getElementById('cb_ydelser').value = cfg.info.ydelser;
+      if (cfg.info.priser) document.getElementById('cb_priser').value = cfg.info.priser;
+      if (cfg.info.adresse) document.getElementById('cb_adresse').value = cfg.info.adresse;
+      if (cfg.info.andet) document.getElementById('cb_andet').value = cfg.info.andet;
+    }
+    if (cfg.ekstra_viden) {
+      document.getElementById('cb_ekstra_viden').value = cfg.ekstra_viden;
+      document.getElementById('pdfExtractedWrap').classList.remove('hidden');
+    }
+  } catch(e) { console.warn('Kunne ikke loade chatbot config:', e); }
+}
 
 // CHATBOT
 function generateChatbot() {
