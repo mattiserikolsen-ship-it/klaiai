@@ -22,6 +22,7 @@
   let valgtTid = null;
   let valgtYdelse = null;
   let step = 1; // 1=dato, 2=tid+ydelse, 3=info, 4=bekræftet
+  let optaget = []; // optagne tider for valgt dato
 
   // ── STYLES ──────────────────────────────────────────
   const style = document.createElement('style');
@@ -207,7 +208,15 @@
       <div class="klai-bw-title">${cfg.titel}</div>
       <div class="klai-section-title">Tidspunkt — ${datoFormateret}</div>
       <div class="klai-slots">
-        ${slots.map(t => `<div class="klai-slot ${valgtTid===t?'selected':''}" onclick="klaiPickTid('${t}')">${t}</div>`).join('')}
+        ${slots.map(t => {
+          const erOptaget = optaget.includes(t);
+          const erValgt = valgtTid === t;
+          return `<div class="klai-slot ${erValgt?'selected':''} ${erOptaget?'booked':''}"
+            ${erOptaget ? 'title="Optaget"' : `onclick="klaiPickTid('${t}')"`}
+            style="${erOptaget ? 'opacity:.35;cursor:not-allowed;text-decoration:line-through;' : ''}">
+            ${t}${erOptaget ? '' : ''}
+          </div>`;
+        }).join('')}
       </div>
       ${cfg.ydelser.length > 1 ? `
         <div class="klai-section-title" style="margin-top:1.25rem">Ydelse</div>
@@ -285,7 +294,21 @@
   }
 
   // ── ACTIONS ───────────────────────────────────────────
-  window.klaiPickDate = function(d) { valgtDato = d; render(); };
+  window.klaiPickDate = async function(d) {
+    valgtDato = d;
+    valgtTid = null;
+    optaget = [];
+    render();
+    // Hent optagne tider i baggrunden
+    try {
+      const res = await fetch(`${API_URL}/booking-optaget/${CLIENT_ID}/${d}`);
+      if (res.ok) {
+        const data = await res.json();
+        optaget = data.optaget || [];
+        render(); // genrender med opdaterede optagne tider
+      }
+    } catch(e) {}
+  };
   window.klaiPickTid = function(t) { valgtTid = t; render(); };
   window.klaiPickYdelse = function(y) { valgtYdelse = y; render(); };
   window.klaiCalNav = function(dir) {
@@ -320,8 +343,25 @@
           booking: { navn, email, telefon: tlf, ydelse: valgtYdelse, dato: valgtDato, tid: valgtTid, besked }
         })
       });
-      if (res.ok) { step = 4; render(); }
-      else throw new Error();
+      if (res.ok) {
+        step = 4; render();
+      } else if (res.status === 409) {
+        // Dobbeltbooking — opdater optaget-liste og gå tilbage til tidsvalg
+        const errData = await res.json();
+        optaget.push(valgtTid);
+        valgtTid = null;
+        step = 2;
+        render();
+        setTimeout(() => {
+          const err = document.createElement('div');
+          err.className = 'klai-error';
+          err.style.marginBottom = '.75rem';
+          err.textContent = errData.error || 'Dette tidspunkt er allerede booket. Vælg et andet.';
+          wrap.querySelector('.klai-slots')?.before(err);
+        }, 50);
+      } else {
+        throw new Error();
+      }
     } catch(e) {
       btn.disabled = false; btn.textContent = 'Bekræft booking';
       document.getElementById('klai_b_error').innerHTML = '<div class="klai-error">Noget gik galt. Prøv igen.</div>';

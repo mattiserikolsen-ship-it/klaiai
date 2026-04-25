@@ -341,6 +341,19 @@ def gem_booking_config():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/booking-optaget/<klient_id>/<dato>', methods=['GET'])
+def get_optaget(klient_id, dato):
+    """Returnerer optagne tidspunkter for en given dato"""
+    if not db:
+        return jsonify({'optaget': []})
+    try:
+        res = db.table('bookinger').select('tid').eq('klient_id', klient_id).eq('dato', dato).eq('status', 'bekræftet').execute()
+        tider = [r['tid'] for r in (res.data or [])]
+        return jsonify({'optaget': tider})
+    except Exception as e:
+        return jsonify({'optaget': [], 'error': str(e)})
+
+
 @app.route('/booking', methods=['POST'])
 def modtag_booking():
     """Modtager en ny booking og sender bekræftelsesmail"""
@@ -353,6 +366,17 @@ def modtag_booking():
 
     if not booking.get('email') or not booking.get('navn'):
         return jsonify({'error': 'Booking mangler email eller navn'}), 400
+
+    # Tjek dobbeltbooking
+    dato = booking.get('dato', '')
+    tid = booking.get('tid', '')
+    if db and dato and tid:
+        try:
+            existing = db.table('bookinger').select('id').eq('klient_id', klient_id).eq('dato', dato).eq('tid', tid).eq('status', 'bekræftet').execute()
+            if existing.data:
+                return jsonify({'error': 'Dette tidspunkt er desværre allerede booket. Vælg venligst et andet tidspunkt.'}), 409
+        except Exception as e:
+            print(f"Dobbeltbooking-tjek fejl: {e}")
 
     # Gem i Supabase
     if db:
