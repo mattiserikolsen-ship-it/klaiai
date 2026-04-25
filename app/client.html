@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KlarAI – Min portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -188,6 +189,31 @@
     .empty-text { font-size: .85rem; line-height: 1.6; }
     .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: .82rem; }
 
+    /* ── RAPPORT ── */
+    .rapport-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+    .rapport-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+    .chart-title { font-size: .82rem; font-weight: 700; color: var(--dark); margin-bottom: 1rem; }
+    .chart-wrap { position: relative; height: 200px; }
+    .chart-wrap-sm { position: relative; height: 180px; }
+    .periode-row { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+    .periode-btn {
+      font-size: .75rem; font-weight: 600; padding: .35rem .85rem;
+      border-radius: 7px; border: 1px solid var(--border);
+      background: var(--card); color: var(--muted); cursor: pointer;
+      font-family: inherit; transition: all .15s;
+    }
+    .periode-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+    .send-rapport-btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--dark); color: #fff; border: none;
+      padding: .6rem 1.2rem; border-radius: 9px; font-size: .8rem;
+      font-weight: 700; font-family: inherit; cursor: pointer;
+      transition: opacity .15s;
+    }
+    .send-rapport-btn:hover { opacity: .85; }
+    .send-rapport-btn:disabled { opacity: .5; cursor: default; }
+
     /* ── MOBILE ── */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -232,6 +258,9 @@
     </div>
     <div class="nav-item" data-view="agenter" onclick="showView('agenter')">
       <span class="ni">◈</span> Mine agenter
+    </div>
+    <div class="nav-item" data-view="rapport" onclick="showView('rapport')">
+      <span class="ni">◫</span> Rapport
     </div>
   </div>
   <div class="sidebar-footer">
@@ -302,6 +331,55 @@
       </div>
     </div>
 
+    <!-- RAPPORT -->
+    <div id="view-rapport" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+        <div class="periode-row" style="margin:0">
+          <button class="periode-btn active" onclick="skiftPeriode('uger',this)">Seneste 8 uger</button>
+          <button class="periode-btn" onclick="skiftPeriode('maaneder',this)">Seneste 6 måneder</button>
+        </div>
+        <button class="send-rapport-btn" id="sendRapportBtn" onclick="sendRapport()">
+          ✉ Send rapport pr. mail
+        </button>
+      </div>
+
+      <div class="rapport-grid-3">
+        <div class="stat-card">
+          <div class="stat-num" id="rapLeads">—</div>
+          <div class="stat-label">Leads i alt</div>
+          <div class="stat-sub">siden opstart</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="rapBookinger">—</div>
+          <div class="stat-label">Bookinger</div>
+          <div class="stat-sub">bekræftet</div>
+        </div>
+        <div class="stat-card" style="background:var(--green-bg);border-color:#c5d6c2">
+          <div class="stat-num" id="rapChatbot" style="color:var(--green)">—</div>
+          <div class="stat-label" style="color:var(--green)">Via chatbot</div>
+          <div class="stat-sub" style="color:var(--green)">af alle leads</div>
+        </div>
+      </div>
+
+      <div class="rapport-grid">
+        <div class="chart-card" style="grid-column:1/-1">
+          <div class="chart-title" id="rapChartTitle">Leads & bookinger — seneste 8 uger</div>
+          <div class="chart-wrap"><canvas id="rapChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="rapport-grid">
+        <div class="chart-card">
+          <div class="chart-title">Leadkilde</div>
+          <div class="chart-wrap-sm"><canvas id="kildeChart"></canvas></div>
+        </div>
+        <div class="chart-card" style="display:flex;flex-direction:column;justify-content:center">
+          <div class="chart-title">Fordeling</div>
+          <div id="kildeLegend" style="font-size:.82rem;line-height:2.2"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- AGENTER -->
     <div id="view-agenter" class="hidden">
       <div class="card">
@@ -348,12 +426,13 @@ function closeMobileNav() {
 }
 
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','leads','bookinger','agenter'];
+const views = ['overblik','leads','bookinger','agenter','rapport'];
 const titles = {
   overblik:  ['Overblik',      'Din KlarAI portal'],
   leads:     ['Leads',         'Kunder der har henvendt sig'],
   bookinger: ['Bookinger',     'Bekræftede bookinger'],
-  agenter:   ['Mine agenter',  'AI-agenter der kører for dig']
+  agenter:   ['Mine agenter',  'AI-agenter der kører for dig'],
+  rapport:   ['Rapport',       'Statistik og grafisk overblik']
 };
 
 function showView(v) {
@@ -366,6 +445,7 @@ function showView(v) {
   document.getElementById('topbarTitle').textContent = titles[v][0];
   document.getElementById('topbarSub').textContent = titles[v][1];
   closeMobileNav();
+  if (v === 'rapport' && !rapportData) loadRapport();
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
@@ -528,6 +608,150 @@ async function loadLeadsOgBookinger() {
   renderOverblikLeads();
   renderLeads();
   renderBookinger();
+}
+
+// ── RAPPORT ────────────────────────────────────────────
+let rapportData = null;
+let rapChart = null;
+let kildeChart = null;
+let aktivPeriode = 'uger';
+
+async function loadRapport() {
+  if (!CLIENT_ID) return;
+  try {
+    const res = await fetch(`${API}/rapport/${CLIENT_ID}`);
+    if (!res.ok) return;
+    rapportData = await res.json();
+
+    document.getElementById('rapLeads').textContent = rapportData.total_leads ?? 0;
+    document.getElementById('rapBookinger').textContent = rapportData.total_bookinger ?? 0;
+    const total = rapportData.total_leads || 1;
+    const chatbotPct = Math.round((rapportData.kilde?.chatbot || 0) / total * 100);
+    document.getElementById('rapChatbot').textContent = `${rapportData.kilde?.chatbot ?? 0} (${chatbotPct}%)`;
+
+    renderRapChart(aktivPeriode);
+    renderKildeChart();
+  } catch(e) { console.error(e); }
+}
+
+function renderRapChart(periode) {
+  if (!rapportData) return;
+  const d = rapportData[periode] || rapportData.uger;
+  const label = periode === 'uger' ? 'seneste 8 uger' : 'seneste 6 måneder';
+  document.getElementById('rapChartTitle').textContent = `Leads & bookinger — ${label}`;
+
+  const ctx = document.getElementById('rapChart').getContext('2d');
+  if (rapChart) rapChart.destroy();
+  rapChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: d.labels,
+      datasets: [
+        {
+          label: 'Leads',
+          data: d.leads,
+          backgroundColor: 'rgba(26,25,24,0.85)',
+          borderRadius: 6,
+          borderSkipped: false
+        },
+        {
+          label: 'Bookinger',
+          data: d.bookinger,
+          backgroundColor: 'rgba(74,103,65,0.7)',
+          borderRadius: 6,
+          borderSkipped: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { font: { family: 'Inter', size: 11 }, color: '#4a4845', boxWidth: 12, boxHeight: 12, borderRadius: 3 }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#9a9590' } },
+        y: {
+          beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Inter', size: 11 }, color: '#9a9590' },
+          grid: { color: '#f0efec' }
+        }
+      }
+    }
+  });
+}
+
+function renderKildeChart() {
+  if (!rapportData) return;
+  const chatbot  = rapportData.kilde?.chatbot  || 0;
+  const formular = rapportData.kilde?.formular || 0;
+  const total = chatbot + formular;
+
+  const ctx = document.getElementById('kildeChart').getContext('2d');
+  if (kildeChart) kildeChart.destroy();
+
+  if (total === 0) {
+    document.getElementById('kildeLegend').innerHTML = '<div style="color:var(--muted)">Ingen data endnu</div>';
+    return;
+  }
+
+  kildeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Chatbot', 'Formular'],
+      datasets: [{
+        data: [chatbot, formular],
+        backgroundColor: ['#4a6741', '#e5e3de'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  const chatPct  = Math.round(chatbot  / total * 100);
+  const formPct  = Math.round(formular / total * 100);
+  document.getElementById('kildeLegend').innerHTML = `
+    <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#4a6741;margin-right:8px"></span><strong>Chatbot</strong> — ${chatbot} leads (${chatPct}%)</div>
+    <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#e5e3de;margin-right:8px"></span><strong>Formular</strong> — ${formular} leads (${formPct}%)</div>
+  `;
+}
+
+function skiftPeriode(periode, btn) {
+  aktivPeriode = periode;
+  document.querySelectorAll('.periode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRapChart(periode);
+}
+
+async function sendRapport() {
+  const btn = document.getElementById('sendRapportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sender...';
+  try {
+    const res = await fetch(`${API}/send-rapport/${CLIENT_ID}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const d = await res.json();
+    if (d.success) {
+      btn.textContent = `✓ Sendt til ${d.sendt_til}`;
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = '✉ Send rapport pr. mail'; }, 4000);
+    } else {
+      btn.textContent = 'Fejl — prøv igen';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = 'Fejl — prøv igen';
+    btn.disabled = false;
+  }
 }
 
 // Init
