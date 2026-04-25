@@ -268,6 +268,21 @@
     .btn-implement.done { background: var(--green-bg); color: var(--green); cursor: default; }
     .insight-forslag { font-size: .75rem; color: var(--muted); background: var(--bg); border-radius: 6px; padding: .35rem .7rem; font-style: italic; }
 
+    /* ── LEAD MAILS ── */
+    .mail-gruppe { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+    .mail-gruppe-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .mail-lead-navn { font-size: .9rem; font-weight: 700; }
+    .mail-lead-sub { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .mail-tabs { display: flex; gap: .4rem; margin-bottom: 1rem; }
+    .mail-tab-btn { font-size: .75rem; font-weight: 600; padding: .35rem .8rem; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); cursor: pointer; font-family: inherit; transition: all .15s; }
+    .mail-tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .mail-panel { display: none; }
+    .mail-panel.active { display: block; }
+    .mail-emne-input { width: 100%; font-weight: 600; font-size: .875rem; margin-bottom: .6rem; }
+    .mail-tekst-input { width: 100%; min-height: 140px; font-size: .82rem; line-height: 1.7; }
+    .mail-actions { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; flex-wrap: wrap; }
+    .auto-label { font-size: .75rem; color: var(--muted); display: flex; align-items: center; gap: .4rem; cursor: pointer; }
+
     /* ── GAPS ── */
     .gap-card {
       background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--orange);
@@ -635,6 +650,7 @@
         <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver</div>
         <div class="tab" data-tab="chatbot-test" onclick="switchTab('chatbot-test')">💬 Test chatbot</div>
         <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
+        <div class="tab" data-tab="leadmails" onclick="switchTab('leadmails')">📧 Leadmails <span id="mailBadge" class="hidden" style="background:var(--red);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
         <div class="tab" data-tab="insights" onclick="switchTab('insights')" style="color:var(--purple)">🧠 AI Insights</div>
       </div>
 
@@ -731,6 +747,20 @@
           <button class="btn btn-secondary btn-sm" onclick="addTask()">+ Tilføj opgave</button>
         </div>
         <div class="task-list" id="taskList"></div>
+      </div>
+
+      <!-- Tab: Leadmails -->
+      <div id="tab-leadmails" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div>
+            <div style="font-size:.9rem;font-weight:700;margin-bottom:.15rem">📧 Leadmail preview</div>
+            <div style="font-size:.78rem;color:var(--muted)">Gennemse og rediger de 3 opfølgningsmails inden de sendes</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="hentLeadMails()">↻ Opdater</button>
+        </div>
+        <div id="leadMailsOutput">
+          <div style="font-size:.82rem;color:var(--muted)">Henter afventende mails...</div>
+        </div>
       </div>
 
       <!-- Tab: AI Insights -->
@@ -1418,7 +1448,7 @@ function showView(v) {
 }
 
 function switchTab(t) {
-  ['overview','products','agents','tasks','chatbot-test','chat','insights'].forEach(id => {
+  ['overview','products','agents','tasks','chatbot-test','chat','leadmails','insights'].forEach(id => {
     document.getElementById('tab-'+id)?.classList.add('hidden');
   });
   document.getElementById('tab-'+t)?.classList.remove('hidden');
@@ -1430,7 +1460,143 @@ function switchTab(t) {
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
   if (t === 'chatbot-test' && currentClient) initTestChat();
+  if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
+}
+
+// ── LEAD MAILS ────────────────────────────────────────
+async function hentLeadMails() {
+  if (!currentClient) return;
+  const out = document.getElementById('leadMailsOutput');
+  const badge = document.getElementById('mailBadge');
+  out.innerHTML = '<div style="font-size:.82rem;color:var(--muted)">Henter...</div>';
+
+  try {
+    const res = await fetch(`${API}/lead-mails/${currentClient.id}`);
+    const data = await res.json();
+    const grupper = data.grupper || [];
+
+    if (!grupper.length) {
+      badge.classList.add('hidden');
+      out.innerHTML = `<div style="text-align:center;padding:2.5rem;color:var(--muted)">
+        <div style="font-size:1.4rem;margin-bottom:.5rem">📭</div>
+        <div style="font-size:.85rem">Ingen afventende mails — nye leads vil dukke op her</div>
+      </div>`;
+      return;
+    }
+
+    badge.textContent = grupper.length;
+    badge.classList.remove('hidden');
+    out.innerHTML = grupper.map(g => renderMailGruppe(g)).join('');
+  } catch(e) {
+    out.innerHTML = `<div style="font-size:.82rem;color:var(--muted)">Kunne ikke hente mails — er lead_mails tabellen oprettet i Supabase?</div>`;
+  }
+}
+
+function renderMailGruppe(g) {
+  const leadId = g.lead_id;
+  const mails = g.mails;
+  const mailLabels = ['Mail 1 — Straks', 'Mail 2 — Dag 2', 'Mail 3 — Dag 5'];
+
+  const panels = mails.map((m, i) => `
+    <div class="mail-panel ${i === 0 ? 'active' : ''}" id="panel-${leadId}-${i}">
+      <div class="form-group" style="margin-bottom:.6rem">
+        <div class="form-label">Emne</div>
+        <input class="form-input mail-emne-input" id="emne-${m.id}" value="${(m.emne||'').replace(/"/g,'&quot;')}"/>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Brødtekst</div>
+        <textarea class="form-input mail-tekst-input" id="tekst-${m.id}">${m.tekst||''}</textarea>
+      </div>
+    </div>
+  `).join('');
+
+  const tabs = mails.map((m, i) => `
+    <button class="mail-tab-btn ${i === 0 ? 'active' : ''}"
+      onclick="skiftMailTab('${leadId}', ${i}, ${mails.length})">
+      ${mailLabels[i] || 'Mail ' + (i+1)}
+    </button>
+  `).join('');
+
+  return `
+    <div class="mail-gruppe" id="gruppe-${leadId}">
+      <div class="mail-gruppe-header">
+        <div>
+          <div class="mail-lead-navn">Lead #${leadId}</div>
+          <div class="mail-lead-sub">${mails.length} opfølgningsmails klar til godkendelse</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="afvisMails('${leadId}')">✕ Afvis alle</button>
+      </div>
+      <div class="mail-tabs">${tabs}</div>
+      ${panels}
+      <div class="mail-actions">
+        <button class="btn btn-primary" onclick="godkendMails('${leadId}', ${JSON.stringify(mails.map(m => m.id))})">
+          ✓ Godkend & Send alle 3
+        </button>
+        <label class="auto-label">
+          <input type="checkbox" id="auto-${leadId}" style="margin:0"/>
+          Send automatisk fremadrettet
+        </label>
+      </div>
+    </div>
+  `;
+}
+
+function skiftMailTab(leadId, aktiv, antal) {
+  for (let i = 0; i < antal; i++) {
+    document.getElementById(`panel-${leadId}-${i}`)?.classList.toggle('active', i === aktiv);
+  }
+  document.querySelectorAll(`#gruppe-${leadId} .mail-tab-btn`).forEach((btn, i) => {
+    btn.classList.toggle('active', i === aktiv);
+  });
+}
+
+async function godkendMails(leadId, mailIds) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Sender...';
+  const autoFremadrettet = document.getElementById(`auto-${leadId}`)?.checked || false;
+
+  const mails = mailIds.map(id => ({
+    id,
+    emne: document.getElementById(`emne-${id}`)?.value || '',
+    tekst: document.getElementById(`tekst-${id}`)?.value || ''
+  }));
+
+  try {
+    const res = await fetch(`${API}/godkend-mails`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead_id: leadId, klient_id: currentClient.id, mails, auto_fremadrettet: autoFremadrettet })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const gruppe = document.getElementById(`gruppe-${leadId}`);
+      gruppe.style.opacity = '.4';
+      gruppe.style.borderColor = 'var(--green)';
+      btn.className = 'btn btn-success';
+      btn.textContent = `✓ Sendt til ${data.til || 'kunden'}`;
+      if (autoFremadrettet) {
+        btn.textContent += ' · Auto-send aktiveret';
+        document.getElementById('mailBadge')?.classList.add('hidden');
+      }
+      setTimeout(() => gruppe.remove(), 2500);
+    } else {
+      btn.disabled = false; btn.textContent = '✓ Godkend & Send alle 3';
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '✓ Godkend & Send alle 3';
+  }
+}
+
+async function afvisMails(leadId) {
+  try {
+    await fetch(`${API}/afvis-mails/${leadId}`, { method: 'POST' });
+    const gruppe = document.getElementById(`gruppe-${leadId}`);
+    gruppe.style.transition = 'opacity .3s';
+    gruppe.style.opacity = '0';
+    setTimeout(() => { gruppe.remove(); hentLeadMails(); }, 300);
+  } catch(e) {}
 }
 
 // ── CHATBOT GAPS ──────────────────────────────────────

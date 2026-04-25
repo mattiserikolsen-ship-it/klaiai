@@ -329,17 +329,55 @@ def modtag_lead():
     mails = []
     for nr in [1, 2, 3]:
         mail = generer_lead_mail(lead, klient_info, nr)
-        if send_nu and lead.get('email') and SENDGRID_API_KEY:
+        mail['sendt'] = False
+        mails.append(mail)
+
+    # Tjek om klient har auto-godkend slået til
+    auto_godkend = False
+    lead_db_id = None
+    if db:
+        try:
+            cfg = db.table('chatbot_config').select('auto_godkend_mails').eq('klient_id', klient_id).execute()
+            if cfg.data:
+                auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
+            # Hent lead id
+            lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('oprettet', desc=True).limit(1).execute()
+            if lead_res.data:
+                lead_db_id = str(lead_res.data[0]['id'])
+        except:
+            pass
+
+    if auto_godkend and lead.get('email') and SENDGRID_API_KEY:
+        # Send straks
+        for mail in mails:
             sendt = send_mail(lead['email'], mail['emne'], mail['tekst'], klient_info['navn'])
             mail['sendt'] = sendt
-        else:
-            mail['sendt'] = False
-        mails.append(mail)
+        if db and lead_db_id:
+            try:
+                for mail in mails:
+                    db.table('lead_mails').insert({
+                        'lead_id': lead_db_id, 'klient_id': klient_id,
+                        'mail_nr': mail['mail_nr'], 'emne': mail['emne'],
+                        'tekst': mail['tekst'], 'status': 'sendt'
+                    }).execute()
+            except: pass
+    else:
+        # Gem som "afventer godkendelse"
+        if db and lead_db_id:
+            try:
+                for mail in mails:
+                    db.table('lead_mails').insert({
+                        'lead_id': lead_db_id, 'klient_id': klient_id,
+                        'mail_nr': mail['mail_nr'], 'emne': mail['emne'],
+                        'tekst': mail['tekst'], 'status': 'afventer'
+                    }).execute()
+            except: pass
 
     return jsonify({
         'success': True,
         'lead': lead.get('navn'),
         'mails_genereret': len(mails),
+        'auto_godkendt': auto_godkend,
         'mails': mails
     })
 
@@ -565,6 +603,92 @@ def get_bookinger(klient_id):
         return jsonify({'bookinger': res.data or []})
     except Exception as e:
         return jsonify({'bookinger': [], 'error': str(e)})
+
+
+# ── LEAD MAILS PREVIEW & GODKENDELSE ──────────────────
+
+@app.route('/lead-mails/<klient_id>', methods=['GET'])
+def get_lead_mails(klient_id):
+    """Henter afventende lead-mails til preview"""
+    if not db:
+        return jsonify({'mails': []})
+    try:
+        res = db.table('lead_mails').select('*').eq('klient_id', klient_id).eq('status', 'afventer').order('oprettet', desc=True).execute()
+        # Gruppér per lead_id
+        from collections import defaultdict
+        grupper = defaultdict(list)
+        for m in (res.data or []):
+            grupper[m['lead_id']].append(m)
+        result = [{'lead_id': lid, 'mails': sorted(ms, key=lambda x: x['mail_nr'])} for lid, ms in grupper.items()]
+        return jsonify({'grupper': result})
+    except Exception as e:
+        return jsonify({'grupper': [], 'error': str(e)})
+
+
+@app.route('/godkend-mails', methods=['POST'])
+def godkend_mails(klient_id=None):
+    """Godkender (og sender) lead-mails. Kan også opdatere tekst inden afsendelse."""
+    data = request.json
+    lead_id = data.get('lead_id')
+    klient_id = data.get('klient_id')
+    mails = data.get('mails', [])  # [{'id': X, 'emne': ..., 'tekst': ...}]
+    auto_fremadrettet = data.get('auto_fremadrettet', False)
+
+    if not db or not klient_id:
+        return jsonify({'error': 'Mangler data'}), 400
+
+    # Hent lead email
+    lead_email, lead_navn = '', ''
+    try:
+        lr = db.table('leads').select('email,navn').eq('id', lead_id).single().execute()
+        if lr.data:
+            lead_email = lr.data.get('email', '')
+            lead_navn = lr.data.get('navn', '')
+    except: pass
+
+    klient = get_klient(klient_id)
+    klient_navn = klient.get('navn', 'Virksomheden')
+    sendt_count = 0
+
+    for m in mails:
+        mail_id = m.get('id')
+        emne = m.get('emne', '')
+        tekst = m.get('tekst', '')
+
+        # Opdater tekst i DB
+        try:
+            db.table('lead_mails').update({'emne': emne, 'tekst': tekst, 'status': 'sendt'}).eq('id', mail_id).execute()
+        except: pass
+
+        # Send hvis email findes
+        if lead_email and SENDGRID_API_KEY:
+            sendt = send_mail(lead_email, emne, tekst, klient_navn)
+            if sendt:
+                sendt_count += 1
+
+    # Sæt auto-godkend hvis valgt
+    if auto_fremadrettet:
+        try:
+            existing = db.table('chatbot_config').select('klient_id').eq('klient_id', klient_id).execute()
+            if existing.data:
+                db.table('chatbot_config').update({'auto_godkend_mails': True}).eq('klient_id', klient_id).execute()
+            else:
+                db.table('chatbot_config').insert({'klient_id': klient_id, 'auto_godkend_mails': True}).execute()
+        except: pass
+
+    return jsonify({'success': True, 'sendt': sendt_count, 'til': lead_email})
+
+
+@app.route('/afvis-mails/<lead_id>', methods=['POST'])
+def afvis_mails(lead_id):
+    """Afviser/sletter afventende mails for et lead"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        db.table('lead_mails').update({'status': 'afvist'}).eq('lead_id', lead_id).eq('status', 'afventer').execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ── CHATBOT GAPS ───────────────────────────────────────
