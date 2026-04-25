@@ -533,6 +533,175 @@ def get_bookinger(klient_id):
         return jsonify({'bookinger': [], 'error': str(e)})
 
 
+# ── AI INSIGHTS & BRANCHE-RESEARCH ────────────────────
+
+@app.route('/insights/<klient_id>', methods=['GET'])
+def get_insights(klient_id):
+    """Analyserer klientens opsætning og returnerer kritiske AI-forbedringer"""
+    klient = get_klient(klient_id)
+    leads, bookinger = [], []
+    if db:
+        try:
+            leads = db.table('leads').select('kilde,oprettet,besked').eq('klient_id', klient_id).execute().data or []
+            bookinger = db.table('bookinger').select('ydelse,oprettet').eq('klient_id', klient_id).execute().data or []
+        except:
+            pass
+
+    info = klient.get('info', {})
+    chatbot_navn = klient.get('chatbot_navn', 'Alma')
+    velkomst = klient.get('velkomst', '')
+    ekstra_viden = klient.get('ekstra_viden', '')
+
+    chatbot = sum(1 for l in leads if l.get('kilde') == 'chatbot')
+    formular = len(leads) - chatbot
+    chatbot_pct = round(chatbot / len(leads) * 100) if leads else 0
+
+    analyse_prompt = f"""Du er en skarp KlarAI-konsulent. Analyser denne klients AI-opsætning og returner præcis 4-5 kritiske, konkrete forbedringer i JSON.
+
+KLIENT DATA:
+Navn: {klient.get('navn', '')}
+Hjemmeside: {klient.get('hjemmeside', klient.get('info', {}).get('adresse', ''))}
+Ydelser: {info.get('ydelser', 'MANGLER')}
+Priser: {info.get('priser', 'MANGLER')}
+Åbningstider: {info.get('åbningstider', 'MANGLER')}
+Kontakt: {info.get('kontakt', 'MANGLER')}
+Adresse: {info.get('adresse', 'MANGLER')}
+Chatbot-navn: {chatbot_navn}
+Velkomstbesked: {velkomst or 'MANGLER'}
+Ekstra viden: {'Udfyldt' if ekstra_viden else 'MANGLER'}
+
+STATISTIK:
+Leads i alt: {len(leads)}
+Bookinger: {len(bookinger)}
+Via chatbot: {chatbot} ({chatbot_pct}%)
+Via formular: {formular}
+
+Returner KUN dette JSON-format, intet andet:
+{{
+  "insights": [
+    {{
+      "id": "unik_id",
+      "titel": "Kort, skarp titel",
+      "problem": "Præcis beskrivelse af problemet og konsekvensen (1-2 sætninger)",
+      "løsning": "Konkret handling der skal tages (1 sætning)",
+      "alvor": "kritisk" eller "middel" eller "lav",
+      "handling": "update_chatbot_config",
+      "felt": "priser" eller "ydelser" eller "åbningstider" eller "velkomst" eller "adresse" eller "kontakt" eller "ekstra_viden",
+      "forslag_vaerdi": "Den præcise tekst der skal indsættes"
+    }}
+  ]
+}}
+
+Regler:
+- Kun "kritisk" hvis det direkte koster leads eller bookinger
+- Forslag skal være SPECIFIKKE — ikke generiske råd
+- Hvis et felt mangler, generer et realistisk forslag baseret på klientens branche
+- "handling" er ALTID "update_chatbot_config"
+- "forslag_vaerdi" er den PRÆCISE tekst der indsættes i feltet"""
+
+    try:
+        response = ai.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=1500,
+            messages=[{'role': 'user', 'content': analyse_prompt}]
+        )
+        raw = response.content[0].text.strip()
+        # Udtræk JSON hvis pakket i markdown
+        if '```' in raw:
+            raw = raw.split('```')[1]
+            if raw.startswith('json'): raw = raw[4:]
+        result = json.loads(raw.strip())
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/apply-insight/<klient_id>', methods=['POST'])
+def apply_insight(klient_id):
+    """Implementerer et AI-indsigt ved at opdatere chatbot-config"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+
+    data = request.json
+    felt = data.get('felt')
+    vaerdi = data.get('forslag_vaerdi')
+
+    if not felt or not vaerdi:
+        return jsonify({'error': 'felt og forslag_vaerdi er påkrævet'}), 400
+
+    felt_map = {
+        'priser': 'priser',
+        'ydelser': 'ydelser',
+        'åbningstider': 'aabningsider',
+        'velkomst': 'velkomst',
+        'adresse': 'adresse',
+        'kontakt': 'kontakt',
+        'ekstra_viden': 'ekstra_viden'
+    }
+
+    db_felt = felt_map.get(felt, felt)
+    try:
+        existing = db.table('chatbot_config').select('*').eq('klient_id', klient_id).execute()
+        if existing.data:
+            db.table('chatbot_config').update({db_felt: vaerdi}).eq('klient_id', klient_id).execute()
+        else:
+            db.table('chatbot_config').insert({'klient_id': klient_id, db_felt: vaerdi}).execute()
+        return jsonify({'success': True, 'felt': felt, 'vaerdi': vaerdi})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/research-branche/<klient_id>', methods=['POST'])
+def research_branche(klient_id):
+    """Lader Claude researche branchen og beriger ekstra_viden automatisk"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+
+    klient = get_klient(klient_id)
+    info = klient.get('info', {})
+
+    research_prompt = f"""Du er en brancheekspert og skal hjælpe en AI-chatbot med at forstå kundens branche bedre.
+
+VIRKSOMHED:
+Navn: {klient.get('navn', '')}
+Ydelser: {info.get('ydelser', '')}
+Priser: {info.get('priser', '')}
+Adresse: {info.get('adresse', '')}
+
+Generer en detaljeret brancheanalyse på dansk (500-700 ord) der inkluderer:
+
+1. BRANCHEOVERBLIK: Hvad er normen i denne branche? Hvad forventer kunder?
+2. TYPISKE KUNDESPØRGSMÅL: De 8-10 mest stillede spørgsmål kunder i denne branche stiller
+3. KONKURRENCEFORDELE: Hvad adskiller de bedste virksomheder i branchen? Hvad værdsætter kunder?
+4. PRISSÆTNING: Typiske priser og forretningsmodeller i branchen
+5. SÆSONUDSVING: Er der sæsonmæssige mønstre? Hvornår er der mest efterspørgsel?
+6. INDSIGELSER: Hvilke bekymringer/indsigelser har kunder typisk?
+
+Skriv præcist og faktabaseret. Dette bruges til at træne en AI-chatbot til at svare bedre."""
+
+    try:
+        response = ai.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=1200,
+            messages=[{'role': 'user', 'content': research_prompt}]
+        )
+        research_tekst = response.content[0].text.strip()
+
+        # Gem i chatbot_config ekstra_viden
+        existing_cfg = db.table('chatbot_config').select('ekstra_viden').eq('klient_id', klient_id).execute()
+        eksisterende = (existing_cfg.data[0].get('ekstra_viden', '') or '') if existing_cfg.data else ''
+        ny_viden = f"{eksisterende}\n\n--- BRANCHE-RESEARCH (auto-genereret) ---\n{research_tekst}".strip()
+
+        if existing_cfg.data:
+            db.table('chatbot_config').update({'ekstra_viden': ny_viden}).eq('klient_id', klient_id).execute()
+        else:
+            db.table('chatbot_config').insert({'klient_id': klient_id, 'ekstra_viden': ny_viden}).execute()
+
+        return jsonify({'success': True, 'research': research_tekst, 'tegn': len(research_tekst)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ── RAPPORT ENDPOINTS ──────────────────────────────────
 
 @app.route('/rapport/<klient_id>', methods=['GET'])

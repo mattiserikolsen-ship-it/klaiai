@@ -242,6 +242,32 @@
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.85)} }
     .agent-schedule { font-size: .75rem; color: var(--muted); display: flex; align-items: center; gap: .35rem; }
 
+    /* ── AI INSIGHTS ── */
+    .insight-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.25rem 1.5rem; margin-bottom: .85rem;
+      transition: box-shadow .15s;
+    }
+    .insight-card:hover { box-shadow: 0 4px 20px rgba(10,36,99,0.07); }
+    .insight-card.kritisk { border-left: 3px solid var(--red); }
+    .insight-card.middel  { border-left: 3px solid var(--orange); }
+    .insight-card.lav     { border-left: 3px solid var(--green); }
+    .insight-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .6rem; }
+    .insight-titel { font-size: .9rem; font-weight: 700; color: var(--text); }
+    .insight-problem { font-size: .8rem; color: var(--muted); line-height: 1.6; margin-bottom: .5rem; }
+    .insight-løsning { font-size: .8rem; color: var(--accent); font-weight: 600; margin-bottom: .85rem; }
+    .insight-actions { display: flex; gap: .5rem; align-items: center; }
+    .btn-implement {
+      font-size: .78rem; font-weight: 700; padding: .4rem 1rem;
+      border-radius: 7px; border: none; cursor: pointer;
+      background: var(--accent); color: #fff; font-family: inherit;
+      transition: opacity .15s;
+    }
+    .btn-implement:hover { opacity: .85; }
+    .btn-implement:disabled { opacity: .45; cursor: default; }
+    .btn-implement.done { background: var(--green-bg); color: var(--green); cursor: default; }
+    .insight-forslag { font-size: .75rem; color: var(--muted); background: var(--bg); border-radius: 6px; padding: .35rem .7rem; font-style: italic; }
+
     /* ── TASK LIST ── */
     .task-list { display: flex; flex-direction: column; gap: .5rem; }
     .task-item { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 11px; }
@@ -597,6 +623,7 @@
         <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver</div>
         <div class="tab" data-tab="chatbot-test" onclick="switchTab('chatbot-test')">💬 Test chatbot</div>
         <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
+        <div class="tab" data-tab="insights" onclick="switchTab('insights')" style="color:var(--purple)">🧠 AI Insights</div>
       </div>
 
       <!-- Tab: Overblik -->
@@ -692,6 +719,25 @@
           <button class="btn btn-secondary btn-sm" onclick="addTask()">+ Tilføj opgave</button>
         </div>
         <div class="task-list" id="taskList"></div>
+      </div>
+
+      <!-- Tab: AI Insights -->
+      <div id="tab-insights" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+          <div>
+            <div style="font-size:.9rem;font-weight:700;margin-bottom:.2rem">🧠 AI Insights</div>
+            <div style="font-size:.78rem;color:var(--muted)">Claude analyserer klientens opsætning og foreslår konkrete forbedringer</div>
+          </div>
+          <div style="display:flex;gap:.6rem">
+            <button class="btn btn-secondary btn-sm" id="researchBtn" onclick="kørBrancheResearch()">🔍 Branche-research</button>
+            <button class="btn btn-generate btn-sm" id="insightsBtn" onclick="hentInsights()">✦ Analysér nu</button>
+          </div>
+        </div>
+        <div id="insightsOutput">
+          <div style="text-align:center;padding:3rem;color:var(--muted);font-size:.85rem">
+            Tryk <strong>Analysér nu</strong> for at lade Claude gennemgå klientens opsætning
+          </div>
+        </div>
       </div>
 
       <!-- Tab: Beskeder -->
@@ -1343,7 +1389,7 @@ function showView(v) {
 }
 
 function switchTab(t) {
-  ['overview','products','agents','tasks','chatbot-test','chat'].forEach(id => {
+  ['overview','products','agents','tasks','chatbot-test','chat','insights'].forEach(id => {
     document.getElementById('tab-'+id)?.classList.add('hidden');
   });
   document.getElementById('tab-'+t)?.classList.remove('hidden');
@@ -1355,6 +1401,113 @@ function switchTab(t) {
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
   if (t === 'chatbot-test' && currentClient) initTestChat();
+}
+
+// ── AI INSIGHTS ───────────────────────────────────────
+async function hentInsights() {
+  if (!currentClient) return;
+  const btn = document.getElementById('insightsBtn');
+  const out = document.getElementById('insightsOutput');
+  btn.disabled = true;
+  btn.textContent = '✦ Analyserer...';
+  out.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--muted)">
+    <div style="font-size:1.5rem;margin-bottom:.75rem">🧠</div>
+    <div style="font-size:.85rem">Claude analyserer opsætningen — dette tager 10-15 sekunder...</div>
+  </div>`;
+
+  try {
+    const res = await fetch(`${API}/insights/${currentClient.id}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderInsights(data.insights || []);
+  } catch(e) {
+    out.innerHTML = `<div style="color:var(--red);font-size:.85rem;padding:1rem">Fejl: ${e.message}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '✦ Analysér igen';
+}
+
+function renderInsights(insights) {
+  const alvorLabel = { kritisk: '🔴 Kritisk', middel: '🟡 Middel', lav: '🟢 Lav' };
+  const out = document.getElementById('insightsOutput');
+  if (!insights.length) {
+    out.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:1rem">Ingen insights fundet.</div>';
+    return;
+  }
+  out.innerHTML = insights.map((ins, i) => `
+    <div class="insight-card ${ins.alvor}" id="ins-${i}">
+      <div class="insight-header">
+        <div class="insight-titel">${ins.titel}</div>
+        <span class="badge ${ins.alvor === 'kritisk' ? 'badge-red' : ins.alvor === 'middel' ? 'badge-orange' : 'badge-green'}">${alvorLabel[ins.alvor] || ins.alvor}</span>
+      </div>
+      <div class="insight-problem">⚠ ${ins.problem}</div>
+      <div class="insight-løsning">→ ${ins.løsning}</div>
+      <div class="insight-actions">
+        <button class="btn-implement" id="impl-${i}" onclick="implementerInsight(${i}, ${JSON.stringify(ins).replace(/"/g,'&quot;')})">
+          ⚡ Implementér
+        </button>
+        ${ins.forslag_vaerdi ? `<div class="insight-forslag">"${ins.forslag_vaerdi.slice(0,80)}${ins.forslag_vaerdi.length > 80 ? '...' : ''}"</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function implementerInsight(idx, ins) {
+  const btn = document.getElementById(`impl-${idx}`);
+  btn.disabled = true;
+  btn.textContent = 'Implementerer...';
+
+  try {
+    const res = await fetch(`${API}/apply-insight/${currentClient.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ felt: ins.felt, forslag_vaerdi: ins.forslag_vaerdi })
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.className = 'btn-implement done';
+      btn.textContent = '✓ Implementeret';
+      document.getElementById(`ins-${idx}`).style.opacity = '.6';
+    } else {
+      btn.disabled = false;
+      btn.textContent = '⚡ Implementér';
+      alert('Fejl: ' + (data.error || 'Ukendt fejl'));
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '⚡ Implementér';
+  }
+}
+
+async function kørBrancheResearch() {
+  if (!currentClient) return;
+  const btn = document.getElementById('researchBtn');
+  btn.disabled = true;
+  btn.textContent = '🔍 Researcher...';
+
+  try {
+    const res = await fetch(`${API}/research-branche/${currentClient.id}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.textContent = `✓ ${data.tegn} tegn tilføjet`;
+      const out = document.getElementById('insightsOutput');
+      out.insertAdjacentHTML('afterbegin', `
+        <div style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:12px;padding:1.1rem 1.4rem;margin-bottom:1rem">
+          <div style="font-size:.82rem;font-weight:700;color:var(--purple);margin-bottom:.4rem">✓ Branche-research gennemført</div>
+          <div style="font-size:.78rem;color:#5b21b6;line-height:1.65">${data.research.slice(0,300)}...</div>
+          <div style="font-size:.72rem;color:#7c3aed;margin-top:.5rem">Fuld tekst gemt i chatbot-konfiguration → Ekstra viden</div>
+        </div>
+      `);
+      setTimeout(() => { btn.disabled = false; btn.textContent = '🔍 Branche-research'; }, 3000);
+    } else {
+      alert('Fejl: ' + (data.error || 'Ukendt fejl'));
+      btn.disabled = false; btn.textContent = '🔍 Branche-research';
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '🔍 Branche-research';
+  }
 }
 
 // ── DASHBOARD ─────────────────────────────────────────
