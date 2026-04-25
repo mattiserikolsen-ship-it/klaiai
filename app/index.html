@@ -16,6 +16,8 @@
       --muted:   #9a9590;
       --border:  #e3e1dc;
       --accent:  #1a1918;
+      --green:   #4a6741;
+      --green-light: #eef2ec;
     }
     html { scroll-behavior: smooth; }
     body { font-family: 'Inter', sans-serif; color: var(--dark); background: var(--bg); overflow-x: hidden; }
@@ -119,7 +121,7 @@
     /* ── SECTION HELPERS ── */
     section { padding: 100px 8%; }
     .section-eyebrow {
-      font-size: .7rem; font-weight: 600; color: var(--muted);
+      font-size: .7rem; font-weight: 600; color: var(--green);
       text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
     }
     .section-title { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 800; color: var(--dark); line-height: 1.1; letter-spacing: -1px; margin-bottom: 1rem; }
@@ -142,8 +144,8 @@
     .service-desc { font-size: .875rem; color: var(--muted); line-height: 1.75; }
     .service-tag {
       display: inline-block; margin-top: 1.25rem;
-      font-size: .68rem; font-weight: 600; color: var(--mid);
-      background: var(--bg-warm); padding: .3rem .75rem; border-radius: 4px; letter-spacing: .5px;
+      font-size: .68rem; font-weight: 600; color: var(--green);
+      background: var(--green-light); padding: .3rem .75rem; border-radius: 4px; letter-spacing: .5px;
     }
 
     /* ── DEMO CHAT ── */
@@ -311,22 +313,22 @@
     .price-features { list-style: none; display: flex; flex-direction: column; gap: .8rem; }
     .price-features li { font-size: .875rem; color: var(--mid); display: flex; gap: .75rem; align-items: flex-start; }
     .price-card.featured .price-features li { color: rgba(255,255,255,0.7); }
-    .price-check { color: var(--dark); font-weight: 700; flex-shrink: 0; }
+    .price-check { color: var(--green); font-weight: 700; flex-shrink: 0; }
     .price-card.featured .price-check { color: rgba(255,255,255,0.5); }
 
     /* ── CTA ── */
-    .cta-section { text-align: center; background: var(--dark); }
-    .cta-section .section-eyebrow { color: rgba(255,255,255,0.4); }
+    .cta-section { text-align: center; background: var(--green); }
+    .cta-section .section-eyebrow { color: rgba(255,255,255,0.5); }
     .cta-section h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: #fff; letter-spacing: -1px; margin-bottom: 1rem; }
-    .cta-section p { font-size: 1rem; color: rgba(255,255,255,0.5); margin-bottom: 2.5rem; }
+    .cta-section p { font-size: 1rem; color: rgba(255,255,255,0.6); margin-bottom: 2.5rem; }
     .btn-cta {
       display: inline-flex; align-items: center; gap: .6rem;
-      background: #fff; color: var(--dark);
+      background: #fff; color: var(--green);
       padding: 1rem 2.5rem; border-radius: 6px;
       font-size: .95rem; font-weight: 700;
       text-decoration: none; transition: all .2s;
     }
-    .btn-cta:hover { background: #f0ede8; }
+    .btn-cta:hover { background: #f5f4f0; }
 
     /* ── FOOTER ── */
     footer {
