@@ -98,6 +98,23 @@ def get_klient(klient_id):
     klienter = load_klienter()
     return klienter.get(klient_id, klienter.get('demo', {}))
 
+LEAD_TOOL = [
+    {
+        "name": "gem_lead",
+        "description": "Gem kundens kontaktoplysninger som et lead. Kald denne funktion når kunden har givet navn og telefonnummer eller email.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "navn": {"type": "string", "description": "Kundens fulde navn"},
+                "telefon": {"type": "string", "description": "Kundens telefonnummer"},
+                "email": {"type": "string", "description": "Kundens email (hvis opgivet)"},
+                "besked": {"type": "string", "description": "Kort beskrivelse af hvad kunden er interesseret i"}
+            },
+            "required": ["navn", "besked"]
+        }
+    }
+]
+
 def byg_chatbot_prompt(klient):
     info = klient.get('info', {})
     info_tekst = '\n'.join([f"{k.capitalize()}: {v}" for k, v in info.items() if v])
@@ -115,12 +132,40 @@ Regler:
 
 LEAD-OPSAMLING (vigtigt):
 Når en kunde spørger om pris, tilbud, hvad noget koster, eller ønsker at blive kontaktet — svar kort på spørgsmålet og spørg derefter: "Må jeg få dit navn og telefonnummer, så vi kan kontakte dig med et tilbud?"
-Når kunden giver navn og telefon (eller email), svar bekræftende og afslut med denne markør på en separat linje:
-<<LEAD:{{"navn":"<navn>","telefon":"<telefon>","besked":"<kort beskrivelse af kundens interesse>"}}>>
+Når kunden giver navn og telefon (eller email), svar bekræftende OG kald gem_lead funktionen med kundens oplysninger."""
 
-Eksempel: Kunden spørger om pris på poolrengøring → svar på spørgsmålet → spørg om kontaktinfo → når de giver det, skriv bekræftelse + <<LEAD:{{"navn":"Jens","telefon":"12345678","besked":"Pris på poolrengøring"}}>>
 
-Skriv KUN <<LEAD:...>> markøren når du har modtaget navn OG kontaktinfo fra kunden. Aldrig før."""
+def gem_lead_i_db(klient_id, lead_data):
+    """Gemmer lead i Supabase og sender notifikation til klient."""
+    if db:
+        try:
+            db.table('leads').insert({
+                'klient_id': klient_id,
+                'navn': lead_data.get('navn', ''),
+                'email': lead_data.get('email', ''),
+                'telefon': lead_data.get('telefon', ''),
+                'virksomhed': '',
+                'besked': lead_data.get('besked', ''),
+                'kilde': 'chatbot',
+                'status': 'ny'
+            }).execute()
+        except Exception as e:
+            print(f"Lead DB fejl: {e}")
+
+    klient_info = get_klient(klient_id)
+    kontakt = klient_info.get('info', {}).get('kontakt', '')
+    notif_mail = kontakt.split('|')[-1].strip() if '|' in kontakt else kontakt.strip()
+    if SENDGRID_API_KEY and notif_mail and '@' in notif_mail:
+        emne = f"Nyt lead via chatbot — {lead_data.get('navn', 'Ukendt')}"
+        tekst = f"""Nyt lead opsamlet via chatbotten!
+
+Navn: {lead_data.get('navn', '')}
+Telefon: {lead_data.get('telefon', '')}
+Email: {lead_data.get('email', '')}
+Interesse: {lead_data.get('besked', '')}
+
+Log ind på din KlarAI portal for at se alle leads."""
+        send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'KlarAI'))
 
 
 # ── CHATBOT ENDPOINTS ──────────────────────────────────
@@ -147,53 +192,37 @@ def chat():
             model='claude-haiku-4-5-20251001',
             max_tokens=600,
             system=byg_chatbot_prompt(klient),
+            tools=LEAD_TOOL,
             messages=messages
         )
-        reply = response.content[0].text
 
-        # Tjek om AI'en har opsamlet et lead
+        reply = ''
         lead_gemt = False
-        import re
-        lead_match = re.search(r'<<LEAD:(\{.*?\})>>', reply, re.DOTALL)
-        if lead_match:
-            try:
-                lead_data = json.loads(lead_match.group(1))
-                lead_data['kilde'] = 'chatbot'
-                # Gem lead i Supabase
-                if db:
-                    db.table('leads').insert({
-                        'klient_id': klient_id,
-                        'navn': lead_data.get('navn', ''),
-                        'email': lead_data.get('email', ''),
-                        'telefon': lead_data.get('telefon', ''),
-                        'virksomhed': '',
-                        'besked': lead_data.get('besked', ''),
-                        'kilde': 'chatbot',
-                        'status': 'ny'
-                    }).execute()
-                # Send notifikation til klient
-                klient_info = get_klient(klient_id)
-                kontakt = klient_info.get('info', {}).get('kontakt', '')
-                notif_mail = kontakt.split('|')[-1].strip() if '|' in kontakt else kontakt.strip()
-                if SENDGRID_API_KEY and notif_mail and '@' in notif_mail:
-                    emne = f"Nyt lead via chatbot — {lead_data.get('navn', 'Ukendt')}"
-                    tekst = f"""Nyt lead opsamlet via chatbotten!
 
-Navn: {lead_data.get('navn', '')}
-Telefon: {lead_data.get('telefon', '')}
-Email: {lead_data.get('email', '')}
-Interesse: {lead_data.get('besked', '')}
-
-Log ind på din KlarAI portal for at se alle leads."""
-                    send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'KlarAI'))
+        for block in response.content:
+            if block.type == 'text':
+                reply += block.text
+            elif block.type == 'tool_use' and block.name == 'gem_lead':
+                gem_lead_i_db(klient_id, block.input)
                 lead_gemt = True
-            except Exception as e:
-                print(f"Lead-parsing fejl: {e}")
-            # Fjern markøren fra svaret til kunden
-            reply = re.sub(r'\s*<<LEAD:.*?>>', '', reply, flags=re.DOTALL).strip()
+
+        # Hvis AI'en kun kaldte tool og ikke gav tekst, hent et afsluttende svar
+        if not reply.strip() and lead_gemt:
+            messages.append({'role': 'assistant', 'content': response.content})
+            messages.append({'role': 'user', 'content': '[system: lead er gemt, skriv en kort bekræftelse til kunden]'})
+            followup = ai.messages.create(
+                model='claude-haiku-4-5-20251001',
+                max_tokens=200,
+                system=byg_chatbot_prompt(klient),
+                tools=LEAD_TOOL,
+                messages=messages
+            )
+            for block in followup.content:
+                if block.type == 'text':
+                    reply += block.text
 
         return jsonify({
-            'reply': reply,
+            'reply': reply.strip(),
             'chatbot_navn': klient.get('chatbot_navn', 'Alma'),
             'lead_gemt': lead_gemt
         })
