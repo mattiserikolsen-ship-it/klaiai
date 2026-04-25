@@ -108,7 +108,19 @@ def byg_chatbot_prompt(klient):
 Virksomhedsinfo:
 {info_tekst}{ekstra_sektion}
 
-Regler: Svar på dansk. Vær kort (max 3-4 sætninger). Vær venlig. Hvis du ikke ved svaret, henvis til kontaktinfo. Tilbyd aldrig priser der ikke fremgår af info."""
+Regler:
+- Svar på dansk. Vær kort (max 3-4 sætninger). Vær venlig.
+- Tilbyd aldrig priser der ikke fremgår af info.
+- Hvis du ikke ved svaret, henvis til kontaktinfo.
+
+LEAD-OPSAMLING (vigtigt):
+Når en kunde spørger om pris, tilbud, hvad noget koster, eller ønsker at blive kontaktet — svar kort på spørgsmålet og spørg derefter: "Må jeg få dit navn og telefonnummer, så vi kan kontakte dig med et tilbud?"
+Når kunden giver navn og telefon (eller email), svar bekræftende og afslut med denne markør på en separat linje:
+<<LEAD:{{"navn":"<navn>","telefon":"<telefon>","besked":"<kort beskrivelse af kundens interesse>"}}>>
+
+Eksempel: Kunden spørger om pris på poolrengøring → svar på spørgsmålet → spørg om kontaktinfo → når de giver det, skriv bekræftelse + <<LEAD:{{"navn":"Jens","telefon":"12345678","besked":"Pris på poolrengøring"}}>>
+
+Skriv KUN <<LEAD:...>> markøren når du har modtaget navn OG kontaktinfo fra kunden. Aldrig før."""
 
 
 # ── CHATBOT ENDPOINTS ──────────────────────────────────
@@ -133,13 +145,57 @@ def chat():
     try:
         response = ai.messages.create(
             model='claude-haiku-4-5-20251001',
-            max_tokens=500,
+            max_tokens=600,
             system=byg_chatbot_prompt(klient),
             messages=messages
         )
+        reply = response.content[0].text
+
+        # Tjek om AI'en har opsamlet et lead
+        lead_gemt = False
+        import re
+        lead_match = re.search(r'<<LEAD:(\{.*?\})>>', reply, re.DOTALL)
+        if lead_match:
+            try:
+                lead_data = json.loads(lead_match.group(1))
+                lead_data['kilde'] = 'chatbot'
+                # Gem lead i Supabase
+                if db:
+                    db.table('leads').insert({
+                        'klient_id': klient_id,
+                        'navn': lead_data.get('navn', ''),
+                        'email': lead_data.get('email', ''),
+                        'telefon': lead_data.get('telefon', ''),
+                        'virksomhed': '',
+                        'besked': lead_data.get('besked', ''),
+                        'kilde': 'chatbot',
+                        'status': 'ny'
+                    }).execute()
+                # Send notifikation til klient
+                klient_info = get_klient(klient_id)
+                kontakt = klient_info.get('info', {}).get('kontakt', '')
+                notif_mail = kontakt.split('|')[-1].strip() if '|' in kontakt else kontakt.strip()
+                if SENDGRID_API_KEY and notif_mail and '@' in notif_mail:
+                    emne = f"Nyt lead via chatbot — {lead_data.get('navn', 'Ukendt')}"
+                    tekst = f"""Nyt lead opsamlet via chatbotten!
+
+Navn: {lead_data.get('navn', '')}
+Telefon: {lead_data.get('telefon', '')}
+Email: {lead_data.get('email', '')}
+Interesse: {lead_data.get('besked', '')}
+
+Log ind på din KlarAI portal for at se alle leads."""
+                    send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'KlarAI'))
+                lead_gemt = True
+            except Exception as e:
+                print(f"Lead-parsing fejl: {e}")
+            # Fjern markøren fra svaret til kunden
+            reply = re.sub(r'\s*<<LEAD:.*?>>', '', reply, flags=re.DOTALL).strip()
+
         return jsonify({
-            'reply': response.content[0].text,
-            'chatbot_navn': klient.get('chatbot_navn', 'Alma')
+            'reply': reply,
+            'chatbot_navn': klient.get('chatbot_navn', 'Alma'),
+            'lead_gemt': lead_gemt
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

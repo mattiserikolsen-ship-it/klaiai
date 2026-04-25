@@ -183,6 +183,15 @@
       if (data.reply) {
         addMsg('bot', data.reply);
         history.push({ role: 'assistant', content: data.reply });
+        if (data.lead_gemt) {
+          setTimeout(() => {
+            const note = document.createElement('div');
+            note.style.cssText = 'text-align:center;font-size:.7rem;color:#6b7a99;padding:.4rem .75rem;margin:.25rem 0;';
+            note.textContent = '✓ Dine oplysninger er gemt — vi kontakter dig snarest';
+            msgs.appendChild(note);
+            msgs.scrollTop = msgs.scrollHeight;
+          }, 400);
+        }
       }
     } catch (e) {
       removeTyping(typing);
