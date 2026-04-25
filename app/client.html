@@ -4,156 +4,213 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>KlarAI – Min portal</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --accent: #0a2463; --accent2: #1e4fcf;
-      --bg: #f7f8fc; --card: #ffffff;
-      --border: rgba(10,25,80,0.08);
-      --text: #0a1628; --muted: #6b7a99;
-      --green: #16a34a; --green-bg: #dcfce7;
-      --orange: #d97706; --orange-bg: #fef3c7;
-      --red: #dc2626; --red-bg: #fee2e2;
-      --blue-bg: #dbeafe;
+      --bg:      #f8f7f4;
+      --card:    #ffffff;
+      --dark:    #1a1918;
+      --mid:     #4a4845;
+      --muted:   #9a9590;
+      --border:  #e5e3de;
+      --green:   #4a6741;
+      --green-bg:#eef2ec;
+      --red:     #c0392b;
+      --red-bg:  #fdf0ee;
+      --sidebar: #1a1918;
     }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); display: flex; min-height: 100vh; }
     .hidden { display: none !important; }
 
     /* ── SIDEBAR ── */
     .sidebar {
-      width: 240px; background: var(--accent); color: #fff;
+      width: 228px; background: var(--sidebar); color: #fff;
       display: flex; flex-direction: column;
-      position: fixed; top: 0; left: 0; height: 100vh; z-index: 20;
+      position: fixed; top: 0; left: 0; height: 100vh; z-index: 40;
+      transition: transform .25s;
     }
-    .sidebar-logo { padding: 1.4rem 1.25rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .sidebar-logo-text { font-size: 1.2rem; font-weight: 800; }
-    .sidebar-logo-sub { font-size: .65rem; opacity: .5; font-weight: 500; margin-top: .1rem; text-transform: uppercase; letter-spacing: .5px; }
-    .sidebar-company { padding: .85rem 1.25rem; background: rgba(255,255,255,0.07); border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .sidebar-company-name { font-size: .88rem; font-weight: 700; }
-    .sidebar-company-sub { font-size: .72rem; opacity: .55; margin-top: .15rem; }
-    .sidebar-nav { flex: 1; padding: .75rem 0; }
+    .sidebar-logo { padding: 1.4rem 1.25rem 1.1rem; }
+    .sidebar-logo-text { font-size: 1.15rem; font-weight: 900; letter-spacing: -.3px; }
+    .sidebar-logo-sub { font-size: .62rem; color: rgba(255,255,255,.35); font-weight: 500; margin-top: .15rem; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar-company {
+      margin: 0 .75rem .75rem; padding: .75rem 1rem;
+      background: rgba(255,255,255,0.07); border-radius: 10px;
+    }
+    .sidebar-company-name { font-size: .85rem; font-weight: 700; }
+    .sidebar-company-sub { font-size: .68rem; color: rgba(255,255,255,.4); margin-top: .1rem; }
+    .sidebar-nav { flex: 1; padding: .25rem 0; }
     .nav-item {
-      display: flex; align-items: center; gap: .65rem;
-      padding: .65rem 1.25rem; cursor: pointer;
-      font-size: .85rem; font-weight: 500;
-      color: rgba(255,255,255,0.55);
-      transition: all .15s;
+      display: flex; align-items: center; gap: .7rem;
+      padding: .6rem 1.25rem; cursor: pointer;
+      font-size: .825rem; font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      transition: all .15s; border-radius: 0;
+      margin: .1rem .5rem; border-radius: 8px;
     }
     .nav-item:hover { color: #fff; background: rgba(255,255,255,0.07); }
-    .nav-item.active { color: #fff; background: rgba(255,255,255,0.12); font-weight: 600; }
-    .nav-item .ni { font-size: 1rem; width: 20px; text-align: center; }
-    .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); }
-    .powered { font-size: .68rem; color: rgba(255,255,255,0.3); text-align: center; margin-top: .5rem; }
+    .nav-item.active { color: #fff; background: rgba(255,255,255,0.11); font-weight: 600; }
+    .nav-item .ni { font-size: .95rem; width: 18px; text-align: center; opacity: .7; }
+    .nav-item.active .ni { opacity: 1; }
+    .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.07); }
+    .powered { font-size: .65rem; color: rgba(255,255,255,.25); }
+
+    /* ── MOBILE NAV ── */
+    .mobile-header {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: var(--dark); color: #fff;
+      padding: 0 1.25rem; height: 56px;
+      align-items: center; justify-content: space-between;
+    }
+    .mobile-logo { font-size: 1.05rem; font-weight: 900; }
+    .mobile-hamburger {
+      background: none; border: none; color: #fff; font-size: 1.3rem; cursor: pointer; padding: .25rem;
+    }
+    .mobile-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 35;
+    }
+    .mobile-overlay.active { display: block; }
+    .sidebar.mobile-open { transform: translateX(0) !important; }
 
     /* ── MAIN ── */
-    .main { margin-left: 240px; flex: 1; min-height: 100vh; }
+    .main { margin-left: 228px; flex: 1; min-height: 100vh; }
     .topbar {
       background: var(--card); border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem; position: sticky; top: 0; z-index: 10;
+      padding: .9rem 2rem; position: sticky; top: 0; z-index: 10;
       display: flex; align-items: center; justify-content: space-between;
     }
-    .topbar-title { font-size: 1rem; font-weight: 700; }
-    .topbar-sub { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
-    .topbar-refresh { background: none; border: 1px solid var(--border); border-radius: 8px; padding: .4rem .8rem; font-size: .78rem; cursor: pointer; color: var(--muted); font-family: inherit; transition: all .15s; }
-    .topbar-refresh:hover { border-color: var(--accent); color: var(--accent); }
-    .content { padding: 1.75rem 2rem; }
+    .topbar-title { font-size: .95rem; font-weight: 700; color: var(--dark); }
+    .topbar-sub { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .topbar-refresh {
+      background: none; border: 1px solid var(--border); border-radius: 7px;
+      padding: .4rem .85rem; font-size: .75rem; cursor: pointer; color: var(--muted);
+      font-family: inherit; transition: all .15s;
+    }
+    .topbar-refresh:hover { border-color: var(--dark); color: var(--dark); }
+    .content { padding: 1.75rem 2rem; max-width: 1000px; }
 
     /* ── CARDS ── */
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.25rem; }
-    .card-title { font-size: .95rem; font-weight: 700; margin-bottom: 1rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem; }
+    .card-title { font-size: .88rem; font-weight: 700; margin-bottom: 1rem; color: var(--dark); }
 
     /* ── STATS ── */
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
-    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; }
-    .stat-num { font-size: 2rem; font-weight: 800; color: var(--accent); }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; }
+    .stat-num { font-size: 2rem; font-weight: 800; color: var(--dark); letter-spacing: -1px; }
     .stat-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; font-weight: 500; }
-    .stat-sub { font-size: .72rem; color: var(--muted); margin-top: .2rem; }
-
-    /* ── BADGE ── */
-    .badge { display: inline-flex; align-items: center; padding: .2rem .65rem; border-radius: 99px; font-size: .72rem; font-weight: 700; }
-    .badge-green { background: var(--green-bg); color: var(--green); }
-    .badge-orange { background: var(--orange-bg); color: var(--orange); }
-    .badge-blue { background: var(--blue-bg); color: var(--accent2); }
-    .badge-gray { background: #f3f4f6; color: #6b7280; }
+    .stat-sub { font-size: .7rem; color: var(--muted); margin-top: .15rem; }
 
     /* ── WELCOME ── */
     .welcome-card {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-      color: #fff; border-radius: 16px; padding: 1.75rem; margin-bottom: 1.25rem;
-      border: none;
+      background: var(--dark); color: #fff;
+      border-radius: 14px; padding: 1.75rem; margin-bottom: 1.25rem;
     }
-    .welcome-title { font-size: 1.3rem; font-weight: 800; margin-bottom: .4rem; }
-    .welcome-sub { font-size: .88rem; opacity: .8; line-height: 1.6; }
+    .welcome-title { font-size: 1.2rem; font-weight: 800; margin-bottom: .4rem; }
+    .welcome-sub { font-size: .85rem; color: rgba(255,255,255,.55); line-height: 1.6; }
+
+    /* ── BADGE ── */
+    .badge { display: inline-flex; align-items: center; padding: .2rem .6rem; border-radius: 5px; font-size: .7rem; font-weight: 700; }
+    .badge-green { background: var(--green-bg); color: var(--green); }
+    .badge-red { background: var(--red-bg); color: var(--red); }
+    .badge-gray { background: #f0efec; color: var(--muted); }
+    .badge-chatbot { background: #eef2ec; color: var(--green); }
+    .badge-formular { background: #f0efec; color: var(--mid); }
 
     /* ── LEAD LISTE ── */
     .lead-item {
       display: flex; align-items: flex-start; gap: 1rem;
-      padding: 1rem; border-bottom: 1px solid var(--border);
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
       transition: background .15s;
     }
     .lead-item:last-child { border-bottom: none; }
-    .lead-item:hover { background: #fafbff; }
+    .lead-item:hover { background: #faf9f6; }
+    .lead-item.kontaktet { opacity: .55; }
     .lead-avatar {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--blue-bg); color: var(--accent2);
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--mid);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: .9rem; flex-shrink: 0;
+      font-weight: 700; font-size: .82rem; flex-shrink: 0;
     }
     .lead-body { flex: 1; min-width: 0; }
-    .lead-name { font-weight: 600; font-size: .9rem; }
-    .lead-contact { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
-    .lead-msg { font-size: .82rem; color: var(--text); margin-top: .35rem; line-height: 1.5; background: #f8f9fc; border-radius: 8px; padding: .5rem .75rem; }
-    .lead-time { font-size: .72rem; color: var(--muted); flex-shrink: 0; margin-top: .2rem; }
+    .lead-name { font-weight: 700; font-size: .875rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .lead-contact { font-size: .775rem; color: var(--muted); margin-top: .15rem; }
+    .lead-msg { font-size: .8rem; color: var(--mid); margin-top: .4rem; line-height: 1.55; background: var(--bg); border-radius: 7px; padding: .45rem .7rem; border: 1px solid var(--border); }
+    .lead-meta { display: flex; align-items: center; gap: .5rem; margin-top: .5rem; flex-wrap: wrap; }
+    .lead-right { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; flex-shrink: 0; }
+    .lead-time { font-size: .7rem; color: var(--muted); }
+    .btn-kontakt {
+      font-size: .7rem; font-weight: 600; padding: .3rem .7rem;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: var(--card); color: var(--mid); cursor: pointer;
+      font-family: inherit; transition: all .15s; white-space: nowrap;
+    }
+    .btn-kontakt:hover { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+    .btn-kontakt.done { border-color: var(--green); color: var(--green); background: var(--green-bg); cursor: default; }
 
     /* ── BOOKING LISTE ── */
     .booking-item {
       display: flex; align-items: center; gap: 1rem;
-      padding: 1rem; border-bottom: 1px solid var(--border);
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
       transition: background .15s;
     }
     .booking-item:last-child { border-bottom: none; }
-    .booking-item:hover { background: #fafbff; }
+    .booking-item:hover { background: #faf9f6; }
     .booking-date {
-      width: 52px; text-align: center; flex-shrink: 0;
-      background: var(--accent); color: #fff; border-radius: 10px; padding: .5rem .4rem;
+      width: 48px; text-align: center; flex-shrink: 0;
+      background: var(--dark); color: #fff; border-radius: 9px; padding: .45rem .35rem;
     }
-    .booking-date-day { font-size: 1.2rem; font-weight: 800; line-height: 1; }
-    .booking-date-month { font-size: .6rem; text-transform: uppercase; letter-spacing: .5px; opacity: .8; margin-top: .1rem; }
+    .booking-date-day { font-size: 1.15rem; font-weight: 800; line-height: 1; }
+    .booking-date-month { font-size: .58rem; text-transform: uppercase; letter-spacing: .5px; opacity: .6; margin-top: .1rem; }
     .booking-body { flex: 1; min-width: 0; }
-    .booking-name { font-weight: 600; font-size: .9rem; }
-    .booking-detail { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
+    .booking-name { font-weight: 600; font-size: .875rem; }
+    .booking-detail { font-size: .775rem; color: var(--muted); margin-top: .15rem; }
     .booking-right { text-align: right; flex-shrink: 0; }
 
-    /* ── AGENT STATUS ── */
+    /* ── AGENT ── */
     .agent-card {
       display: flex; align-items: center; gap: 1rem;
       padding: 1rem 1.25rem; border: 1px solid var(--border);
-      border-radius: 12px; margin-bottom: .75rem; background: var(--card);
+      border-radius: 10px; margin-bottom: .6rem; background: var(--card);
     }
-    .agent-icon { font-size: 1.4rem; width: 44px; height: 44px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .agent-name { font-weight: 600; font-size: .9rem; }
-    .agent-desc { font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+    .agent-icon { font-size: 1.2rem; width: 40px; height: 40px; background: var(--bg); border-radius: 9px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .agent-name { font-weight: 600; font-size: .875rem; }
+    .agent-desc { font-size: .775rem; color: var(--muted); margin-top: .1rem; }
     .agent-status { margin-left: auto; flex-shrink: 0; }
-    .online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: .3rem; animation: pulse 2s infinite; }
+    .online-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: .3rem; animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-    /* ── EMPTY ── */
-    .empty { text-align: center; padding: 2.5rem; color: var(--muted); }
-    .empty-icon { font-size: 2rem; margin-bottom: .75rem; }
-    .empty-text { font-size: .88rem; }
+    /* ── EMPTY / LOADING ── */
+    .empty { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+    .empty-icon { font-size: 1.75rem; margin-bottom: .75rem; opacity: .5; }
+    .empty-text { font-size: .85rem; line-height: 1.6; }
+    .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: .82rem; }
 
-    /* ── LOADING ── */
-    .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: .85rem; }
-
-    /* ── PROGRESS ── */
-    .progress-bar { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
-    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .6s; }
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .mobile-header { display: flex; }
+      .main { margin-left: 0; padding-top: 56px; }
+      .topbar { display: none; }
+      .content { padding: 1.25rem 1rem; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .lead-right { display: none; }
+    }
   </style>
 </head>
 <body>
 
-<nav class="sidebar">
+<!-- MOBILE HEADER -->
+<div class="mobile-header">
+  <div class="mobile-logo">KlarAI</div>
+  <button class="mobile-hamburger" onclick="toggleMobileNav()">☰</button>
+</div>
+<div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileNav()"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-text">KlarAI</div>
     <div class="sidebar-logo-sub">Klientportal</div>
@@ -164,16 +221,17 @@
   </div>
   <div class="sidebar-nav">
     <div class="nav-item active" data-view="overblik" onclick="showView('overblik')">
-      <span class="ni">🏠</span> Overblik
+      <span class="ni">⊡</span> Overblik
     </div>
     <div class="nav-item" data-view="leads" onclick="showView('leads')">
-      <span class="ni">🎯</span> Leads <span id="leadBadge" class="hidden" style="margin-left:auto;background:var(--red);color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:99px"></span>
+      <span class="ni">◎</span> Leads
+      <span id="leadBadge" class="hidden" style="margin-left:auto;background:#c0392b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
     <div class="nav-item" data-view="bookinger" onclick="showView('bookinger')">
-      <span class="ni">📅</span> Bookinger
+      <span class="ni">▦</span> Bookinger
     </div>
     <div class="nav-item" data-view="agenter" onclick="showView('agenter')">
-      <span class="ni">🤖</span> Mine agenter
+      <span class="ni">◈</span> Mine agenter
     </div>
   </div>
   <div class="sidebar-footer">
@@ -195,7 +253,7 @@
     <div id="view-overblik">
       <div class="welcome-card">
         <div class="welcome-title" id="welcomeTitle">Hej! 👋</div>
-        <div class="welcome-sub" id="welcomeSub">Herunder kan du følge med i hvad der sker med dine KlarAI agenter.</div>
+        <div class="welcome-sub" id="welcomeSub">Her kan du følge med i hvad dine KlarAI-agenter laver for dig.</div>
       </div>
       <div class="stats-row">
         <div class="stat-card">
@@ -214,18 +272,20 @@
           <div class="stat-sub">kører 24/7</div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Seneste leads</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
+          <div class="card-title" style="margin:0">Seneste leads</div>
+        </div>
         <div id="ovLeadList"><div class="loading">Henter data...</div></div>
       </div>
     </div>
 
     <!-- LEADS -->
     <div id="view-leads" class="hidden">
-      <div class="card" style="padding:0; overflow:hidden">
-        <div style="padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between">
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div class="card-title" style="margin:0">Alle leads</div>
-          <span id="leadCount" style="font-size:.8rem; color:var(--muted)"></span>
+          <span id="leadCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
         <div id="leadList"><div class="loading">Henter leads...</div></div>
       </div>
@@ -233,10 +293,10 @@
 
     <!-- BOOKINGER -->
     <div id="view-bookinger" class="hidden">
-      <div class="card" style="padding:0; overflow:hidden">
-        <div style="padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between">
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div class="card-title" style="margin:0">Alle bookinger</div>
-          <span id="bookingCount" style="font-size:.8rem; color:var(--muted)"></span>
+          <span id="bookingCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
         <div id="bookingList"><div class="loading">Henter bookinger...</div></div>
       </div>
@@ -248,9 +308,9 @@
         <div class="card-title">Dine aktive agenter</div>
         <div id="agentList"><div class="loading">Henter agenter...</div></div>
       </div>
-      <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-color:#86efac">
-        <div style="font-size:.88rem; font-weight:700; color:var(--green); margin-bottom:.4rem">✅ Alt kører automatisk</div>
-        <div style="font-size:.82rem; color:#166534; line-height:1.6">Dine agenter arbejder 24/7. Chatbotten svarer på spørgsmål, leads modtager automatiske opfølgningsmails og bookinger bekræftes øjeblikkeligt. Du behøver ikke gøre noget.</div>
+      <div class="card" style="background:var(--green-bg);border-color:#c5d6c2">
+        <div style="font-size:.85rem;font-weight:700;color:var(--green);margin-bottom:.4rem">Alt kører automatisk</div>
+        <div style="font-size:.8rem;color:#3d5636;line-height:1.65">Dine agenter arbejder 24/7. Chatbotten svarer på spørgsmål, leads modtager automatiske opfølgningsmails og bookinger bekræftes øjeblikkeligt. Du behøver ikke gøre noget.</div>
       </div>
     </div>
 
@@ -258,7 +318,7 @@
 </div>
 
 <script>
-// ── AUTH GUARD ────────────────────────────────────────
+// ── AUTH GUARD ─────────────────────────────────────────
 (function() {
   const token = sessionStorage.getItem('klaiai_token');
   if (!token) window.location.href = '/login';
@@ -268,19 +328,32 @@ const API = 'https://klaiai.onrender.com';
 const params = new URLSearchParams(window.location.search);
 const CLIENT_ID = params.get('id') || '';
 
-let data = { leads: [], bookinger: [], klient: null, chatbot: null };
+let data = { leads: [], bookinger: [], klient: null };
+// Lokalt state for "kontaktet" — gemmes i localStorage
+const kontaktetKey = 'klaiai_kontaktet_' + CLIENT_ID;
+let kontaktetIds = new Set(JSON.parse(localStorage.getItem(kontaktetKey) || '[]'));
 
 if (!CLIENT_ID) {
-  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#6b7a99">Intet klient-ID angivet i URL. Tilføj ?id=KLIENT_ID</div>';
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#9a9590">Intet klient-ID angivet</div>';
 }
 
-// ── VIEWS ────────────────────────────────────────────
+// ── MOBILE NAV ─────────────────────────────────────────
+function toggleMobileNav() {
+  document.getElementById('sidebar').classList.toggle('mobile-open');
+  document.getElementById('mobileOverlay').classList.toggle('active');
+}
+function closeMobileNav() {
+  document.getElementById('sidebar').classList.remove('mobile-open');
+  document.getElementById('mobileOverlay').classList.remove('active');
+}
+
+// ── VIEWS ──────────────────────────────────────────────
 const views = ['overblik','leads','bookinger','agenter'];
 const titles = {
-  overblik: ['Overblik', 'Din KlarAI portal'],
-  leads: ['Leads', 'Kunder der har henvendt sig'],
-  bookinger: ['Bookinger', 'Bekræftede bookinger'],
-  agenter: ['Mine agenter', 'AI-agenter der kører for dig']
+  overblik:  ['Overblik',      'Din KlarAI portal'],
+  leads:     ['Leads',         'Kunder der har henvendt sig'],
+  bookinger: ['Bookinger',     'Bekræftede bookinger'],
+  agenter:   ['Mine agenter',  'AI-agenter der kører for dig']
 };
 
 function showView(v) {
@@ -292,9 +365,10 @@ function showView(v) {
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
   document.getElementById('topbarTitle').textContent = titles[v][0];
   document.getElementById('topbarSub').textContent = titles[v][1];
+  closeMobileNav();
 }
 
-// ── LOAD DATA ────────────────────────────────────────
+// ── LOAD DATA ──────────────────────────────────────────
 async function loadData() {
   if (!CLIENT_ID) return;
   try {
@@ -302,91 +376,105 @@ async function loadData() {
       fetch(`${API}/stats`),
       fetch(`${API}/widget/${CLIENT_ID}`)
     ]);
-
     const stats = await statsRes.json();
     const klient = stats.klienter?.find(k => k.klient_id === CLIENT_ID);
     data.klient = klient;
 
     if (configRes.ok) data.chatbot = await configRes.json();
 
-    // Sæt navn
-    const navn = data.klient?.navn || data.chatbot?.navn || 'din virksomhed';
+    const navn = klient?.navn || data.chatbot?.navn || 'din virksomhed';
     document.getElementById('sidebarName').textContent = navn;
-    document.getElementById('welcomeTitle').textContent = `Hej, ${navn.split(' ')[0]}! 👋`;
-    document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine KlarAI agenter laver for dig.`;
+    document.getElementById('welcomeTitle').textContent = `Hej, ${navn.split(' ')[0]}!`;
+    document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine KlarAI-agenter laver for dig.`;
     document.title = `KlarAI – ${navn}`;
 
-    // Stats
-    const leads = klient?.leads || 0;
-    const bookinger = klient?.bookinger || 0;
-    document.getElementById('ovLeads').textContent = leads;
-    document.getElementById('ovBookinger').textContent = bookinger;
-    document.getElementById('ovAgenter').textContent = '2'; // chatbot + lead
+    document.getElementById('ovLeads').textContent = klient?.leads || 0;
+    document.getElementById('ovBookinger').textContent = klient?.bookinger || 0;
+    document.getElementById('ovAgenter').textContent = '2';
 
-    // Lead badge
-    if (leads > 0) {
-      document.getElementById('leadBadge').textContent = leads;
-      document.getElementById('leadBadge').classList.remove('hidden');
-    }
-
-    renderOverblikLeads();
-    renderLeads();
-    renderBookinger();
     renderAgenter();
-
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
-// ── RENDER OVERBLIK LEADS ────────────────────────────
+// ── LEADS ──────────────────────────────────────────────
+function leadHTML(l, kort = false) {
+  const initials = (l.navn || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+  const erKontaktet = kontaktetIds.has(String(l.id));
+  const kilde = l.kilde === 'chatbot'
+    ? `<span class="badge badge-chatbot">Chatbot</span>`
+    : `<span class="badge badge-formular">Formular</span>`;
+
+  return `<div class="lead-item ${erKontaktet ? 'kontaktet' : ''}" id="lead-${l.id}">
+    <div class="lead-avatar">${initials}</div>
+    <div class="lead-body">
+      <div class="lead-name">
+        ${l.navn || '—'}
+        ${erKontaktet ? `<span class="badge badge-green">✓ Kontaktet</span>` : ''}
+      </div>
+      <div class="lead-contact">${[l.email, l.telefon, l.virksomhed].filter(Boolean).join(' · ')}</div>
+      ${l.besked ? `<div class="lead-msg">"${l.besked}"</div>` : ''}
+      <div class="lead-meta">${kilde}</div>
+    </div>
+    <div class="lead-right">
+      <div class="lead-time">${dato}</div>
+      ${!erKontaktet
+        ? `<button class="btn-kontakt" onclick="markerKontaktet('${l.id}')">Markér kontaktet</button>`
+        : `<button class="btn-kontakt done" disabled>✓ Kontaktet</button>`
+      }
+    </div>
+  </div>`;
+}
+
+function markerKontaktet(id) {
+  kontaktetIds.add(String(id));
+  localStorage.setItem(kontaktetKey, JSON.stringify([...kontaktetIds]));
+  renderOverblikLeads();
+  renderLeads();
+  // Opdater badge
+  const ulæste = data.leads.filter(l => !kontaktetIds.has(String(l.id))).length;
+  const badge = document.getElementById('leadBadge');
+  if (ulæste > 0) { badge.textContent = ulæste; badge.classList.remove('hidden'); }
+  else { badge.classList.add('hidden'); }
+}
+
 function renderOverblikLeads() {
   const el = document.getElementById('ovLeadList');
-  const leads = data.leads;
-  if (!leads.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Ingen leads endnu — de dukker op her når kunder udfylder formularen på din hjemmeside.</div></div>`;
+  if (!data.leads.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">◎</div><div class="empty-text">Ingen leads endnu — de dukker op her når kunder kontakter dig via hjemmesiden.</div></div>`;
     return;
   }
-  el.innerHTML = leads.slice(0,3).map(l => leadHTML(l)).join('');
+  el.innerHTML = data.leads.slice(0,3).map(l => leadHTML(l)).join('');
 }
 
-// ── RENDER LEADS ─────────────────────────────────────
 function renderLeads() {
   const leads = data.leads;
   document.getElementById('leadCount').textContent = leads.length ? `${leads.length} lead${leads.length !== 1 ? 's' : ''}` : '';
   const el = document.getElementById('leadList');
   if (!leads.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Ingen leads endnu.<br>Når kunder udfylder formularen på din hjemmeside, vises de her.</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">◎</div><div class="empty-text">Ingen leads endnu.</div></div>`;
     return;
   }
   el.innerHTML = leads.map(l => leadHTML(l)).join('');
+
+  // Badge med ulæste
+  const ulæste = leads.filter(l => !kontaktetIds.has(String(l.id))).length;
+  const badge = document.getElementById('leadBadge');
+  if (ulæste > 0) { badge.textContent = ulæste; badge.classList.remove('hidden'); }
+  else { badge.classList.add('hidden'); }
 }
 
-function leadHTML(l) {
-  const initials = (l.navn || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-  const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
-  return `<div class="lead-item">
-    <div class="lead-avatar">${initials}</div>
-    <div class="lead-body">
-      <div class="lead-name">${l.navn || '—'}</div>
-      <div class="lead-contact">${l.email || ''} ${l.telefon ? '· ' + l.telefon : ''} ${l.virksomhed ? '· ' + l.virksomhed : ''}</div>
-      ${l.besked ? `<div class="lead-msg">"${l.besked}"</div>` : ''}
-    </div>
-    <div class="lead-time">${dato}</div>
-  </div>`;
-}
-
-// ── RENDER BOOKINGER ─────────────────────────────────
+// ── BOOKINGER ──────────────────────────────────────────
 function renderBookinger() {
   const bookinger = data.bookinger;
   document.getElementById('bookingCount').textContent = bookinger.length ? `${bookinger.length} booking${bookinger.length !== 1 ? 'er' : ''}` : '';
   const el = document.getElementById('bookingList');
   if (!bookinger.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">Ingen bookinger endnu.<br>Når kunder booker via din hjemmeside, vises de her.</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">▦</div><div class="empty-text">Ingen bookinger endnu.<br>Når kunder booker via din hjemmeside, vises de her.</div></div>`;
     return;
   }
   el.innerHTML = bookinger.map(b => {
-    const dato = b.dato ? new Date(b.dato) : null;
+    const dato = b.dato ? new Date(b.dato + 'T12:00:00') : null;
     const dag = dato ? dato.getDate() : '—';
     const mdr = dato ? dato.toLocaleDateString('da-DK', { month:'short' }) : '';
     return `<div class="booking-item">
@@ -396,24 +484,23 @@ function renderBookinger() {
       </div>
       <div class="booking-body">
         <div class="booking-name">${b.navn || '—'}</div>
-        <div class="booking-detail">Kl. ${b.tid || '—'} ${b.ydelse ? '· ' + b.ydelse : ''} ${b.telefon ? '· ' + b.telefon : ''}</div>
+        <div class="booking-detail">Kl. ${b.tid || '—'}${b.ydelse ? ' · ' + b.ydelse : ''}${b.telefon ? ' · ' + b.telefon : ''}</div>
       </div>
       <div class="booking-right">
         <span class="badge badge-green">Bekræftet</span>
-        ${b.email ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">${b.email}</div>` : ''}
+        ${b.email ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${b.email}</div>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-// ── RENDER AGENTER ───────────────────────────────────
+// ── AGENTER ────────────────────────────────────────────
 function renderAgenter() {
   const agenter = [
     { icon: '💬', navn: 'Chatbot', desc: 'Svarer på spørgsmål om din virksomhed 24/7 på din hjemmeside', aktiv: true },
     { icon: '🎯', navn: 'Lead-agent', desc: 'Sender automatiske opfølgningsmails til nye leads', aktiv: true },
-    { icon: '📅', navn: 'Booking-agent', desc: 'Modtager og bekræfter bookinger automatisk', aktiv: data.bookinger?.length > 0 || true },
+    { icon: '📅', navn: 'Booking-agent', desc: 'Modtager og bekræfter bookinger automatisk', aktiv: true },
   ];
-
   document.getElementById('agentList').innerHTML = agenter.map(a => `
     <div class="agent-card">
       <div class="agent-icon">${a.icon}</div>
@@ -422,15 +509,13 @@ function renderAgenter() {
         <div class="agent-desc">${a.desc}</div>
       </div>
       <div class="agent-status">
-        ${a.aktiv
-          ? `<span class="badge badge-green"><span class="online-dot"></span>Aktiv</span>`
-          : `<span class="badge badge-gray">Inaktiv</span>`}
+        <span class="badge badge-green"><span class="online-dot"></span>Aktiv</span>
       </div>
     </div>
   `).join('');
 }
 
-// ── LEADS FRA SUPABASE via nyt endpoint ──────────────
+// ── FETCH LEADS & BOOKINGER ────────────────────────────
 async function loadLeadsOgBookinger() {
   try {
     const [lr, br] = await Promise.all([
