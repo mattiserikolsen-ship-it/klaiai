@@ -1391,6 +1391,325 @@ def klient_portal(klient_id):
     return response
 
 
+# ══════════════════════════════════════════════════════════════
+#  SCHEDULED AGENTS
+# ══════════════════════════════════════════════════════════════
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+
+scheduler = BackgroundScheduler(daemon=True)
+
+def _log_agent(agent_navn, klient_id, reference_id, besked):
+    if not db:
+        return
+    try:
+        db.table('agent_log').insert({
+            'agent': agent_navn,
+            'klient_id': klient_id,
+            'reference_id': str(reference_id) if reference_id else None,
+            'besked': besked
+        }).execute()
+    except Exception as e:
+        print(f"Agent log fejl: {e}")
+
+def _allerede_sendt(agent_navn, reference_id):
+    """Tjek om agenten allerede har behandlet denne reference"""
+    if not db:
+        return False
+    try:
+        res = db.table('agent_log')\
+            .select('id')\
+            .eq('agent', agent_navn)\
+            .eq('reference_id', str(reference_id))\
+            .execute()
+        return len(res.data) > 0
+    except:
+        return False
+
+def kør_reminder_agent():
+    """🔔 Sender påmindelses-mail til leads med booking i morgen"""
+    if not db:
+        return
+    print("🔔 Påmindelses-agent kører...")
+    i_morgen = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    try:
+        bookinger = db.table('bookinger')\
+            .select('*, leads(navn, email, klient_id)')\
+            .eq('dato', i_morgen)\
+            .execute()
+        for b in bookinger.data:
+            lead_info = b.get('leads') or {}
+            lead_id = b.get('lead_id')
+            if not lead_id or _allerede_sendt('reminder', b['id']):
+                continue
+            navn = lead_info.get('navn', 'kunde')
+            email = lead_info.get('email')
+            klient_id = lead_info.get('klient_id')
+            if not email:
+                continue
+            # Hent klient navn
+            klient_navn = klient_id
+            try:
+                kr = db.table('chatbot_config').select('virksomhed_navn').eq('klient_id', klient_id).execute()
+                if kr.data:
+                    klient_navn = kr.data[0].get('virksomhed_navn', klient_id)
+            except:
+                pass
+            dato_fmt = b.get('dato', i_morgen)
+            tidspunkt = b.get('tidspunkt', '')
+            emne = f"Påmindelse: Din booking hos {klient_navn} i morgen"
+            html = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+              <h2 style="color:#7c3aed">Hej {navn} 👋</h2>
+              <p>Dette er en venlig påmindelse om din kommende booking:</p>
+              <div style="background:#f3f0ff;border-left:4px solid #7c3aed;padding:16px;border-radius:8px;margin:16px 0">
+                <strong>📅 Dato:</strong> {dato_fmt}<br>
+                <strong>🕐 Tidspunkt:</strong> {tidspunkt or 'Se din bekræftelse'}<br>
+                <strong>🏢 Virksomhed:</strong> {klient_navn}
+              </div>
+              <p>Vi glæder os til at se dig! Hvis du har spørgsmål, er du altid velkommen til at kontakte os.</p>
+              <p style="color:#888;font-size:12px">Med venlig hilsen, {klient_navn}</p>
+            </div>
+            """
+            try:
+                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
+                msg = Mail(
+                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
+                    to_emails=email,
+                    subject=emne,
+                    html_content=html
+                )
+                sg.send(msg)
+                _log_agent('reminder', klient_id, b['id'], f"Påmindelse sendt til {email} for booking {b['id']}")
+                print(f"  ✅ Påmindelse sendt til {email}")
+            except Exception as e:
+                print(f"  ❌ SendGrid fejl: {e}")
+    except Exception as e:
+        print(f"Påmindelses-agent fejl: {e}")
+
+def kør_review_agent():
+    """⭐ Sender anmeldelsesanmodning til leads med booking i går"""
+    if not db:
+        return
+    print("⭐ Review-agent kører...")
+    i_gaar = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    try:
+        bookinger = db.table('bookinger')\
+            .select('*, leads(navn, email, klient_id)')\
+            .eq('dato', i_gaar)\
+            .execute()
+        for b in bookinger.data:
+            lead_info = b.get('leads') or {}
+            lead_id = b.get('lead_id')
+            if not lead_id or _allerede_sendt('review', b['id']):
+                continue
+            navn = lead_info.get('navn', 'kunde')
+            email = lead_info.get('email')
+            klient_id = lead_info.get('klient_id')
+            if not email:
+                continue
+            klient_navn = klient_id
+            review_link = ''
+            try:
+                kr = db.table('chatbot_config').select('virksomhed_navn, google_review_link').eq('klient_id', klient_id).execute()
+                if kr.data:
+                    klient_navn = kr.data[0].get('virksomhed_navn', klient_id)
+                    review_link = kr.data[0].get('google_review_link', '')
+            except:
+                pass
+            emne = f"Tak for dit besøg hos {klient_navn} – giv os en anmeldelse 🌟"
+            anmeld_knap = f'<a href="{review_link}" style="display:inline-block;background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">⭐ Skriv en anmeldelse</a>' if review_link else '<p>Vi håber, du vil anbefale os til andre!</p>'
+            html = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+              <h2 style="color:#7c3aed">Tak for dit besøg, {navn}! 🙏</h2>
+              <p>Vi håber, du havde en god oplevelse hos {klient_navn} i går.</p>
+              <p>Din mening betyder meget for os – og for andre, der overvejer at bruge vores ydelser.</p>
+              <div style="text-align:center;margin:32px 0">
+                {anmeld_knap}
+              </div>
+              <p>Det tager kun 1 minut, og det hjælper os enormt meget! 😊</p>
+              <p style="color:#888;font-size:12px">Med venlig hilsen, {klient_navn}</p>
+            </div>
+            """
+            try:
+                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
+                msg = Mail(
+                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
+                    to_emails=email,
+                    subject=emne,
+                    html_content=html
+                )
+                sg.send(msg)
+                _log_agent('review', klient_id, b['id'], f"Review-anmodning sendt til {email}")
+                print(f"  ✅ Review-mail sendt til {email}")
+            except Exception as e:
+                print(f"  ❌ SendGrid fejl: {e}")
+    except Exception as e:
+        print(f"Review-agent fejl: {e}")
+
+def kør_genopvarmning_agent():
+    """🧊 Genopvarmer leads der er 14+ dage gamle og stadig 'ny'"""
+    if not db:
+        return
+    print("🧊 Genopvarmnings-agent kører...")
+    cutoff = (datetime.now() - timedelta(days=14)).isoformat()
+    try:
+        leads = db.table('leads')\
+            .select('*')\
+            .eq('status', 'ny')\
+            .lt('oprettet', cutoff)\
+            .execute()
+        for lead in leads.data:
+            lead_id = lead['id']
+            if _allerede_sendt('genopvarmning', lead_id):
+                continue
+            navn = lead.get('navn', 'kunde')
+            email = lead.get('email')
+            klient_id = lead.get('klient_id')
+            if not email:
+                continue
+            klient_navn = klient_id
+            ydelse = lead.get('ydelse_interesse', 'vores ydelser')
+            try:
+                kr = db.table('chatbot_config').select('virksomhed_navn, ydelser, tone_of_voice').eq('klient_id', klient_id).execute()
+                if kr.data:
+                    klient_navn = kr.data[0].get('virksomhed_navn', klient_id)
+            except:
+                pass
+            # Brug Claude til at generere personlig genopvarmnings-mail
+            try:
+                ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY', ''))
+                prompt = f"""Du er en venlig salgskonsulent for {klient_navn}.
+
+Skriv en kort, personlig genopvarmnings-mail til {navn} som viste interesse for {ydelse} for 2 uger siden men endnu ikke har booket.
+
+Regler:
+- Vær varm og uformel, ikke pushy
+- Maks 4-5 sætninger
+- Tilbyd hjælp eller stil et åbent spørgsmål
+- Afslut med opfordring til at booke
+- Returner KUN HTML til mail-body (ingen <html>/<body> tags)
+- Brug #7c3aed som accentfarve"""
+
+                resp = ai.messages.create(
+                    model='claude-opus-4-6',
+                    max_tokens=500,
+                    messages=[{'role': 'user', 'content': prompt}]
+                )
+                mail_html = resp.content[0].text
+            except Exception as e:
+                print(f"  ⚠️ Claude fejl, bruger standard skabelon: {e}")
+                mail_html = f"""
+                <p>Hej {navn},</p>
+                <p>Vi har ikke hørt fra dig i et stykke tid, og vi tænkte på dig! 😊</p>
+                <p>Du viste tidligere interesse for {ydelse} – er det stadig noget, du overvejer?</p>
+                <p>Vi er klar til at hjælpe dig videre. Bare svar på denne mail eller book et møde direkte.</p>
+                """
+            html = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
+              <h2 style="color:#7c3aed">Hej {navn} 👋</h2>
+              {mail_html}
+              <p style="color:#888;font-size:12px;margin-top:32px">Med venlig hilsen, {klient_navn}</p>
+            </div>
+            """
+            try:
+                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
+                msg = Mail(
+                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
+                    to_emails=email,
+                    subject=f"Vi tænker stadig på dig, {navn} 💜",
+                    html_content=html
+                )
+                sg.send(msg)
+                _log_agent('genopvarmning', klient_id, lead_id, f"Genopvarmning sendt til {email}")
+                print(f"  ✅ Genopvarmning sendt til {email}")
+            except Exception as e:
+                print(f"  ❌ SendGrid fejl: {e}")
+    except Exception as e:
+        print(f"Genopvarmnings-agent fejl: {e}")
+
+def kør_ugerapport_agent():
+    """📊 Sender ugentlig rapport til alle aktive klienter (kører mandag morgen)"""
+    if not db:
+        return
+    if datetime.now().weekday() != 0:  # 0 = mandag
+        return
+    print("📊 Ugentlig rapport-agent kører...")
+    try:
+        klienter = db.table('chatbot_config')\
+            .select('klient_id, virksomhed_navn, rapport_email')\
+            .eq('aktiv', True)\
+            .execute()
+        for k in klienter.data:
+            klient_id = k['klient_id']
+            rapport_email = k.get('rapport_email')
+            if not rapport_email:
+                continue
+            klient_navn = k.get('virksomhed_navn', klient_id)
+            # Generer rapport HTML
+            rapport_html = _byg_rapport_html(klient_id, klient_navn,
+                *_hent_rapport_data(klient_id))
+            uge_nr = datetime.now().isocalendar()[1]
+            try:
+                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
+                msg = Mail(
+                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
+                    to_emails=rapport_email,
+                    subject=f"Ugentlig rapport – uge {uge_nr} | {klient_navn}",
+                    html_content=rapport_html
+                )
+                sg.send(msg)
+                _log_agent('ugerapport', klient_id, f"uge-{uge_nr}", f"Ugerapport sendt til {rapport_email}")
+                print(f"  ✅ Ugerapport sendt til {rapport_email}")
+            except Exception as e:
+                print(f"  ❌ SendGrid fejl for {klient_id}: {e}")
+    except Exception as e:
+        print(f"Ugerapport-agent fejl: {e}")
+
+# Planlæg jobs
+scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder')
+scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
+scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
+scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerapport', day_of_week='mon')
+scheduler.start()
+print("⏰ APScheduler startet med 4 agenter")
+
+# ── Agent endpoints ────────────────────────────────────────────
+
+@app.route('/kør-agent/<navn>', methods=['POST'])
+def kør_agent_manuelt(navn):
+    """Manuel trigger af en agent fra admin-panelet"""
+    agenter = {
+        'reminder': kør_reminder_agent,
+        'review': kør_review_agent,
+        'genopvarmning': kør_genopvarmning_agent,
+        'ugerapport': kør_ugerapport_agent,
+    }
+    if navn not in agenter:
+        return jsonify({'error': f'Ukendt agent: {navn}'}), 400
+    try:
+        agenter[navn]()
+        return jsonify({'ok': True, 'besked': f'Agent "{navn}" kørt manuelt'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/agent-log', methods=['GET'])
+def hent_agent_log():
+    """Hent seneste agent-kørsler"""
+    klient_id = request.args.get('klient_id')
+    limit = int(request.args.get('limit', 50))
+    if not db:
+        return jsonify([])
+    try:
+        q = db.table('agent_log').select('*').order('oprettet', desc=True).limit(limit)
+        if klient_id:
+            q = q.eq('klient_id', klient_id)
+        res = q.execute()
+        return jsonify(res.data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     print(f"🤖 KlarAI Agent Server kører på port {port}")

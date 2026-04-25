@@ -685,10 +685,68 @@
       <!-- Tab: Agenter -->
       <div id="tab-agents" class="hidden">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem">
-          <div style="font-size:.88rem; font-weight:700">AI-agenter for denne klient</div>
-          <button class="btn btn-generate btn-sm" onclick="activateAllAgents()">⚡ Aktivér alle agenter</button>
+          <div style="font-size:.88rem; font-weight:700">Automatiske AI-agenter</div>
+          <button class="btn btn-ghost btn-sm" onclick="hentAgentLog()">↻ Opdater log</button>
         </div>
-        <div class="agent-grid" id="clientAgentGrid"></div>
+
+        <!-- Agent cards -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem">
+          <div class="card" style="padding:1.25rem">
+            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem">
+              <span style="font-size:1.4rem">🔔</span>
+              <div>
+                <div style="font-size:.88rem; font-weight:700">Påmindelses-agent</div>
+                <div style="font-size:.74rem; color:var(--muted)">Kører dagligt kl. 09:00</div>
+              </div>
+            </div>
+            <div style="font-size:.78rem; color:var(--muted); margin-bottom:.9rem">Sender automatisk påmindelses-mail til leads med booking i morgen.</div>
+            <button class="btn btn-primary btn-sm" onclick="kørAgent('reminder')">▶ Kør nu</button>
+          </div>
+
+          <div class="card" style="padding:1.25rem">
+            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem">
+              <span style="font-size:1.4rem">⭐</span>
+              <div>
+                <div style="font-size:.88rem; font-weight:700">Review-agent</div>
+                <div style="font-size:.74rem; color:var(--muted)">Kører dagligt kl. 10:00</div>
+              </div>
+            </div>
+            <div style="font-size:.78rem; color:var(--muted); margin-bottom:.9rem">Beder kunder om en Google-anmeldelse dagen efter deres booking.</div>
+            <button class="btn btn-primary btn-sm" onclick="kørAgent('review')">▶ Kør nu</button>
+          </div>
+
+          <div class="card" style="padding:1.25rem">
+            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem">
+              <span style="font-size:1.4rem">🧊</span>
+              <div>
+                <div style="font-size:.88rem; font-weight:700">Genopvarmnings-agent</div>
+                <div style="font-size:.74rem; color:var(--muted)">Kører dagligt kl. 11:00</div>
+              </div>
+            </div>
+            <div style="font-size:.78rem; color:var(--muted); margin-bottom:.9rem">Finder leads der er 14+ dage gamle og stadig ikke har booket – Claude skriver en personlig mail.</div>
+            <button class="btn btn-primary btn-sm" onclick="kørAgent('genopvarmning')">▶ Kør nu</button>
+          </div>
+
+          <div class="card" style="padding:1.25rem">
+            <div style="display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem">
+              <span style="font-size:1.4rem">📊</span>
+              <div>
+                <div style="font-size:.88rem; font-weight:700">Ugentlig rapport-agent</div>
+                <div style="font-size:.74rem; color:var(--muted)">Kører mandag kl. 07:00</div>
+              </div>
+            </div>
+            <div style="font-size:.78rem; color:var(--muted); margin-bottom:.9rem">Sender automatisk ugentlig rapport til rapport_email i chatbot-opsætningen.</div>
+            <button class="btn btn-primary btn-sm" onclick="kørAgent('ugerapport')">▶ Kør nu</button>
+          </div>
+        </div>
+
+        <!-- Agent log -->
+        <div class="card" style="padding:1.25rem">
+          <div style="font-size:.88rem; font-weight:700; margin-bottom:.75rem">Seneste agent-kørsler</div>
+          <div id="agentLogListe" style="display:flex;flex-direction:column;gap:.4rem">
+            <div style="color:var(--muted);font-size:.8rem">Henter log...</div>
+          </div>
+        </div>
       </div>
 
       <!-- Tab: Test chatbot -->
@@ -1456,7 +1514,7 @@ function switchTab(t) {
   document.querySelector(`.tab[data-tab="${t}"]`)?.classList.add('active');
   currentTab = t;
   if (t === 'products' && currentClient) renderProductTab();
-  if (t === 'agents' && currentClient) renderClientAgents();
+  if (t === 'agents' && currentClient) { renderClientAgents(); hentAgentLog(); }
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
   if (t === 'chatbot-test' && currentClient) initTestChat();
@@ -2594,6 +2652,62 @@ function activateAllAgents() {
   (currentClient.products||[]).forEach(p => currentClient.agents[p] = true);
   saveClients();
   renderClientAgents();
+}
+
+async function kørAgent(navn) {
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Kører...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/kør-agent/${navn}`, {
+      method: 'POST',
+      headers: {'Authorization': `Bearer ${AUTH_TOKEN}`}
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = '✅ Kørt!';
+      setTimeout(() => hentAgentLog(), 800);
+    } else {
+      btn.textContent = '❌ Fejl';
+      alert(data.error || 'Ukendt fejl');
+    }
+  } catch(e) {
+    btn.textContent = '❌ Fejl';
+    alert(e.message);
+  }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+}
+
+async function hentAgentLog() {
+  const liste = document.getElementById('agentLogListe');
+  if (!liste) return;
+  try {
+    const klientId = currentClient?.id;
+    const url = klientId ? `${API}/agent-log?klient_id=${klientId}&limit=20` : `${API}/agent-log?limit=30`;
+    const res = await fetch(url, { headers: {'Authorization': `Bearer ${AUTH_TOKEN}`} });
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      liste.innerHTML = '<div style="color:var(--muted);font-size:.8rem">Ingen kørsler endnu</div>';
+      return;
+    }
+    const ikoner = { reminder:'🔔', review:'⭐', genopvarmning:'🧊', ugerapport:'📊' };
+    liste.innerHTML = rows.map(r => {
+      const ikon = ikoner[r.agent] || '🤖';
+      const tid = r.oprettet ? new Date(r.oprettet).toLocaleString('da-DK',{dateStyle:'short',timeStyle:'short'}) : '';
+      return `<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.5rem;border-radius:8px;background:var(--bg);font-size:.78rem">
+        <span>${ikon}</span>
+        <div style="flex:1">
+          <span style="font-weight:600">${r.agent}</span>
+          <span style="color:var(--muted);margin-left:.4rem">${r.klient_id||''}</span>
+          <div style="color:var(--muted);margin-top:.1rem">${r.besked||''}</div>
+        </div>
+        <div style="color:var(--muted);white-space:nowrap">${tid}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    if (liste) liste.innerHTML = `<div style="color:var(--muted);font-size:.8rem">Fejl: ${e.message}</div>`;
+  }
 }
 
 function renderAllAgents() {
