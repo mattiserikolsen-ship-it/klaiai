@@ -168,6 +168,34 @@ Log ind på din KlarAI portal for at se alle leads."""
         send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'KlarAI'))
 
 
+# ── GAP DETEKTION ──────────────────────────────────────
+
+DEFLECTION_FRASER = [
+    'kontakt os', 'ring til os', 'send os en mail', 'send en mail',
+    'har desværre ikke', 'kan desværre ikke', 'ved desværre ikke',
+    'ikke information om', 'ingen information om', 'kan ikke svare på',
+    'ikke bekendt med', 'har ikke den information', 'kan ikke hjælpe med det',
+    'ikke nok information', 'beklager, jeg ved ikke', 'desværre ikke i stand'
+]
+
+def er_deflection(svar: str) -> bool:
+    svar_l = svar.lower()
+    return any(f in svar_l for f in DEFLECTION_FRASER)
+
+def log_gap(klient_id: str, spoergsmaal: str, bot_svar: str):
+    if not db or klient_id == 'demo':
+        return
+    try:
+        db.table('chatbot_gaps').insert({
+            'klient_id': klient_id,
+            'spoergsmaal': spoergsmaal,
+            'bot_svar': bot_svar,
+            'status': 'åben'
+        }).execute()
+    except Exception as e:
+        print(f"Gap log fejl: {e}")
+
+
 # ── CHATBOT ENDPOINTS ──────────────────────────────────
 
 @app.route('/chat', methods=['POST'])
@@ -221,8 +249,14 @@ def chat():
                 if block.type == 'text':
                     reply += block.text
 
+        reply_final = reply.strip()
+
+        # Log gap hvis botten ikke kunne svare
+        if reply_final and er_deflection(reply_final):
+            log_gap(klient_id, besked, reply_final)
+
         return jsonify({
-            'reply': reply.strip(),
+            'reply': reply_final,
             'chatbot_navn': klient.get('chatbot_navn', 'Alma'),
             'lead_gemt': lead_gemt
         })
@@ -531,6 +565,87 @@ def get_bookinger(klient_id):
         return jsonify({'bookinger': res.data or []})
     except Exception as e:
         return jsonify({'bookinger': [], 'error': str(e)})
+
+
+# ── CHATBOT GAPS ───────────────────────────────────────
+
+@app.route('/gaps/<klient_id>', methods=['GET'])
+def get_gaps(klient_id):
+    """Henter ubesvarede spørgsmål for en klient"""
+    if not db:
+        return jsonify({'gaps': []})
+    try:
+        res = db.table('chatbot_gaps').select('*').eq('klient_id', klient_id).eq('status', 'åben').order('oprettet', desc=True).limit(20).execute()
+        return jsonify({'gaps': res.data or []})
+    except Exception as e:
+        return jsonify({'gaps': [], 'error': str(e)})
+
+
+@app.route('/udfyld-gap/<klient_id>', methods=['POST'])
+def udfyld_gap(klient_id):
+    """Claude genererer forslag til hvad der mangler i chatbot-konfigurationen"""
+    data = request.json
+    gap_id = data.get('gap_id')
+    spoergsmaal = data.get('spoergsmaal', '')
+
+    klient = get_klient(klient_id)
+    info = klient.get('info', {})
+
+    prompt = f"""En kunde stillede dette spørgsmål til en chatbot, men chatbotten kunne ikke svare:
+
+Spørgsmål: "{spoergsmaal}"
+
+Chatbottens nuværende info:
+Ydelser: {info.get('ydelser', 'ikke udfyldt')}
+Priser: {info.get('priser', 'ikke udfyldt')}
+Åbningstider: {info.get('åbningstider', 'ikke udfyldt')}
+Kontakt: {info.get('kontakt', 'ikke udfyldt')}
+Adresse: {info.get('adresse', 'ikke udfyldt')}
+Ekstra viden: {klient.get('ekstra_viden', 'ikke udfyldt')[:300] if klient.get('ekstra_viden') else 'ikke udfyldt'}
+
+Virksomhed: {klient.get('navn', '')}
+
+Returner KUN dette JSON-format:
+{{
+  "felt": "priser" eller "ydelser" eller "åbningstider" eller "adresse" eller "kontakt" eller "ekstra_viden",
+  "forklaring": "Kort forklaring på hvorfor dette felt skal opdateres (1 sætning)",
+  "forslag": "Den præcise tekst der skal tilføjes til feltet"
+}}"""
+
+    try:
+        response = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=400,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        raw = response.content[0].text.strip()
+        if '```' in raw:
+            raw = raw.split('```')[1]
+            if raw.startswith('json'): raw = raw[4:]
+        result = json.loads(raw.strip())
+
+        # Marker gap som "behandlet" hvis gap_id givet
+        if gap_id and db:
+            try:
+                db.table('chatbot_gaps').update({'status': 'behandlet'}).eq('id', gap_id).execute()
+            except:
+                pass
+
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/luk-gap/<gap_id>', methods=['POST'])
+def luk_gap(gap_id):
+    """Markerer et gap som lukket/ignoreret"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        db.table('chatbot_gaps').update({'status': 'ignoreret'}).eq('id', gap_id).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ── AI INSIGHTS & BRANCHE-RESEARCH ────────────────────

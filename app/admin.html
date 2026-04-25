@@ -268,6 +268,18 @@
     .btn-implement.done { background: var(--green-bg); color: var(--green); cursor: default; }
     .insight-forslag { font-size: .75rem; color: var(--muted); background: var(--bg); border-radius: 6px; padding: .35rem .7rem; font-style: italic; }
 
+    /* ── GAPS ── */
+    .gap-card {
+      background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--orange);
+      border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: .65rem;
+    }
+    .gap-spoergsmaal { font-size: .875rem; font-weight: 600; color: var(--text); margin-bottom: .3rem; }
+    .gap-svar { font-size: .775rem; color: var(--muted); line-height: 1.5; margin-bottom: .75rem; font-style: italic; }
+    .gap-forslag-box { background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: .85rem 1rem; margin-bottom: .75rem; }
+    .gap-forslag-felt { font-size: .7rem; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .35rem; }
+    .gap-forslag-tekst { font-size: .8rem; color: var(--text); line-height: 1.6; }
+    .gap-forslag-forklaring { font-size: .75rem; color: var(--muted); margin-top: .25rem; }
+
     /* ── TASK LIST ── */
     .task-list { display: flex; flex-direction: column; gap: .5rem; }
     .task-item { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 11px; }
@@ -723,10 +735,27 @@
 
       <!-- Tab: AI Insights -->
       <div id="tab-insights" class="hidden">
+        <!-- Gaps sektion -->
+        <div id="gapsSektion" style="margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem">
+            <div>
+              <div style="font-size:.88rem;font-weight:700;margin-bottom:.1rem">💬 Ubesvarede spørgsmål</div>
+              <div style="font-size:.75rem;color:var(--muted)">Spørgsmål chatbotten ikke kunne svare på — klik for at tilføje svar automatisk</div>
+            </div>
+            <span id="gapsBadge" class="badge badge-red hidden"></span>
+          </div>
+          <div id="gapsOutput">
+            <div style="font-size:.82rem;color:var(--muted);padding:.75rem 0">Henter ubesvarede spørgsmål...</div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border);margin-bottom:1.5rem"></div>
+
+        <!-- Insights sektion -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
           <div>
-            <div style="font-size:.9rem;font-weight:700;margin-bottom:.2rem">🧠 AI Insights</div>
-            <div style="font-size:.78rem;color:var(--muted)">Claude analyserer klientens opsætning og foreslår konkrete forbedringer</div>
+            <div style="font-size:.88rem;font-weight:700;margin-bottom:.1rem">🧠 AI Opsætningsanalyse</div>
+            <div style="font-size:.75rem;color:var(--muted)">Claude analyserer klientens opsætning og foreslår konkrete forbedringer</div>
           </div>
           <div style="display:flex;gap:.6rem">
             <button class="btn btn-secondary btn-sm" id="researchBtn" onclick="kørBrancheResearch()">🔍 Branche-research</button>
@@ -734,7 +763,7 @@
           </div>
         </div>
         <div id="insightsOutput">
-          <div style="text-align:center;padding:3rem;color:var(--muted);font-size:.85rem">
+          <div style="text-align:center;padding:2rem;color:var(--muted);font-size:.85rem">
             Tryk <strong>Analysér nu</strong> for at lade Claude gennemgå klientens opsætning
           </div>
         </div>
@@ -1401,6 +1430,115 @@ function switchTab(t) {
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
   if (t === 'chatbot-test' && currentClient) initTestChat();
+  if (t === 'insights' && currentClient) hentGaps();
+}
+
+// ── CHATBOT GAPS ──────────────────────────────────────
+async function hentGaps() {
+  if (!currentClient) return;
+  const out = document.getElementById('gapsOutput');
+  const badge = document.getElementById('gapsBadge');
+  try {
+    const res = await fetch(`${API}/gaps/${currentClient.id}`);
+    const data = await res.json();
+    const gaps = data.gaps || [];
+
+    if (!gaps.length) {
+      out.innerHTML = `<div style="font-size:.82rem;color:var(--muted);padding:.5rem 0">Ingen ubesvarede spørgsmål endnu — de dukker op her når chatbotten løber ind i noget den ikke kan svare på.</div>`;
+      badge.classList.add('hidden');
+      return;
+    }
+
+    badge.textContent = gaps.length;
+    badge.classList.remove('hidden');
+
+    out.innerHTML = gaps.map(g => `
+      <div class="gap-card" id="gap-${g.id}">
+        <div class="gap-spoergsmaal">❓ "${g.spoergsmaal}"</div>
+        ${g.bot_svar ? `<div class="gap-svar">Bot svarede: "${g.bot_svar.slice(0,120)}${g.bot_svar.length > 120 ? '...' : ''}"</div>` : ''}
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="genererGapForslag(${g.id}, '${g.spoergsmaal.replace(/'/g,"\\'")}')">
+            ✦ Generer svar
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="ignoreGap(${g.id})">Ignorer</button>
+        </div>
+        <div id="gap-forslag-${g.id}"></div>
+      </div>
+    `).join('');
+  } catch(e) {
+    out.innerHTML = `<div style="font-size:.82rem;color:var(--muted)">Kunne ikke hente gaps — er tabellen oprettet i Supabase?</div>`;
+  }
+}
+
+async function genererGapForslag(gapId, spoergsmaal) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Genererer...';
+  const forslagEl = document.getElementById(`gap-forslag-${gapId}`);
+
+  try {
+    const res = await fetch(`${API}/udfyld-gap/${currentClient.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gap_id: gapId, spoergsmaal })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    forslagEl.innerHTML = `
+      <div class="gap-forslag-box" style="margin-top:.75rem">
+        <div class="gap-forslag-felt">Forslag: Opdater "${data.felt}"</div>
+        <div class="gap-forslag-tekst">${data.forslag}</div>
+        <div class="gap-forslag-forklaring">${data.forklaring}</div>
+        <div style="display:flex;gap:.5rem;margin-top:.75rem">
+          <button class="btn-implement" onclick="implementerGap(${gapId}, '${data.felt}', ${JSON.stringify(data.forslag).replace(/'/g,"\\'")} )">
+            ⚡ Implementér
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="ignoreGap(${gapId})">Ignorer</button>
+        </div>
+      </div>
+    `;
+    btn.disabled = false;
+    btn.textContent = '✦ Generer svar';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✦ Generer svar';
+    forslagEl.innerHTML = `<div style="color:var(--red);font-size:.78rem;margin-top:.5rem">Fejl: ${e.message}</div>`;
+  }
+}
+
+async function implementerGap(gapId, felt, forslag) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Implementerer...';
+  try {
+    const res = await fetch(`${API}/apply-insight/${currentClient.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ felt, forslag_vaerdi: forslag })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const card = document.getElementById(`gap-${gapId}`);
+      card.style.opacity = '.4';
+      card.style.borderLeftColor = 'var(--green)';
+      btn.className = 'btn-implement done';
+      btn.textContent = '✓ Implementeret';
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '⚡ Implementér';
+  }
+}
+
+async function ignoreGap(gapId) {
+  try {
+    await fetch(`${API}/luk-gap/${gapId}`, { method: 'POST' });
+    const card = document.getElementById(`gap-${gapId}`);
+    card.style.transition = 'opacity .3s';
+    card.style.opacity = '0';
+    setTimeout(() => card.remove(), 300);
+  } catch(e) {}
 }
 
 // ── AI INSIGHTS ───────────────────────────────────────
