@@ -1485,13 +1485,14 @@ async function genererGapForslag(gapId, spoergsmaal) {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
+    const forslagJson = JSON.stringify(data.forslag);
     forslagEl.innerHTML = `
       <div class="gap-forslag-box" style="margin-top:.75rem">
         <div class="gap-forslag-felt">Forslag: Opdater "${data.felt}"</div>
-        <div class="gap-forslag-tekst">${data.forslag}</div>
-        <div class="gap-forslag-forklaring">${data.forklaring}</div>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem">
-          <button class="btn-implement" onclick="implementerGap(${gapId}, '${data.felt}', ${JSON.stringify(data.forslag).replace(/'/g,"\\'")} )">
+        <div class="gap-forslag-forklaring" style="margin-bottom:.5rem">${data.forklaring}</div>
+        <textarea id="gap-edit-${gapId}" class="form-input" rows="3" style="font-size:.82rem;width:100%;margin-bottom:.75rem">${data.forslag}</textarea>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn-implement" onclick="implementerGap(${gapId}, '${data.felt}', document.getElementById('gap-edit-${gapId}').value)">
             ⚡ Implementér
           </button>
           <button class="btn btn-ghost btn-sm" onclick="ignoreGap(${gapId})">Ignorer</button>
