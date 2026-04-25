@@ -338,9 +338,14 @@
           <button class="periode-btn active" onclick="skiftPeriode('uger',this)">Seneste 8 uger</button>
           <button class="periode-btn" onclick="skiftPeriode('maaneder',this)">Seneste 6 måneder</button>
         </div>
-        <button class="send-rapport-btn" id="sendRapportBtn" onclick="sendRapport()">
-          ✉ Send rapport pr. mail
-        </button>
+        <div style="display:flex;gap:.5rem">
+          <button class="send-rapport-btn" style="background:var(--card);color:var(--dark);border:1px solid var(--border)" onclick="forhåndsvisRapport()">
+            ◫ Forhåndsvis
+          </button>
+          <button class="send-rapport-btn" id="sendRapportBtn" onclick="sendRapport()">
+            ✉ Send pr. mail
+          </button>
+        </div>
       </div>
 
       <div class="rapport-grid-3">
@@ -728,6 +733,10 @@ function skiftPeriode(periode, btn) {
   document.querySelectorAll('.periode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderRapChart(periode);
+}
+
+function forhåndsvisRapport() {
+  window.open(`${API}/preview-rapport/${CLIENT_ID}`, '_blank');
 }
 
 async function sendRapport() {

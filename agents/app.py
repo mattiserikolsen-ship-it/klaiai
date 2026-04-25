@@ -587,19 +587,8 @@ def get_rapport(klient_id):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/send-rapport/<klient_id>', methods=['POST'])
-def send_rapport(klient_id):
-    """Sender en professionel HTML-rapport pr. mail"""
-    from datetime import datetime
-
-    klient = get_klient(klient_id)
-    klient_navn = klient.get('navn', 'din virksomhed')
-    kontakt = klient.get('info', {}).get('kontakt', '')
-    mail_til = request.json.get('email') or (kontakt.split('|')[-1].strip() if '|' in kontakt else kontakt.strip())
-
-    if not mail_til or '@' not in mail_til:
-        return jsonify({'error': 'Ingen gyldig email fundet'}), 400
-
+def _hent_rapport_data(klient_id):
+    """Henter leads + bookinger til rapport. Returnerer (leads, bookinger)."""
     leads, bookinger = [], []
     if db:
         try:
@@ -607,12 +596,16 @@ def send_rapport(klient_id):
             bookinger = db.table('bookinger').select('*').eq('klient_id', klient_id).eq('status', 'bekræftet').execute().data or []
         except:
             pass
+    return leads, bookinger
 
+
+def _byg_rapport_html(klient_id, klient_navn, leads, bookinger):
+    """Bygger rapport HTML-streng."""
+    from datetime import datetime
     chatbot  = sum(1 for l in leads if l.get('kilde') == 'chatbot')
     formular = len(leads) - chatbot
     dato_str = datetime.now().strftime('%-d. %B %Y')
 
-    # Seneste 5 leads til rapport
     nye_leads_html = ''
     for l in leads[:5]:
         dato = l.get('oprettet', '')[:10] if l.get('oprettet') else '—'
@@ -629,52 +622,43 @@ def send_rapport(klient_id):
     if not nye_leads_html:
         nye_leads_html = '<tr><td colspan="4" style="padding:16px 0;font-size:13px;color:#9a9590;text-align:center">Ingen leads endnu</td></tr>'
 
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/></head>
+    fornavn = klient_navn.split()[0] if klient_navn else 'der'
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><title>KlarAI Rapport — {dato_str}</title></head>
 <body style="margin:0;padding:0;background:#f8f7f4;font-family:'Helvetica Neue',Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px">
-
-  <!-- HEADER -->
   <tr><td style="background:#1a1918;border-radius:14px 14px 0 0;padding:28px 36px">
     <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">KlarAI</div>
     <div style="color:rgba(255,255,255,.4);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px">Klientrapport</div>
   </td></tr>
-
-  <!-- INTRO -->
   <tr><td style="background:#fff;padding:28px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
-    <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:6px">Hej, {klient_navn.split()[0] if klient_navn else 'der'}!</div>
+    <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:6px">Hej, {fornavn}!</div>
     <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din statusrapport fra KlarAI. Alt nedenfor er hvad dine AI-agenter har lavet for dig.</div>
     <div style="font-size:11px;color:#c5c2bc;margin-top:8px">{dato_str}</div>
   </td></tr>
-
-  <!-- STATS -->
   <tr><td style="background:#f8f7f4;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td width="33%" style="padding:4px">
-          <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
-            <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(leads)}</div>
-            <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Leads i alt</div>
-          </div>
-        </td>
-        <td width="33%" style="padding:4px">
-          <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
-            <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(bookinger)}</div>
-            <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Bookinger</div>
-          </div>
-        </td>
-        <td width="33%" style="padding:4px">
-          <div style="background:#eef2ec;border:1px solid #c5d6c2;border-radius:12px;padding:20px;text-align:center">
-            <div style="font-size:36px;font-weight:800;color:#4a6741;letter-spacing:-2px">{chatbot}</div>
-            <div style="font-size:11px;color:#4a6741;margin-top:4px;font-weight:500">Via chatbot</div>
-          </div>
-        </td>
-      </tr>
-    </table>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="33%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(leads)}</div>
+          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Leads i alt</div>
+        </div>
+      </td>
+      <td width="33%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(bookinger)}</div>
+          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Bookinger</div>
+        </div>
+      </td>
+      <td width="33%" style="padding:4px">
+        <div style="background:#eef2ec;border:1px solid #c5d6c2;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:#4a6741;letter-spacing:-2px">{chatbot}</div>
+          <div style="font-size:11px;color:#4a6741;margin-top:4px;font-weight:500">Via chatbot</div>
+        </div>
+      </td>
+    </tr></table>
   </td></tr>
-
-  <!-- LEADS TABEL -->
   <tr><td style="background:#fff;padding:28px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:16px">Seneste leads</div>
     <table width="100%" cellpadding="0" cellspacing="0">
@@ -687,8 +671,6 @@ def send_rapport(klient_id):
       {nye_leads_html}
     </table>
   </td></tr>
-
-  <!-- KILDE FORDELING -->
   <tr><td style="background:#f8f7f4;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:12px">Leadkilde</div>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -706,19 +688,44 @@ def send_rapport(klient_id):
       </td>
     </tr></table>
   </td></tr>
-
-  <!-- CTA -->
   <tr><td style="background:#fff;padding:24px 36px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
     <a href="https://klaiai.dk/app/client.html?id={klient_id}" style="display:inline-block;background:#1a1918;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:9px">
       Se fuld portal →
     </a>
     <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af KlarAI · klaiai.dk</div>
   </td></tr>
-
 </table>
 </td></tr></table>
 </body></html>"""
 
+
+@app.route('/preview-rapport/<klient_id>', methods=['GET'])
+def preview_rapport(klient_id):
+    """Returnerer rapport HTML direkte i browser — til forhåndsvisning"""
+    from flask import Response
+    klient = get_klient(klient_id)
+    klient_navn = klient.get('navn', 'din virksomhed')
+    leads, bookinger = _hent_rapport_data(klient_id)
+    html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger)
+    return Response(html, mimetype='text/html')
+
+
+@app.route('/send-rapport/<klient_id>', methods=['POST'])
+def send_rapport(klient_id):
+    """Sender en professionel HTML-rapport pr. mail"""
+    klient = get_klient(klient_id)
+    klient_navn = klient.get('navn', 'din virksomhed')
+    kontakt = klient.get('info', {}).get('kontakt', '')
+    mail_til = request.json.get('email') or (kontakt.split('|')[-1].strip() if '|' in kontakt else kontakt.strip())
+
+    if not mail_til or '@' not in mail_til:
+        return jsonify({'error': 'Ingen gyldig email fundet'}), 400
+
+    leads, bookinger = _hent_rapport_data(klient_id)
+    html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger)
+
+    from datetime import datetime
+    dato_str = datetime.now().strftime('%-d. %B %Y')
     emne = f"Din KlarAI rapport — {dato_str}"
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return jsonify({'success': False, 'error': 'Mail ikke konfigureret'}), 500
