@@ -3207,6 +3207,8 @@ async function initAdmin() {
         });
         clients = loaded;
         saveClients();
+        renderDashboard();
+        renderClientTable();
       }
     }
   } catch(e) {
