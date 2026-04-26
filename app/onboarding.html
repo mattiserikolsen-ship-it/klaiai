@@ -248,6 +248,38 @@
       <input type="text" id="s3_aabning" placeholder="Fx. Man-fre 9-17, lør 10-14"/>
     </div>
 
+    <hr style="border:none; border-top:1px solid var(--border); margin: 1.5rem 0"/>
+    <h2 style="font-size:1.1rem; font-weight:700; margin-bottom:.25rem">Lead-opsætning</h2>
+    <p class="step-desc" style="margin-bottom:1rem">Hvor skal vi sende besked når chatbotten fanger en ny kunde?</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Notifikations-email *</label>
+        <input type="email" id="s3_lead_email" placeholder="din@email.dk"/>
+      </div>
+      <div class="form-group">
+        <label>Hvornår skal chatbotten bede om kontakt?</label>
+        <input type="text" id="s3_lead_trigger" placeholder="Fx. 'Vil du have et tilbud?'"/>
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin: 1.5rem 0"/>
+    <h2 style="font-size:1.1rem; font-weight:700; margin-bottom:.25rem">Booking-opsætning</h2>
+    <p class="step-desc" style="margin-bottom:1rem">Kun relevant hvis du vil tilbyde booking via chatbotten.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Booking-email (bekræftelser)</label>
+        <input type="email" id="s3_booking_email" placeholder="booking@firma.dk"/>
+      </div>
+      <div class="form-group">
+        <label>Hvad kan man booke?</label>
+        <input type="text" id="s3_booking_ydelser" placeholder="Fx. Poolrengøring, servicetjek"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Ledige tider / noter til booking</label>
+      <textarea id="s3_booking_noter" placeholder="Fx. Vi kan booke tider man-fre 8-16. Ring altid for akutte opgaver."></textarea>
+    </div>
+
     <!-- LIVE PREVIEW -->
     <div class="preview-box">
       <div class="preview-label">Forhåndsvisning</div>
@@ -432,6 +464,11 @@ async function gåTilBetaling() {
     velkomst: document.getElementById('s3_velkomst').value,
     farve: document.getElementById('s3_farve').value,
     aabning: document.getElementById('s3_aabning').value,
+    lead_email: document.getElementById('s3_lead_email').value,
+    lead_trigger: document.getElementById('s3_lead_trigger').value,
+    booking_email: document.getElementById('s3_booking_email').value,
+    booking_ydelser: document.getElementById('s3_booking_ydelser').value,
+    booking_noter: document.getElementById('s3_booking_noter').value,
     email: document.getElementById('s4_email').value,
     password: document.getElementById('s4_password').value,
     telefon: document.getElementById('s4_telefon').value,

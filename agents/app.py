@@ -1531,6 +1531,15 @@ def onboarding_opret():
             return jsonify({'error': f'Kunne ikke oprette klient: {e}'}), 500
 
         try:
+            # Byg ekstra_viden fra booking-info
+            ekstra = data.get('ekstra_viden', '')
+            if data.get('booking_ydelser'):
+                ekstra += f"\n\nBooking - hvad kan bookes: {data.get('booking_ydelser')}"
+            if data.get('booking_noter'):
+                ekstra += f"\nBooking - noter: {data.get('booking_noter')}"
+            if data.get('lead_trigger'):
+                ekstra += f"\nLead trigger sætning: {data.get('lead_trigger')}"
+
             db.table('chatbot_config').upsert({
                 'klient_id': klient_id,
                 'chatbot_navn': data.get('chatbot_navn', 'Alma'),
@@ -1541,7 +1550,9 @@ def onboarding_opret():
                 'kontakt': data.get('kontakt', ''),
                 'aabningsider': data.get('aabning', ''),
                 'andet': data.get('andet', ''),
-                'ekstra_viden': data.get('ekstra_viden', '')
+                'ekstra_viden': ekstra.strip(),
+                'lead_email': data.get('lead_email', data.get('email', '')),
+                'booking_email': data.get('booking_email', data.get('email', '')),
             }, on_conflict='klient_id').execute()
         except Exception as e:
             print(f"Chatbot config fejl: {e}")
