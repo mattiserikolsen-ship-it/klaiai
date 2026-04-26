@@ -2660,9 +2660,10 @@ async function kørAgent(navn) {
   btn.textContent = '⏳ Kører...';
   btn.disabled = true;
   try {
-    const res = await fetch(`${API}/kør-agent/${navn}`, {
+    const token = sessionStorage.getItem('klaiai_token');
+    const res = await fetch(`${AGENT_URL}/kør-agent/${navn}`, {
       method: 'POST',
-      headers: {'Authorization': `Bearer ${AUTH_TOKEN}`}
+      headers: {'Authorization': `Bearer ${token}`}
     });
     const data = await res.json();
     if (data.ok) {
@@ -2684,8 +2685,9 @@ async function hentAgentLog() {
   if (!liste) return;
   try {
     const klientId = currentClient?.id;
-    const url = klientId ? `${API}/agent-log?klient_id=${klientId}&limit=20` : `${API}/agent-log?limit=30`;
-    const res = await fetch(url, { headers: {'Authorization': `Bearer ${AUTH_TOKEN}`} });
+    const token = sessionStorage.getItem('klaiai_token');
+    const url = klientId ? `${AGENT_URL}/agent-log?klient_id=${klientId}&limit=20` : `${AGENT_URL}/agent-log?limit=30`;
+    const res = await fetch(url, { headers: {'Authorization': `Bearer ${token}`} });
     const rows = await res.json();
     if (!Array.isArray(rows) || rows.length === 0) {
       liste.innerHTML = '<div style="color:var(--muted);font-size:.8rem">Ingen kørsler endnu</div>';
