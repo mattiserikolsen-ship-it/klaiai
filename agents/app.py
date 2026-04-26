@@ -73,12 +73,19 @@ def get_klient(klient_id):
     # Prøv Supabase først
     if db:
         try:
-            res = db.table('chatbot_config').select('*, klienter(*)').eq('klient_id', klient_id).single().execute()
-            if res.data:
-                cfg = res.data
-                klient = cfg.get('klienter', {})
+            cfg_res = db.table('chatbot_config').select('*').eq('klient_id', klient_id).single().execute()
+            if cfg_res.data:
+                cfg = cfg_res.data
+                # Hent klient navn separat
+                klient_navn = ''
+                try:
+                    k_res = db.table('klienter').select('navn').eq('id', klient_id).single().execute()
+                    if k_res.data:
+                        klient_navn = k_res.data.get('navn', '')
+                except:
+                    pass
                 return {
-                    'navn': klient.get('navn', ''),
+                    'navn': klient_navn,
                     'chatbot_navn': cfg.get('chatbot_navn', 'Alma'),
                     'velkomst': cfg.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
                     'farve': cfg.get('farve', '#0a2463'),
@@ -92,8 +99,8 @@ def get_klient(klient_id):
                     },
                     'ekstra_viden': cfg.get('ekstra_viden', '')
                 }
-        except:
-            pass
+        except Exception as e:
+            print(f"get_klient fejl: {e}")
     # Fallback til JSON-fil
     klienter = load_klienter()
     return klienter.get(klient_id, klienter.get('demo', {}))
