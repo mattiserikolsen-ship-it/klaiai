@@ -1530,7 +1530,7 @@ async function hentLeadMails() {
   out.innerHTML = '<div style="font-size:.82rem;color:var(--muted)">Henter...</div>';
 
   try {
-    const res = await fetch(`${API}/lead-mails/${currentClient.id}`);
+    const res = await fetch(`${AGENT_URL}/lead-mails/${currentClient.id}`);
     const data = await res.json();
     const grupper = data.grupper || [];
 
@@ -1622,7 +1622,7 @@ async function godkendMails(leadId, mailIds) {
   }));
 
   try {
-    const res = await fetch(`${API}/godkend-mails`, {
+    const res = await fetch(`${AGENT_URL}/godkend-mails`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lead_id: leadId, klient_id: currentClient.id, mails, auto_fremadrettet: autoFremadrettet })
@@ -1649,7 +1649,7 @@ async function godkendMails(leadId, mailIds) {
 
 async function afvisMails(leadId) {
   try {
-    await fetch(`${API}/afvis-mails/${leadId}`, { method: 'POST' });
+    await fetch(`${AGENT_URL}/afvis-mails/${leadId}`, { method: 'POST' });
     const gruppe = document.getElementById(`gruppe-${leadId}`);
     gruppe.style.transition = 'opacity .3s';
     gruppe.style.opacity = '0';
@@ -1663,7 +1663,7 @@ async function hentGaps() {
   const out = document.getElementById('gapsOutput');
   const badge = document.getElementById('gapsBadge');
   try {
-    const res = await fetch(`${API}/gaps/${currentClient.id}`);
+    const res = await fetch(`${AGENT_URL}/gaps/${currentClient.id}`);
     const data = await res.json();
     const gaps = data.gaps || [];
 
@@ -1701,7 +1701,7 @@ async function genererGapForslag(gapId, spoergsmaal) {
   const forslagEl = document.getElementById(`gap-forslag-${gapId}`);
 
   try {
-    const res = await fetch(`${API}/udfyld-gap/${currentClient.id}`, {
+    const res = await fetch(`${AGENT_URL}/udfyld-gap/${currentClient.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gap_id: gapId, spoergsmaal })
@@ -1737,7 +1737,7 @@ async function implementerGap(gapId, felt, forslag) {
   btn.disabled = true;
   btn.textContent = 'Implementerer...';
   try {
-    const res = await fetch(`${API}/apply-insight/${currentClient.id}`, {
+    const res = await fetch(`${AGENT_URL}/apply-insight/${currentClient.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ felt, forslag_vaerdi: forslag })
@@ -1758,7 +1758,7 @@ async function implementerGap(gapId, felt, forslag) {
 
 async function ignoreGap(gapId) {
   try {
-    await fetch(`${API}/luk-gap/${gapId}`, { method: 'POST' });
+    await fetch(`${AGENT_URL}/luk-gap/${gapId}`, { method: 'POST' });
     const card = document.getElementById(`gap-${gapId}`);
     card.style.transition = 'opacity .3s';
     card.style.opacity = '0';
@@ -1779,7 +1779,7 @@ async function hentInsights() {
   </div>`;
 
   try {
-    const res = await fetch(`${API}/insights/${currentClient.id}`);
+    const res = await fetch(`${AGENT_URL}/insights/${currentClient.id}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderInsights(data.insights || []);
@@ -1821,7 +1821,7 @@ async function implementerInsight(idx, ins) {
   btn.textContent = 'Implementerer...';
 
   try {
-    const res = await fetch(`${API}/apply-insight/${currentClient.id}`, {
+    const res = await fetch(`${AGENT_URL}/apply-insight/${currentClient.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ felt: ins.felt, forslag_vaerdi: ins.forslag_vaerdi })
@@ -1849,7 +1849,7 @@ async function kørBrancheResearch() {
   btn.textContent = '🔍 Researcher...';
 
   try {
-    const res = await fetch(`${API}/research-branche/${currentClient.id}`, {
+    const res = await fetch(`${AGENT_URL}/research-branche/${currentClient.id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
     });
     const data = await res.json();
