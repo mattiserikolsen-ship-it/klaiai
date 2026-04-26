@@ -1406,13 +1406,13 @@ def stripe_webhook():
                     'status': 'aktiv',
                     'produkter': produkter
                 }).eq('id', klient_id).execute()
-                # Send velkomstmail
+                # Send velkomstmail med opsætningsmanual
                 try:
-                    kr = db.table('klienter').select('email, navn').eq('id', klient_id).single().execute()
+                    kr = db.table('klienter').select('email, navn, platform').eq('id', klient_id).single().execute()
                     if kr.data:
-                        send_mail(kr.data['email'], 'Velkommen til NexOlsen 🎉',
-                            f"Hej {kr.data['navn']}!\n\nDin konto er nu aktiv. Log ind på https://klaiai.dk/login\n\nDin klient-ID til chatbot-widget: {klient_id}\n\nMed venlig hilsen,\nNexOlsen", 'NexOlsen')
-                except: pass
+                        _send_opsaetningsmanual(kr.data, klient_id, plan, produkter)
+                except Exception as e:
+                    print(f"Velkomstmail fejl: {e}")
             except Exception as e:
                 print(f"Webhook DB fejl: {e}")
 
@@ -1521,6 +1521,8 @@ def onboarding_opret():
                 'hjemmeside': data.get('hjemmeside', ''),
                 'beskrivelse': data.get('beskrivelse', ''),
                 'password': data.get('password', ''),
+                'branche': data.get('branche', ''),
+                'platform': data.get('platform', ''),
                 'status': 'afventer_betaling',
                 'produkter': produkter,
                 'aktiv': False,
@@ -1719,6 +1721,116 @@ def _allerede_sendt(agent_navn, reference_id):
         return len(res.data) > 0
     except:
         return False
+
+def _send_opsaetningsmanual(klient, klient_id, plan, produkter):
+    """Generer og send skræddersyet opsætningsmanual via Claude"""
+    platform = klient.get('platform', 'anden')
+    navn = klient.get('navn', 'kunde')
+    email = klient.get('email', '')
+    if not email:
+        return
+
+    platform_navne = {
+        'shopify': 'Shopify', 'wordpress': 'WordPress', 'wix': 'Wix',
+        'squarespace': 'Squarespace', 'webflow': 'Webflow',
+        'dandomain': 'DanDomain', 'one.com': 'One.com',
+        'html': 'statisk HTML', 'anden': 'din hjemmeside'
+    }
+    platform_navn = platform_navne.get(platform, 'din hjemmeside')
+    plan_navn = STRIPE_PRISER.get(plan, STRIPE_PRISER['starter'])['navn']
+
+    prompt = f"""Du er NexOlsen's tekniske support. Skriv en komplet opsætningsmanual på dansk til en ny kunde.
+
+Kundeinfo:
+- Virksomhed: {navn}
+- Platform: {platform_navn}
+- Plan: {plan_navn}
+- Aktive produkter: {', '.join(produkter)}
+- Klient-ID: {klient_id}
+
+Manualen skal indeholde:
+
+1. **Velkomsthilsen** (kort og personlig)
+
+2. **Chatbot installation på {platform_navn}**
+   - Præcis trin-for-trin guide til at indsætte dette script på {platform_navn}:
+   ```html
+   <script src="https://klaiai.onrender.com/chatbot.js" data-client="{klient_id}" data-color="#0a2463"></script>
+   ```
+   - Tilpas guiden til {platform_navn}'s interface (fx Theme Editor, Custom HTML widget, etc.)
+
+3. **Login til admin-panel**
+   - URL: https://klaiai.dk/login
+   - Forklaring af hvad de kan gøre i panelet
+
+{'4. **Lead-opsamling** - Forklaring af hvordan leads vises og godkendes' if 'lead' in produkter else ''}
+{'5. **Bookingsystem** - Kort intro til booking-funktionen' if 'booking' in produkter else ''}
+{'6. **Ugentlige AI-rapporter** - Hvad de modtager og hvornår' if 'rapport' in produkter else ''}
+
+Afslut med kontaktinfo: support@nexolsen.dk
+
+Skriv i en venlig, professionel tone. Brug markdown-formatering med overskrifter og punktlister."""
+
+    try:
+        resp = client.messages.create(
+            model='claude-opus-4-6',
+            max_tokens=2000,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        manual_tekst = resp.content[0].text
+
+        # Konverter markdown til simpel HTML
+        html_body = manual_tekst \
+            .replace('**', '<strong>', 1)
+        # Simpel markdown→html konvertering
+        lines = manual_tekst.split('\n')
+        html_lines = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith('# '):
+                html_lines.append(f'<h1 style="color:#0a2463">{line[2:]}</h1>')
+            elif line.startswith('## '):
+                html_lines.append(f'<h2 style="color:#0a2463; margin-top:1.5rem">{line[3:]}</h2>')
+            elif line.startswith('### '):
+                html_lines.append(f'<h3>{line[4:]}</h3>')
+            elif line.startswith('- ') or line.startswith('* '):
+                html_lines.append(f'<li>{line[2:]}</li>')
+            elif line.startswith('```'):
+                pass
+            elif line:
+                # Fed tekst
+                import re
+                line = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', line)
+                html_lines.append(f'<p>{line}</p>')
+            else:
+                html_lines.append('<br/>')
+
+        html_content = f"""
+        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1918;">
+          <div style="background:#0a2463; padding:2rem; border-radius:12px 12px 0 0; text-align:center;">
+            <h1 style="color:#fff; margin:0; font-size:1.5rem">Velkommen til NexOlsen</h1>
+            <p style="color:rgba(255,255,255,.7); margin:.5rem 0 0">Din opsætningsguide til {platform_navn}</p>
+          </div>
+          <div style="background:#fff; padding:2rem; border-radius:0 0 12px 12px; border:1px solid #e5e3de; border-top:none;">
+            {''.join(html_lines)}
+            <hr style="border:none;border-top:1px solid #e5e3de; margin:2rem 0"/>
+            <p style="color:#9a9590; font-size:.85rem; text-align:center">
+              NexOlsen · support@nexolsen.dk · <a href="https://klaiai.dk/login" style="color:#0a2463">Log ind her</a>
+            </p>
+          </div>
+        </div>"""
+
+        send_mail(email, f'🚀 Kom i gang med NexOlsen – din guide til {platform_navn}', html_content, 'NexOlsen')
+        print(f"Opsætningsmanual sendt til {email}")
+    except Exception as e:
+        print(f"Manual generering fejl: {e}")
+        # Fallback: send simpel velkomstmail
+        send_mail(email, 'Velkommen til NexOlsen 🎉',
+            f"""<p>Hej {navn}!</p>
+            <p>Din konto er nu aktiv. Log ind på <a href="https://klaiai.dk/login">klaiai.dk/login</a></p>
+            <p>Din chatbot-kode:<br><code>&lt;script src="https://klaiai.onrender.com/chatbot.js" data-client="{klient_id}"&gt;&lt;/script&gt;</code></p>
+            <p>Med venlig hilsen,<br>NexOlsen</p>""", 'NexOlsen')
+
 
 def _gem_til_godkendelse(klient_id, lead_id, emne, html, agent_navn, reference_id, mail_nr=1):
     """Gem agent-mail til godkendelse i stedet for at sende direkte"""

@@ -199,6 +199,21 @@
       </div>
     </div>
     <div class="form-group">
+      <label>Hvilken platform bruger du til din hjemmeside? *</label>
+      <select id="s2_platform" style="width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:.95rem; background:#fff; color:var(--text);">
+        <option value="">Vælg platform...</option>
+        <option value="shopify">Shopify</option>
+        <option value="wordpress">WordPress</option>
+        <option value="wix">Wix</option>
+        <option value="squarespace">Squarespace</option>
+        <option value="webflow">Webflow</option>
+        <option value="dandomain">DanDomain</option>
+        <option value="one.com">One.com</option>
+        <option value="html">Statisk HTML/egen udvikling</option>
+        <option value="anden">Anden platform</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>Kort beskrivelse af din virksomhed</label>
       <textarea id="s2_beskrivelse" placeholder="Hvad gør I? Hvad er I kendte for?"></textarea>
     </div>
@@ -407,6 +422,7 @@ function opdaterStepUI() {
 function næste() {
   if (nuværendeTrin === 1 && !valgtPlan) { alert('Vælg en pakke for at fortsætte'); return; }
   if (nuværendeTrin === 2 && !document.getElementById('s2_navn').value.trim()) { alert('Udfyld virksomhedsnavn'); return; }
+  if (nuværendeTrin === 2 && !document.getElementById('s2_platform').value) { alert('Vælg din hjemmeside-platform'); return; }
   if (nuværendeTrin === 4) {
     const pw = document.getElementById('s4_password').value;
     const pw2 = document.getElementById('s4_password2').value;
@@ -457,6 +473,7 @@ async function gåTilBetaling() {
     plan: valgtPlan,
     virksomhed_navn: document.getElementById('s2_navn').value,
     hjemmeside: document.getElementById('s2_website').value,
+    platform: document.getElementById('s2_platform').value,
     beskrivelse: document.getElementById('s2_beskrivelse').value,
     ydelser: document.getElementById('s2_ydelser').value,
     kontakt: document.getElementById('s2_kontakt').value,
