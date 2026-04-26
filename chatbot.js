@@ -203,11 +203,21 @@
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
   // ── HELPERS ──────────────────────────────────────────
+  function parseMarkdown(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" style="color:inherit;text-decoration:underline">$1</a>')
+      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:inherit;text-decoration:underline">$1</a>')
+      .replace(/\n/g, '<br>');
+  }
+
   function addMsg(type, text) {
     const time = new Date().toLocaleTimeString('da-DK', { hour: '2-digit', minute: '2-digit' });
     const el = document.createElement('div');
     el.className = `klaiai-msg ${type}`;
-    el.innerHTML = `<div class="klaiai-bubble">${text}</div><div class="klaiai-time">${time}</div>`;
+    const html = type === 'bot' ? parseMarkdown(text) : text.replace(/</g, '&lt;');
+    el.innerHTML = `<div class="klaiai-bubble">${html}</div><div class="klaiai-time">${time}</div>`;
     msgs.appendChild(el);
     msgs.scrollTop = msgs.scrollHeight;
   }
