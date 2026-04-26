@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KlarAI Agent Server
+SittamTech Agent Server
 Samlet Flask-app med Chatbot Agent + Lead Agent
 Klar til deployment på Render / Railway
 """
@@ -32,7 +32,7 @@ def require_auth(f):
             return Response(
                 'Adgang kræver login.',
                 401,
-                {'WWW-Authenticate': 'Basic realm="KlarAI Admin"'}
+                {'WWW-Authenticate': 'Basic realm="SittamTech Admin"'}
             )
         return f(*args, **kwargs)
     return decorated
@@ -173,8 +173,8 @@ Telefon: {lead_data.get('telefon', '')}
 Email: {lead_data.get('email', '')}
 Interesse: {lead_data.get('besked', '')}
 
-Log ind på din KlarAI portal for at se alle leads."""
-        send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'KlarAI'))
+Log ind på din SittamTech portal for at se alle leads."""
+        send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'SittamTech'))
 
 
 # ── GAP DETEKTION ──────────────────────────────────────
@@ -804,7 +804,7 @@ def get_insights(klient_id):
     formular = len(leads) - chatbot
     chatbot_pct = round(chatbot / len(leads) * 100) if leads else 0
 
-    analyse_prompt = f"""Du er en skarp KlarAI-konsulent. Analyser denne klients AI-opsætning og returner præcis 4-5 kritiske, konkrete forbedringer i JSON.
+    analyse_prompt = f"""Du er en skarp SittamTech-konsulent. Analyser denne klients AI-opsætning og returner præcis 4-5 kritiske, konkrete forbedringer i JSON.
 
 KLIENT DATA:
 Navn: {klient.get('navn', '')}
@@ -1041,17 +1041,17 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger):
 
     fornavn = klient_navn.split()[0] if klient_navn else 'der'
     return f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/><title>KlarAI Rapport — {dato_str}</title></head>
+<html><head><meta charset="UTF-8"/><title>SittamTech Rapport — {dato_str}</title></head>
 <body style="margin:0;padding:0;background:#f8f7f4;font-family:'Helvetica Neue',Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px">
   <tr><td style="background:#1a1918;border-radius:14px 14px 0 0;padding:28px 36px">
-    <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">KlarAI</div>
+    <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">SittamTech</div>
     <div style="color:rgba(255,255,255,.4);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px">Klientrapport</div>
   </td></tr>
   <tr><td style="background:#fff;padding:28px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:6px">Hej, {fornavn}!</div>
-    <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din statusrapport fra KlarAI. Alt nedenfor er hvad dine AI-agenter har lavet for dig.</div>
+    <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din statusrapport fra SittamTech. Alt nedenfor er hvad dine AI-agenter har lavet for dig.</div>
     <div style="font-size:11px;color:#c5c2bc;margin-top:8px">{dato_str}</div>
   </td></tr>
   <tr><td style="background:#f8f7f4;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
@@ -1109,7 +1109,7 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger):
     <a href="https://klaiai.dk/app/client.html?id={klient_id}" style="display:inline-block;background:#1a1918;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:9px">
       Se fuld portal →
     </a>
-    <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af KlarAI · klaiai.dk</div>
+    <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af SittamTech · klaiai.dk</div>
   </td></tr>
 </table>
 </td></tr></table>
@@ -1143,13 +1143,13 @@ def send_rapport(klient_id):
 
     from datetime import datetime
     dato_str = datetime.now().strftime('%-d. %B %Y')
-    emne = f"Din KlarAI rapport — {dato_str}"
+    emne = f"Din SittamTech rapport — {dato_str}"
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return jsonify({'success': False, 'error': 'Mail ikke konfigureret'}), 500
 
     try:
         message = Mail(
-            from_email=(SENDGRID_FROM, 'KlarAI'),
+            from_email=(SENDGRID_FROM, 'SittamTech'),
             to_emails=mail_til,
             subject=emne,
             html_content=html
@@ -1314,10 +1314,10 @@ def test_mail():
         return jsonify({'error': 'SENDGRID_API_KEY eller SENDGRID_FROM mangler', 'key_sat': bool(SENDGRID_API_KEY), 'from_sat': bool(SENDGRID_FROM)}), 500
     try:
         message = Mail(
-            from_email=(SENDGRID_FROM, 'KlarAI Test'),
+            from_email=(SENDGRID_FROM, 'SittamTech Test'),
             to_emails=til,
-            subject='KlarAI test mail',
-            plain_text_content='Denne mail bekræfter at KlarAI mail-systemet virker.',
+            subject='SittamTech test mail',
+            plain_text_content='Denne mail bekræfter at SittamTech mail-systemet virker.',
         )
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
@@ -1365,7 +1365,7 @@ def login():
             if res.data:
                 klient = res.data
                 if klient.get('aktiv') == False:
-                    return jsonify({'error': 'Adgang er deaktiveret. Kontakt KlarAI.'}), 403
+                    return jsonify({'error': 'Adgang er deaktiveret. Kontakt SittamTech.'}), 403
                 klient_pw = klient.get('password', '')
                 if klient_pw and password == klient_pw:
                     token = secrets.token_hex(32)
@@ -1721,5 +1721,5 @@ def hent_agent_log():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    print(f"🤖 KlarAI Agent Server kører på port {port}")
+    print(f"🤖 SittamTech Agent Server kører på port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KlarAI Lead Agent
+SittamTech Lead Agent
 Genererer personlige opfølgningsmails til nye leads via Claude API
 og sender dem via Gmail SMTP
 """
@@ -102,7 +102,7 @@ def send_mail(til: str, emne: str, tekst: str, fra_navn: str) -> bool:
     <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333">
     {'<br>'.join(tekst.split(chr(10)))}
     <hr style="margin-top:30px;border:none;border-top:1px solid #eee">
-    <p style="font-size:12px;color:#999">Sendt via KlarAI</p>
+    <p style="font-size:12px;color:#999">Sendt via SittamTech</p>
     </body></html>
     """
     msg.attach(MIMEText(html, 'html', 'utf-8'))
@@ -166,4 +166,4 @@ if __name__ == "__main__":
 
     resultater = behandl_lead(test_lead, test_klient, send=False)
     print(f"\n✅ {len(resultater)} mails genereret til {test_lead['navn']}")
-    print("🤖 KlarAI Lead Agent færdig!")
+    print("🤖 SittamTech Lead Agent færdig!")

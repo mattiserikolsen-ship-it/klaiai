@@ -1,5 +1,5 @@
 /**
- * KlarAI Lead Form Widget
+ * SittamTech Lead Form Widget
  * Embed: <script src="https://klaiai.dk/lead-form.js" data-client="KLIENT_ID" data-color="#0a2463"></script>
  */
 (function () {
@@ -153,7 +153,7 @@
     <button class="klaiai-submit" id="klai_submit">${BTN_TEXT}</button>
     <div class="klaiai-success" id="klai_success">Tak for din henvendelse! Vi vender tilbage hurtigst muligt.</div>
     <div class="klaiai-error" id="klai_error">Noget gik galt. Prøv igen eller kontakt os direkte.</div>
-    <div class="klaiai-powered">Drevet af <strong>KlarAI</strong></div>
+    <div class="klaiai-powered">Drevet af <strong>SittamTech</strong></div>
   `;
 
   // Indsæt formularen hvor scriptet er
@@ -195,7 +195,7 @@
           <div class="klaiai-success" style="display:block; margin-top:0">
             Tak, ${navn}! Vi har modtaget din henvendelse og vender tilbage hurtigst muligt.
           </div>
-          <div class="klaiai-powered">Drevet af <strong>KlarAI</strong></div>
+          <div class="klaiai-powered">Drevet af <strong>SittamTech</strong></div>
         `);
       } else {
         throw new Error('Server fejl');

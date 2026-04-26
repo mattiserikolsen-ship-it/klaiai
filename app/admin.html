@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KlarAI – Admin</title>
+  <title>SittamTech – Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
@@ -350,7 +350,7 @@
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <div class="sidebar-logo">KlarAI <small>Admin panel</small></div>
+  <div class="sidebar-logo">SittamTech <small>Admin panel</small></div>
   <nav class="sidebar-nav">
     <div class="nav-label">Oversigt</div>
     <div class="nav-item active" data-view="dashboard" onclick="showView('dashboard')">
@@ -2324,7 +2324,7 @@ function generateChatbot() {
   }
 
   const clientId = klientId || 'demo';
-  const embed = `<!-- KlarAI Chatbot ${client?'· '+client.name:''} -->
+  const embed = `<!-- SittamTech Chatbot ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/chatbot.js"
   data-name="${name}"
   data-greeting="${greeting}"
@@ -2375,7 +2375,7 @@ function generateLead() {
   if (client) {
     markProductGenerated(client.id, 'lead');
     const color = client.chatbotConfig?.farve || '#0a2463';
-    const embed = `<!-- KlarAI Lead Form · ${client.name} -->
+    const embed = `<!-- SittamTech Lead Form · ${client.name} -->
 <script src="https://klaiai.dk/lead-form.js"
   data-client="${client.id}"
   data-color="${color}"
@@ -2464,7 +2464,7 @@ async function generateBooking() {
     markProductGenerated(client.id, 'booking');
   }
 
-  const embed = `<!-- KlarAI Booking Widget ${client?'· '+client.name:''} -->
+  const embed = `<!-- SittamTech Booking Widget ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/booking-widget.js"
   data-client="${client?.id||'demo'}">
 <\/script>`;
@@ -2959,7 +2959,7 @@ function prefillInvoiceClient() {
   if (!c) return;
   invoiceLines = [];
   if (c.startpris) invoiceLines.push({ desc: 'Opsætning & konfiguration', qty: 1, price: parseInt(c.startpris) });
-  if (c.mdpris) invoiceLines.push({ desc: 'Månedlig abonnement — KlarAI', qty: 1, price: parseInt(c.mdpris) });
+  if (c.mdpris) invoiceLines.push({ desc: 'Månedlig abonnement — SittamTech', qty: 1, price: parseInt(c.mdpris) });
   (c.products||[]).forEach(p => {
     // already included in packages, just log
   });
@@ -3018,7 +3018,7 @@ function previewInvoice() {
     <div style="font-size:.78rem">
       <div style="display:flex;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px solid var(--accent)">
         <div>
-          <div style="font-size:1rem;font-weight:800;color:var(--accent)">KlarAI</div>
+          <div style="font-size:1rem;font-weight:800;color:var(--accent)">SittamTech</div>
           ${cvr ? `<div style="color:var(--muted);font-size:.72rem">CVR: ${cvr}</div>` : ''}
         </div>
         <div style="text-align:right">

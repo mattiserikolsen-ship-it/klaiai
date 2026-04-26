@@ -4,8 +4,8 @@
     {
       "name": "klaiai",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8080"],
-      "port": 8080
+      "runtimeArgs": ["-m", "http.server", "3456", "--directory", "/Users/mattis/claude/klaiai/app"],
+      "port": 3456
     }
   ]
 }
