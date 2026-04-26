@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kom i gang – NexOlsen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent: #7c3aed;
+      --accent2: #0a2463;
+      --bg: #f8f7f4;
+      --card: #fff;
+      --border: #e5e3de;
+      --muted: #9a9590;
+      --text: #1a1918;
+      --green: #16a34a;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* TOP BAR */
+    .topbar { background: var(--accent2); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    .topbar-logo { color: #fff; font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+    .topbar-sub { color: rgba(255,255,255,.5); font-size: .8rem; }
+
+    /* PROGRESS */
+    .progress-wrap { background: #fff; border-bottom: 1px solid var(--border); padding: 1.25rem 2rem; }
+    .progress-steps { display: flex; gap: 0; max-width: 680px; margin: 0 auto; }
+    .step-item { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+    .step-item:not(:last-child)::after { content:''; position:absolute; top:14px; left:50%; width:100%; height:2px; background:var(--border); z-index:0; }
+    .step-item.done::after { background: var(--accent); }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--border); color: var(--muted); font-size: .75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; z-index: 1; position: relative; transition: all .2s; }
+    .step-item.active .step-dot { background: var(--accent); color: #fff; }
+    .step-item.done .step-dot { background: var(--green); color: #fff; }
+    .step-label { font-size: .7rem; color: var(--muted); margin-top: .4rem; text-align: center; }
+    .step-item.active .step-label { color: var(--accent); font-weight: 600; }
+
+    /* CONTENT */
+    .container { max-width: 720px; margin: 2.5rem auto; padding: 0 1.5rem 4rem; }
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+    h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: .4rem; }
+    .step-desc { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
+
+    /* PLAN CARDS */
+    .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .plan-card { border: 2px solid var(--border); border-radius: 14px; padding: 1.5rem; cursor: pointer; transition: all .2s; position: relative; }
+    .plan-card:hover { border-color: var(--accent); }
+    .plan-card.selected { border-color: var(--accent); background: #faf5ff; }
+    .plan-card.popular::before { content: '⭐ Mest populær'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: .65rem; font-weight: 700; padding: .2rem .7rem; border-radius: 20px; white-space: nowrap; }
+    .plan-name { font-size: 1rem; font-weight: 700; margin-bottom: .3rem; }
+    .plan-price { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+    .plan-price span { font-size: .8rem; font-weight: 500; color: var(--muted); }
+    .plan-features { margin-top: .9rem; display: flex; flex-direction: column; gap: .4rem; }
+    .plan-feat { font-size: .78rem; color: var(--muted); display: flex; gap: .4rem; }
+    .plan-feat::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .trial-badge { display: inline-block; background: #dcfce7; color: var(--green); font-size: .72rem; font-weight: 700; padding: .2rem .6rem; border-radius: 6px; margin-top: .75rem; }
+
+    /* FORM */
+    .form-group { margin-bottom: 1.25rem; }
+    label { display: block; font-size: .82rem; font-weight: 600; margin-bottom: .4rem; }
+    input, textarea, select { width: 100%; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 10px; font-family: inherit; font-size: .88rem; background: var(--card); color: var(--text); transition: border-color .15s; }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    textarea { min-height: 90px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .hint { font-size: .75rem; color: var(--muted); margin-top: .3rem; }
+
+    /* COLOR PICKER */
+    .color-row { display: flex; align-items: center; gap: .75rem; }
+    .color-row input[type=color] { width: 48px; height: 40px; padding: .2rem; border-radius: 8px; cursor: pointer; }
+    .color-presets { display: flex; gap: .4rem; }
+    .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+    .color-swatch:hover, .color-swatch.active { border-color: var(--text); }
+
+    /* PREVIEW */
+    .preview-box { background: #1a1918; border-radius: 14px; padding: 1.25rem; margin-top: 1.5rem; }
+    .preview-label { color: rgba(255,255,255,.4); font-size: .7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: .75rem; }
+    .chat-preview { background: #fff; border-radius: 12px; overflow: hidden; }
+    .chat-header-preview { padding: .75rem 1rem; display: flex; align-items: center; gap: .6rem; }
+    .chat-header-preview .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+    .chat-header-preview .name { font-size: .82rem; font-weight: 700; }
+    .chat-header-preview .status { font-size: .72rem; color: #666; }
+    .chat-msgs-preview { padding: .75rem 1rem; background: #f8f7f4; display: flex; flex-direction: column; gap: .5rem; min-height: 80px; }
+    .bubble-preview { display: inline-block; padding: .5rem .8rem; border-radius: 12px; font-size: .78rem; max-width: 85%; }
+    .bubble-bot { background: #fff; align-self: flex-start; }
+    .powered-preview { text-align: center; padding: .4rem; font-size: .65rem; color: #bbb; background: #fff; }
+
+    /* SUMMARY */
+    .summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1rem; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: .5rem 0; border-bottom: 1px solid var(--border); font-size: .88rem; }
+    .summary-row:last-child { border-bottom: none; font-weight: 700; }
+    .summary-label { color: var(--muted); }
+
+    /* BUTTONS */
+    .btn-row { display: flex; gap: .75rem; margin-top: 2rem; }
+    .btn { padding: .75rem 1.5rem; border-radius: 10px; font-family: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary { background: var(--accent); color: #fff; flex: 1; }
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-pay { background: var(--accent2); color: #fff; flex: 1; font-size: 1rem; padding: 1rem; }
+    .btn-pay:hover { background: #0a1a4a; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* SUCCESS */
+    .success-screen { text-align: center; padding: 3rem 1rem; }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .success-screen h1 { margin-bottom: .5rem; }
+    .success-screen p { color: var(--muted); margin-bottom: 2rem; }
+    .success-screen .login-btn { display: inline-block; background: var(--accent); color: #fff; padding: .9rem 2rem; border-radius: 10px; text-decoration: none; font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .plan-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">NexOlsen</div>
+  <div class="topbar-sub">AI-agenter til din virksomhed</div>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress-wrap">
+  <div class="progress-steps">
+    <div class="step-item active" id="si-1"><div class="step-dot">1</div><div class="step-label">Vælg plan</div></div>
+    <div class="step-item" id="si-2"><div class="step-dot">2</div><div class="step-label">Din virksomhed</div></div>
+    <div class="step-item" id="si-3"><div class="step-dot">3</div><div class="step-label">Chatbot</div></div>
+    <div class="step-item" id="si-4"><div class="step-dot">4</div><div class="step-label">Din adgang</div></div>
+    <div class="step-item" id="si-5"><div class="step-dot">5</div><div class="step-label">Betal</div></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- STEP 1: VÆLG PLAN -->
+  <div class="step-panel active" id="step-1">
+    <h1>Vælg din pakke</h1>
+    <p class="step-desc">14 dages gratis prøveperiode. Ingen binding. Opsig når som helst.</p>
+    <div class="plan-grid">
+      <div class="plan-card" onclick="vælgPlan('starter', this)">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">499 <span>kr/md</span></div>
+        <div class="plan-features">
+          <div class="plan-feat">AI Chatbot 24/7</div>
+          <div class="plan-feat">Lead-opsamling</div>
+          <div class="plan-feat">Email-notifikationer</div>
+        </div>
+        <div class="trial-badge">14 dage gratis</div>
+      </div>
+      <div class="plan-card popular" onclick="vælgPlan('pro', this)">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">899 <span>kr/md</span></div>
+        <div class="plan-features">
+          <div class="plan-feat">Alt i Starter</div>
+          <div class="plan-feat">Bookingsystem</div>
+          <div class="plan-feat">Automatiske rapporter</div>
+          <div class="plan-feat">Lead-mail opfølgning</div>
+        </div>
+        <div class="trial-badge">14 dage gratis</div>
+      </div>
+      <div class="plan-card" onclick="vælgPlan('vaekst', this)">
+        <div class="plan-name">Vækst</div>
+        <div class="plan-price">1.499 <span>kr/md</span></div>
+        <div class="plan-features">
+          <div class="plan-feat">Alt i Pro</div>
+          <div class="plan-feat">AI Insights analyse</div>
+          <div class="plan-feat">Branche-research AI</div>
+          <div class="plan-feat">Genopvarmnings-agent</div>
+          <div class="plan-feat">Prioritet support</div>
+        </div>
+        <div class="trial-badge">14 dage gratis</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="næste()" id="btn-plan" disabled>Fortsæt →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: VIRKSOMHED -->
+  <div class="step-panel" id="step-2">
+    <h1>Om din virksomhed</h1>
+    <p class="step-desc">Disse oplysninger bruges til at tilpasse din chatbot.</p>
+    <div class="form-group">
+      <label>Virksomhedsnavn *</label>
+      <input type="text" id="s2_navn" placeholder="Fx. Berle Pool & Spa"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Hjemmeside</label>
+        <input type="url" id="s2_website" placeholder="https://dinside.dk"/>
+      </div>
+      <div class="form-group">
+        <label>Branche</label>
+        <input type="text" id="s2_branche" placeholder="Fx. Pool og spa"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Kort beskrivelse af din virksomhed</label>
+      <textarea id="s2_beskrivelse" placeholder="Hvad gør I? Hvad er I kendte for?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Dine ydelser / produkter</label>
+      <textarea id="s2_ydelser" placeholder="Fx. Stålbassiner, pool tilbehør, rengøring..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Kontaktinfo (til chatbot)</label>
+      <input type="text" id="s2_kontakt" placeholder="Fx. info@firma.dk | +45 12 34 56 78"/>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="forrige()">← Tilbage</button>
+      <button class="btn btn-primary" onclick="næste()">Fortsæt →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: CHATBOT -->
+  <div class="step-panel" id="step-3">
+    <h1>Tilpas din chatbot</h1>
+    <p class="step-desc">Giv din chatbot et navn og et look der passer til din virksomhed.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Chatbottens navn</label>
+        <input type="text" id="s3_navn" value="Alma" oninput="opdaterPreview()"/>
+      </div>
+      <div class="form-group">
+        <label>Farve</label>
+        <div class="color-row">
+          <input type="color" id="s3_farve" value="#0a2463" oninput="opdaterFarve(this.value)"/>
+          <div class="color-presets">
+            <div class="color-swatch active" style="background:#0a2463" onclick="opdaterFarve('#0a2463', this)"></div>
+            <div class="color-swatch" style="background:#7c3aed" onclick="opdaterFarve('#7c3aed', this)"></div>
+            <div class="color-swatch" style="background:#059669" onclick="opdaterFarve('#059669', this)"></div>
+            <div class="color-swatch" style="background:#dc2626" onclick="opdaterFarve('#dc2626', this)"></div>
+            <div class="color-swatch" style="background:#1a1918" onclick="opdaterFarve('#1a1918', this)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Velkomstbesked</label>
+      <input type="text" id="s3_velkomst" value="Hej! 👋 Hvordan kan jeg hjælpe dig?" oninput="opdaterPreview()"/>
+    </div>
+    <div class="form-group">
+      <label>Åbningstider</label>
+      <input type="text" id="s3_aabning" placeholder="Fx. Man-fre 9-17, lør 10-14"/>
+    </div>
+
+    <!-- LIVE PREVIEW -->
+    <div class="preview-box">
+      <div class="preview-label">Forhåndsvisning</div>
+      <div class="chat-preview">
+        <div class="chat-header-preview" id="prev-header" style="background:#0a2463">
+          <div style="font-size:1.2rem">🤖</div>
+          <div>
+            <div class="name" id="prev-name" style="color:#fff">Alma</div>
+            <div class="status" style="color:rgba(255,255,255,.6)">● Online — svarer straks</div>
+          </div>
+        </div>
+        <div class="chat-msgs-preview">
+          <div class="bubble-preview bubble-bot" id="prev-msg">Hej! 👋 Hvordan kan jeg hjælpe dig?</div>
+        </div>
+        <div class="powered-preview">Drevet af <strong>NexOlsen</strong></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="forrige()">← Tilbage</button>
+      <button class="btn btn-primary" onclick="næste()">Fortsæt →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: ADGANG -->
+  <div class="step-panel" id="step-4">
+    <h1>Opret din adgang</h1>
+    <p class="step-desc">Disse oplysninger bruger du til at logge ind i din portal.</p>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="s4_email" placeholder="din@email.dk"/>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Adgangskode *</label>
+        <input type="password" id="s4_password" placeholder="Min. 6 tegn"/>
+      </div>
+      <div class="form-group">
+        <label>Gentag adgangskode *</label>
+        <input type="password" id="s4_password2" placeholder="Samme adgangskode"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Telefonnummer</label>
+      <input type="tel" id="s4_telefon" placeholder="+45 12 34 56 78"/>
+    </div>
+    <p class="hint">Vi sender dig en bekræftelsesmail når din konto er aktiv.</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="forrige()">← Tilbage</button>
+      <button class="btn btn-primary" onclick="næste()">Fortsæt →</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: BETAL -->
+  <div class="step-panel" id="step-5">
+    <h1>Opsummering</h1>
+    <p class="step-desc">Gennemgå dine oplysninger og gå til betaling.</p>
+    <div class="summary-card" id="summary-box"></div>
+    <div class="summary-card" style="background:#f0fdf4; border-color:#bbf7d0">
+      <div style="font-size:.88rem; color: #15803d; font-weight:600">🎉 14 dages gratis prøveperiode</div>
+      <div style="font-size:.78rem; color: #166534; margin-top:.3rem">Du trækkes ikke noget i dag. Prøveperioden starter med det samme og du kan afmelde inden den udløber.</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="forrige()">← Tilbage</button>
+      <button class="btn btn-pay" onclick="gåTilBetaling()" id="btn-betal">🔒 Gå til betaling</button>
+    </div>
+    <p class="hint" style="text-align:center; margin-top:1rem">Sikker betaling via Stripe · Ingen binding · Opsig når som helst</p>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="step-panel" id="step-success">
+    <div class="success-screen">
+      <div class="success-icon">🎉</div>
+      <h1>Velkommen til NexOlsen!</h1>
+      <p>Din konto er ved at blive opsat. Du modtager en bekræftelsesmail om lidt med login-link og din chatbot-kode.</p>
+      <a href="/login" class="login-btn">Log ind i din portal →</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://klaiai.onrender.com';
+let valgtPlan = null;
+let nuværendeTrin = 1;
+
+// Check succes redirect fra Stripe
+if (new URLSearchParams(window.location.search).get('succes') === '1') {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step-success').classList.add('active');
+  document.querySelector('.progress-wrap').style.display = 'none';
+}
+
+function vælgPlan(plan, el) {
+  valgtPlan = plan;
+  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btn-plan').disabled = false;
+}
+
+function opdaterPreview() {
+  document.getElementById('prev-name').textContent = document.getElementById('s3_navn').value || 'Alma';
+  document.getElementById('prev-msg').textContent = document.getElementById('s3_velkomst').value || 'Hej!';
+}
+
+function opdaterFarve(farve, swatchEl) {
+  document.getElementById('s3_farve').value = farve;
+  document.getElementById('prev-header').style.background = farve;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  if (swatchEl) swatchEl.classList.add('active');
+}
+
+document.getElementById('s3_farve').addEventListener('input', function() {
+  opdaterFarve(this.value);
+});
+
+function opdaterStepUI() {
+  document.querySelectorAll('.step-item').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i + 1 < nuværendeTrin) el.classList.add('done');
+    if (i + 1 === nuværendeTrin) el.classList.add('active');
+  });
+}
+
+function næste() {
+  if (nuværendeTrin === 1 && !valgtPlan) { alert('Vælg en pakke for at fortsætte'); return; }
+  if (nuværendeTrin === 2 && !document.getElementById('s2_navn').value.trim()) { alert('Udfyld virksomhedsnavn'); return; }
+  if (nuværendeTrin === 4) {
+    const pw = document.getElementById('s4_password').value;
+    const pw2 = document.getElementById('s4_password2').value;
+    if (!document.getElementById('s4_email').value.trim()) { alert('Udfyld email'); return; }
+    if (pw.length < 6) { alert('Adgangskode skal være mindst 6 tegn'); return; }
+    if (pw !== pw2) { alert('Adgangskoderne matcher ikke'); return; }
+  }
+  if (nuværendeTrin === 4) byggSummary();
+  document.getElementById('step-' + nuværendeTrin).classList.remove('active');
+  nuværendeTrin++;
+  document.getElementById('step-' + nuværendeTrin).classList.add('active');
+  opdaterStepUI();
+  window.scrollTo(0, 0);
+}
+
+function forrige() {
+  document.getElementById('step-' + nuværendeTrin).classList.remove('active');
+  nuværendeTrin--;
+  document.getElementById('step-' + nuværendeTrin).classList.add('active');
+  opdaterStepUI();
+  window.scrollTo(0, 0);
+}
+
+const planNavne = { starter: 'Starter – 499 kr/md', pro: 'Pro – 899 kr/md', vaekst: 'Vækst – 1.499 kr/md' };
+
+function byggSummary() {
+  const box = document.getElementById('summary-box');
+  const rows = [
+    ['Plan', planNavne[valgtPlan] || valgtPlan],
+    ['Virksomhed', document.getElementById('s2_navn').value],
+    ['Email', document.getElementById('s4_email').value],
+    ['Chatbot navn', document.getElementById('s3_navn').value],
+    ['I dag betaler du', '0 kr (14 dages prøveperiode)'],
+  ];
+  box.innerHTML = rows.map(([l, v]) => `
+    <div class="summary-row">
+      <span class="summary-label">${l}</span>
+      <span>${v}</span>
+    </div>`).join('');
+}
+
+async function gåTilBetaling() {
+  const btn = document.getElementById('btn-betal');
+  btn.disabled = true;
+  btn.textContent = '⏳ Opretter konto...';
+
+  const payload = {
+    plan: valgtPlan,
+    virksomhed_navn: document.getElementById('s2_navn').value,
+    hjemmeside: document.getElementById('s2_website').value,
+    beskrivelse: document.getElementById('s2_beskrivelse').value,
+    ydelser: document.getElementById('s2_ydelser').value,
+    kontakt: document.getElementById('s2_kontakt').value,
+    chatbot_navn: document.getElementById('s3_navn').value,
+    velkomst: document.getElementById('s3_velkomst').value,
+    farve: document.getElementById('s3_farve').value,
+    aabning: document.getElementById('s3_aabning').value,
+    email: document.getElementById('s4_email').value,
+    password: document.getElementById('s4_password').value,
+    telefon: document.getElementById('s4_telefon').value,
+  };
+
+  try {
+    const res = await fetch(`${API}/onboarding/opret`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.checkout_url) {
+      window.location.href = data.checkout_url;
+    } else if (data.klient_id) {
+      // Ingen Stripe (test mode) – gå direkte til succes
+      document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('step-success').classList.add('active');
+      document.querySelector('.progress-wrap').style.display = 'none';
+    } else {
+      alert('Fejl: ' + (data.error || 'Ukendt fejl'));
+      btn.disabled = false;
+      btn.textContent = '🔒 Gå til betaling';
+    }
+  } catch(e) {
+    alert('Kunne ikke oprette konto. Prøv igen.');
+    btn.disabled = false;
+    btn.textContent = '🔒 Gå til betaling';
+  }
+}
+</script>
+</body>
+</html>

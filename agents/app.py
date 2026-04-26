@@ -15,6 +15,19 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from supabase import create_client
 import functools
+import stripe
+
+# ── STRIPE ────────────────────────────────────────────
+STRIPE_SECRET_KEY     = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+
+STRIPE_PRISER = {
+    'starter': {'price_id': os.environ.get('STRIPE_PRICE_STARTER', ''), 'navn': 'Starter', 'pris': 499,  'produkter': ['chatbot', 'lead']},
+    'pro':     {'price_id': os.environ.get('STRIPE_PRICE_PRO', ''),     'navn': 'Pro',     'pris': 899,  'produkter': ['chatbot', 'lead', 'booking', 'rapport']},
+    'vaekst':  {'price_id': os.environ.get('STRIPE_PRICE_VAEKST', ''),  'navn': 'Vækst',  'pris': 1499, 'produkter': ['chatbot', 'lead', 'booking', 'rapport', 'mail']},
+}
 
 # ── TOKEN STORE (in-memory) ────────────────────────────
 active_tokens = {}  # token -> {'role': 'admin'/'client', 'klient_id': ...}
@@ -1302,6 +1315,267 @@ def gem_chatbot_config():
         return jsonify({'success': True, 'config': res.data[0] if res.data else {}})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
+#  STRIPE ENDPOINTS
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/stripe/checkout', methods=['POST'])
+def stripe_checkout():
+    """Opret Stripe Checkout session for et abonnement"""
+    if not STRIPE_SECRET_KEY:
+        return jsonify({'error': 'Stripe ikke konfigureret'}), 500
+    data = request.json
+    klient_id = data.get('klient_id')
+    plan = data.get('plan', 'starter')
+    success_url = data.get('success_url', 'https://klaiai.dk/onboarding/succes?id=' + (klient_id or ''))
+    cancel_url = data.get('cancel_url', 'https://klaiai.dk/onboarding')
+
+    pris = STRIPE_PRISER.get(plan, STRIPE_PRISER['starter'])
+    price_id = pris['price_id']
+    if not price_id:
+        return jsonify({'error': f'Stripe price_id for {plan} mangler i env vars'}), 400
+
+    try:
+        # Hent eller opret Stripe customer
+        stripe_customer_id = None
+        if klient_id and db:
+            try:
+                kr = db.table('klienter').select('stripe_customer_id, email, navn').eq('id', klient_id).single().execute()
+                if kr.data:
+                    stripe_customer_id = kr.data.get('stripe_customer_id')
+                    if not stripe_customer_id:
+                        cust = stripe.Customer.create(
+                            email=kr.data.get('email', ''),
+                            name=kr.data.get('navn', ''),
+                            metadata={'klient_id': klient_id}
+                        )
+                        stripe_customer_id = cust.id
+                        db.table('klienter').update({'stripe_customer_id': stripe_customer_id}).eq('id', klient_id).execute()
+            except: pass
+
+        session_params = {
+            'mode': 'subscription',
+            'line_items': [{'price': price_id, 'quantity': 1}],
+            'success_url': success_url,
+            'cancel_url': cancel_url,
+            'subscription_data': {'trial_period_days': 14},
+            'metadata': {'klient_id': klient_id or '', 'plan': plan},
+            'client_reference_id': klient_id or '',
+        }
+        if stripe_customer_id:
+            session_params['customer'] = stripe_customer_id
+
+        session = stripe.checkout.Session.create(**session_params)
+        return jsonify({'url': session.url, 'session_id': session.id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/stripe/webhook', methods=['POST'])
+def stripe_webhook():
+    """Håndter Stripe webhook events"""
+    payload = request.get_data()
+    sig_header = request.headers.get('Stripe-Signature', '')
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except stripe.error.SignatureVerificationError:
+        return jsonify({'error': 'Ugyldig signatur'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+    etype = event['type']
+    obj = event['data']['object']
+
+    if etype == 'checkout.session.completed':
+        klient_id = obj.get('client_reference_id') or obj.get('metadata', {}).get('klient_id')
+        plan = obj.get('metadata', {}).get('plan', 'starter')
+        sub_id = obj.get('subscription')
+        customer_id = obj.get('customer')
+        sub_status = 'trialing' if obj.get('subscription') else 'active'
+        if klient_id and db:
+            produkter = STRIPE_PRISER.get(plan, STRIPE_PRISER['starter'])['produkter']
+            try:
+                db.table('klienter').update({
+                    'stripe_customer_id': customer_id,
+                    'stripe_subscription_id': sub_id,
+                    'plan': plan,
+                    'subscription_status': sub_status,
+                    'aktiv': True,
+                    'status': 'aktiv',
+                    'produkter': produkter
+                }).eq('id', klient_id).execute()
+                # Send velkomstmail
+                try:
+                    kr = db.table('klienter').select('email, navn').eq('id', klient_id).single().execute()
+                    if kr.data:
+                        send_mail(kr.data['email'], 'Velkommen til NexOlsen 🎉',
+                            f"Hej {kr.data['navn']}!\n\nDin konto er nu aktiv. Log ind på https://klaiai.dk/login\n\nDin klient-ID til chatbot-widget: {klient_id}\n\nMed venlig hilsen,\nNexOlsen", 'NexOlsen')
+                except: pass
+            except Exception as e:
+                print(f"Webhook DB fejl: {e}")
+
+    elif etype == 'invoice.payment_succeeded':
+        sub_id = obj.get('subscription')
+        if sub_id and db:
+            try:
+                db.table('klienter').update({'aktiv': True, 'subscription_status': 'active'}).eq('stripe_subscription_id', sub_id).execute()
+            except: pass
+
+    elif etype == 'invoice.payment_failed':
+        sub_id = obj.get('subscription')
+        if sub_id and db:
+            try:
+                db.table('klienter').update({'subscription_status': 'past_due'}).eq('stripe_subscription_id', sub_id).execute()
+                # Send advarsel
+                kr = db.table('klienter').select('email, navn').eq('stripe_subscription_id', sub_id).single().execute()
+                if kr.data:
+                    send_mail(kr.data['email'], 'Betalingsproblem med dit NexOlsen abonnement',
+                        f"Hej {kr.data['navn']},\n\nVi kunne ikke trække betaling for dit abonnement. Opdater din betalingsmetode inden 7 dage for at undgå deaktivering.\n\nhttps://klaiai.dk/login\n\nNexOlsen", 'NexOlsen')
+            except: pass
+
+    elif etype == 'customer.subscription.deleted':
+        sub_id = obj.get('id')
+        if sub_id and db:
+            try:
+                db.table('klienter').update({'aktiv': False, 'subscription_status': 'canceled', 'status': 'inaktiv'}).eq('stripe_subscription_id', sub_id).execute()
+            except: pass
+
+    elif etype == 'customer.subscription.updated':
+        sub_id = obj.get('id')
+        new_status = obj.get('status', '')
+        if sub_id and db:
+            try:
+                db.table('klienter').update({
+                    'subscription_status': new_status,
+                    'aktiv': new_status in ('active', 'trialing')
+                }).eq('stripe_subscription_id', sub_id).execute()
+            except: pass
+
+    return jsonify({'received': True})
+
+
+@app.route('/stripe/portal', methods=['POST'])
+def stripe_portal():
+    """Opret Stripe Customer Portal session"""
+    if not STRIPE_SECRET_KEY:
+        return jsonify({'error': 'Stripe ikke konfigureret'}), 500
+    data = request.json
+    klient_id = data.get('klient_id')
+    if not klient_id or not db:
+        return jsonify({'error': 'klient_id mangler'}), 400
+    try:
+        kr = db.table('klienter').select('stripe_customer_id').eq('id', klient_id).single().execute()
+        customer_id = kr.data.get('stripe_customer_id') if kr.data else None
+        if not customer_id:
+            return jsonify({'error': 'Ingen Stripe kunde fundet'}), 404
+        portal = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url=f'https://klaiai.dk/portal/{klient_id}'
+        )
+        return jsonify({'url': portal.url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/stripe/status/<klient_id>', methods=['GET'])
+def stripe_status(klient_id):
+    """Hent abonnementsstatus for en klient"""
+    if not db:
+        return jsonify({'plan': 'ingen', 'subscription_status': 'inactive'})
+    try:
+        kr = db.table('klienter').select('plan, subscription_status, stripe_customer_id').eq('id', klient_id).single().execute()
+        if kr.data:
+            return jsonify({
+                'plan': kr.data.get('plan', 'ingen'),
+                'subscription_status': kr.data.get('subscription_status', 'inactive'),
+                'har_stripe': bool(kr.data.get('stripe_customer_id'))
+            })
+        return jsonify({'plan': 'ingen', 'subscription_status': 'inactive'})
+    except:
+        return jsonify({'plan': 'ingen', 'subscription_status': 'inactive'})
+
+
+# ── ONBOARDING ────────────────────────────────────────
+
+@app.route('/onboarding/opret', methods=['POST'])
+def onboarding_opret():
+    """Opret klient + chatbot config fra onboarding-wizard og returner Stripe checkout URL"""
+    data = request.json
+    plan = data.get('plan', 'starter')
+
+    # Generer klient ID
+    klient_id = str(int(__import__('time').time() * 1000))[-13:]
+
+    produkter = STRIPE_PRISER.get(plan, STRIPE_PRISER['starter'])['produkter']
+
+    # Gem klient
+    if db:
+        try:
+            db.table('klienter').insert({
+                'id': klient_id,
+                'navn': data.get('virksomhed_navn', ''),
+                'email': data.get('email', ''),
+                'telefon': data.get('telefon', ''),
+                'hjemmeside': data.get('hjemmeside', ''),
+                'beskrivelse': data.get('beskrivelse', ''),
+                'password': data.get('password', ''),
+                'status': 'afventer_betaling',
+                'produkter': produkter,
+                'aktiv': False,
+                'plan': plan,
+                'subscription_status': 'inactive'
+            }).execute()
+        except Exception as e:
+            return jsonify({'error': f'Kunne ikke oprette klient: {e}'}), 500
+
+        try:
+            db.table('chatbot_config').upsert({
+                'klient_id': klient_id,
+                'chatbot_navn': data.get('chatbot_navn', 'Alma'),
+                'velkomst': data.get('velkomst', 'Hej! Hvordan kan jeg hjælpe dig?'),
+                'farve': data.get('farve', '#0a2463'),
+                'ydelser': data.get('ydelser', ''),
+                'priser': data.get('priser', ''),
+                'kontakt': data.get('kontakt', ''),
+                'aabningsider': data.get('aabning', ''),
+                'andet': data.get('andet', ''),
+                'ekstra_viden': data.get('ekstra_viden', '')
+            }, on_conflict='klient_id').execute()
+        except Exception as e:
+            print(f"Chatbot config fejl: {e}")
+
+    # Opret Stripe checkout session
+    if STRIPE_SECRET_KEY:
+        price_id = STRIPE_PRISER.get(plan, STRIPE_PRISER['starter'])['price_id']
+        try:
+            cust = stripe.Customer.create(
+                email=data.get('email', ''),
+                name=data.get('virksomhed_navn', ''),
+                metadata={'klient_id': klient_id}
+            )
+            if db:
+                db.table('klienter').update({'stripe_customer_id': cust.id}).eq('id', klient_id).execute()
+
+            session = stripe.checkout.Session.create(
+                customer=cust.id,
+                mode='subscription',
+                line_items=[{'price': price_id, 'quantity': 1}],
+                success_url=f'https://klaiai.dk/app/onboarding.html?succes=1&id={klient_id}',
+                cancel_url='https://klaiai.dk/app/onboarding.html',
+                subscription_data={'trial_period_days': 14},
+                metadata={'klient_id': klient_id, 'plan': plan},
+                client_reference_id=klient_id,
+            )
+            return jsonify({'klient_id': klient_id, 'checkout_url': session.url})
+        except Exception as e:
+            return jsonify({'klient_id': klient_id, 'checkout_url': None, 'stripe_fejl': str(e)})
+
+    # Uden Stripe – aktiver direkte (test mode)
+    if db:
+        db.table('klienter').update({'aktiv': True, 'status': 'aktiv'}).eq('id', klient_id).execute()
+    return jsonify({'klient_id': klient_id, 'checkout_url': None})
 
 
 @app.route('/test-mail', methods=['GET'])

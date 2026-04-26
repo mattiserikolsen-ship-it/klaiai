@@ -5,3 +5,4 @@ gunicorn>=21.0.0
 sendgrid>=6.0.0
 supabase>=2.0.0
 APScheduler>=3.10.0
+stripe>=7.0.0
