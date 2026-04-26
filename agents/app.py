@@ -24,9 +24,9 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 STRIPE_PRISER = {
-    'starter': {'price_id': os.environ.get('STRIPE_PRICE_STARTER', ''), 'navn': 'Starter', 'pris': 499,  'produkter': ['chatbot', 'lead']},
-    'pro':     {'price_id': os.environ.get('STRIPE_PRICE_PRO', ''),     'navn': 'Pro',     'pris': 899,  'produkter': ['chatbot', 'lead', 'booking', 'rapport']},
-    'vaekst':  {'price_id': os.environ.get('STRIPE_PRICE_VAEKST', ''),  'navn': 'Vækst',  'pris': 1499, 'produkter': ['chatbot', 'lead', 'booking', 'rapport', 'mail']},
+    'starter': {'price_id': os.environ.get('STRIPE_PRICE_STARTER', ''), 'navn': 'Starter', 'pris': 799,  'produkter': ['chatbot', 'lead']},
+    'pro':     {'price_id': os.environ.get('STRIPE_PRICE_PRO', ''),     'navn': 'Pro',     'pris': 1499, 'produkter': ['chatbot', 'lead', 'booking', 'rapport']},
+    'vaekst':  {'price_id': os.environ.get('STRIPE_PRICE_VAEKST', ''),  'navn': 'Vækst',  'pris': 2499, 'produkter': ['chatbot', 'lead', 'booking', 'rapport', 'mail']},
 }
 
 # ── TOKEN STORE (in-memory) ────────────────────────────
