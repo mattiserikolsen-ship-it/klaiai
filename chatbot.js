@@ -1,5 +1,5 @@
 /**
- * SittamTech Chatbot Widget
+ * NexOlsen Chatbot Widget
  * Embed: <script src="https://klaiai.dk/chatbot.js" data-client="KLIENT_ID" data-color="#0a2463"></script>
  */
 (function () {
@@ -122,7 +122,7 @@
         <input id="klaiai-input" placeholder="Skriv en besked..." autocomplete="off"/>
         <button id="klaiai-send">➤</button>
       </div>
-      <div id="klaiai-powered">Drevet af <strong>SittamTech</strong></div>
+      <div id="klaiai-powered">Drevet af <strong>NexOlsen</strong></div>
     </div>
   `;
   document.body.appendChild(widget);

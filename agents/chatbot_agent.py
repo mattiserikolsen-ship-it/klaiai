@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SittamTech Chatbot Agent
+NexOlsen Chatbot Agent
 Håndterer AI-chat for klienters hjemmesider via Claude API
 """
 
@@ -105,6 +105,6 @@ def health():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    print(f"🤖 SittamTech Chatbot Agent kører på port {port}")
+    print(f"🤖 NexOlsen Chatbot Agent kører på port {port}")
     print(f"   Klienter: {', '.join(KLIENTER.keys())}")
     app.run(host='0.0.0.0', port=port, debug=True)

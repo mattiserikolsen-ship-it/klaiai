@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SittamTech – Min portal</title>
+  <title>NexOlsen – Min portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
@@ -230,7 +230,7 @@
 
 <!-- MOBILE HEADER -->
 <div class="mobile-header">
-  <div class="mobile-logo">SittamTech</div>
+  <div class="mobile-logo">NexOlsen</div>
   <button class="mobile-hamburger" onclick="toggleMobileNav()">☰</button>
 </div>
 <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileNav()"></div>
@@ -238,7 +238,7 @@
 <!-- SIDEBAR -->
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-text">SittamTech</div>
+    <div class="sidebar-logo-text">NexOlsen</div>
     <div class="sidebar-logo-sub">Klientportal</div>
   </div>
   <div class="sidebar-company">
@@ -264,7 +264,7 @@
     </div>
   </div>
   <div class="sidebar-footer">
-    <div class="powered">Drevet af SittamTech</div>
+    <div class="powered">Drevet af NexOlsen</div>
   </div>
 </nav>
 
@@ -272,7 +272,7 @@
   <div class="topbar">
     <div>
       <div class="topbar-title" id="topbarTitle">Overblik</div>
-      <div class="topbar-sub" id="topbarSub">Din SittamTech portal</div>
+      <div class="topbar-sub" id="topbarSub">Din NexOlsen portal</div>
     </div>
     <button class="topbar-refresh" onclick="loadData()">↻ Opdater</button>
   </div>
@@ -282,7 +282,7 @@
     <div id="view-overblik">
       <div class="welcome-card">
         <div class="welcome-title" id="welcomeTitle">Hej! 👋</div>
-        <div class="welcome-sub" id="welcomeSub">Her kan du følge med i hvad dine SittamTech-agenter laver for dig.</div>
+        <div class="welcome-sub" id="welcomeSub">Her kan du følge med i hvad dine NexOlsen-agenter laver for dig.</div>
       </div>
       <div class="stats-row">
         <div class="stat-card">
@@ -433,7 +433,7 @@ function closeMobileNav() {
 // ── VIEWS ──────────────────────────────────────────────
 const views = ['overblik','leads','bookinger','agenter','rapport'];
 const titles = {
-  overblik:  ['Overblik',      'Din SittamTech portal'],
+  overblik:  ['Overblik',      'Din NexOlsen portal'],
   leads:     ['Leads',         'Kunder der har henvendt sig'],
   bookinger: ['Bookinger',     'Bekræftede bookinger'],
   agenter:   ['Mine agenter',  'AI-agenter der kører for dig'],
@@ -470,8 +470,8 @@ async function loadData() {
     const navn = klient?.navn || data.chatbot?.navn || 'din virksomhed';
     document.getElementById('sidebarName').textContent = navn;
     document.getElementById('welcomeTitle').textContent = `Hej, ${navn.split(' ')[0]}!`;
-    document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine SittamTech-agenter laver for dig.`;
-    document.title = `SittamTech – ${navn}`;
+    document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine NexOlsen-agenter laver for dig.`;
+    document.title = `NexOlsen – ${navn}`;
 
     document.getElementById('ovLeads').textContent = klient?.leads || 0;
     document.getElementById('ovBookinger').textContent = klient?.bookinger || 0;

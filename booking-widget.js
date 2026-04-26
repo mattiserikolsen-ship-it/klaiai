@@ -1,5 +1,5 @@
 /**
- * SittamTech Booking Widget
+ * NexOlsen Booking Widget
  * Embed: <script src="https://klaiai.dk/booking-widget.js" data-client="KLIENT_ID"></script>
  */
 (function () {
@@ -194,7 +194,7 @@
         ${cells}
       </div>
       <button class="klai-btn klai-btn-primary" style="margin-top:1rem" onclick="klaiNextStep()" ${!valgtDato?'disabled':''}>Vælg tidspunkt →</button>
-      <div class="klai-powered">Drevet af <strong>SittamTech</strong></div>
+      <div class="klai-powered">Drevet af <strong>NexOlsen</strong></div>
     `;
   }
 
@@ -226,7 +226,7 @@
       ` : ''}
       <button class="klai-btn klai-btn-primary" onclick="klaiNextStep()" ${!valgtTid||(cfg.ydelser.length>1&&!valgtYdelse)?'disabled':''}>Udfyld dine oplysninger →</button>
       <button class="klai-btn klai-btn-secondary" onclick="klaiBack()">← Tilbage</button>
-      <div class="klai-powered">Drevet af <strong>SittamTech</strong></div>
+      <div class="klai-powered">Drevet af <strong>NexOlsen</strong></div>
     `;
     if (cfg.ydelser.length === 1) valgtYdelse = cfg.ydelser[0];
   }
@@ -274,7 +274,7 @@
       <div id="klai_b_error"></div>
       <button class="klai-btn klai-btn-primary" id="klai_b_submit" onclick="klaiSendBooking()">Bekræft booking</button>
       <button class="klai-btn klai-btn-secondary" onclick="klaiBack()">← Tilbage</button>
-      <div class="klai-powered">Drevet af <strong>SittamTech</strong></div>
+      <div class="klai-powered">Drevet af <strong>NexOlsen</strong></div>
     `;
   }
 
@@ -289,7 +289,7 @@
         ${valgtYdelse ? `🔧 ${valgtYdelse}` : ''}
       </div>
       <div class="klai-success-sub">En bekræftelse er sendt til din email.<br>Vi glæder os til at se dig!</div>
-      <div class="klai-powered" style="margin-top:1.25rem">Drevet af <strong>SittamTech</strong></div>
+      <div class="klai-powered" style="margin-top:1.25rem">Drevet af <strong>NexOlsen</strong></div>
     `;
   }
 

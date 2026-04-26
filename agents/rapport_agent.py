@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SittamTech Rapport Agent
+NexOlsen Rapport Agent
 Genererer professionelle AI-rapporter til klienter via Claude API
 """
 
@@ -63,7 +63,7 @@ def gem_rapport(klient_navn: str, rapport: str, rapport_type: str):
     import os
     os.makedirs(os.path.dirname(filnavn), exist_ok=True)
 
-    header = f"""SittamTech — Automatisk genereret rapport
+    header = f"""NexOlsen — Automatisk genereret rapport
 =====================================
 Klient: {klient_navn}
 Type: {rapport_type}
@@ -99,4 +99,4 @@ if __name__ == "__main__":
     rapport = generer_rapport(eksempel_klient, rapport_type)
     gem_rapport(eksempel_klient['navn'], rapport, rapport_type)
 
-    print("\n🤖 SittamTech Rapport Agent færdig!")
+    print("\n🤖 NexOlsen Rapport Agent færdig!")
