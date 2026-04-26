@@ -1435,6 +1435,26 @@ def _allerede_sendt(agent_navn, reference_id):
     except:
         return False
 
+def _gem_til_godkendelse(klient_id, lead_id, emne, html, agent_navn, reference_id, mail_nr=1):
+    """Gem agent-mail til godkendelse i stedet for at sende direkte"""
+    if not db:
+        return False
+    try:
+        db.table('lead_mails').insert({
+            'lead_id': str(lead_id) if lead_id else None,
+            'klient_id': klient_id,
+            'mail_nr': mail_nr,
+            'emne': emne,
+            'tekst': html,
+            'status': 'afventer'
+        }).execute()
+        _log_agent(agent_navn, klient_id, reference_id, f"Mail gemt til godkendelse: {emne}")
+        print(f"  ✅ Gemt til godkendelse: {emne}")
+        return True
+    except Exception as e:
+        print(f"  ❌ Gem til godkendelse fejl: {e}")
+        return False
+
 def kør_reminder_agent():
     """🔔 Sender påmindelses-mail til leads med booking i morgen"""
     if not db:
@@ -1480,19 +1500,7 @@ def kør_reminder_agent():
               <p style="color:#888;font-size:12px">Med venlig hilsen, {klient_navn}</p>
             </div>
             """
-            try:
-                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
-                msg = Mail(
-                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
-                    to_emails=email,
-                    subject=emne,
-                    html_content=html
-                )
-                sg.send(msg)
-                _log_agent('reminder', klient_id, b['id'], f"Påmindelse sendt til {email} for booking {b['id']}")
-                print(f"  ✅ Påmindelse sendt til {email}")
-            except Exception as e:
-                print(f"  ❌ SendGrid fejl: {e}")
+            _gem_til_godkendelse(klient_id, lead_id, emne, html, 'reminder', b['id'])
     except Exception as e:
         print(f"Påmindelses-agent fejl: {e}")
 
@@ -1540,19 +1548,7 @@ def kør_review_agent():
               <p style="color:#888;font-size:12px">Med venlig hilsen, {klient_navn}</p>
             </div>
             """
-            try:
-                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
-                msg = Mail(
-                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
-                    to_emails=email,
-                    subject=emne,
-                    html_content=html
-                )
-                sg.send(msg)
-                _log_agent('review', klient_id, b['id'], f"Review-anmodning sendt til {email}")
-                print(f"  ✅ Review-mail sendt til {email}")
-            except Exception as e:
-                print(f"  ❌ SendGrid fejl: {e}")
+            _gem_til_godkendelse(klient_id, lead_id, emne, html, 'review', b['id'])
     except Exception as e:
         print(f"Review-agent fejl: {e}")
 
@@ -1621,19 +1617,7 @@ Regler:
               <p style="color:#888;font-size:12px;margin-top:32px">Med venlig hilsen, {klient_navn}</p>
             </div>
             """
-            try:
-                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
-                msg = Mail(
-                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
-                    to_emails=email,
-                    subject=f"Vi tænker stadig på dig, {navn} 💜",
-                    html_content=html
-                )
-                sg.send(msg)
-                _log_agent('genopvarmning', klient_id, lead_id, f"Genopvarmning sendt til {email}")
-                print(f"  ✅ Genopvarmning sendt til {email}")
-            except Exception as e:
-                print(f"  ❌ SendGrid fejl: {e}")
+            _gem_til_godkendelse(klient_id, lead_id, f"Vi tænker stadig på dig, {navn} 💜", html, 'genopvarmning', lead_id)
     except Exception as e:
         print(f"Genopvarmnings-agent fejl: {e}")
 
