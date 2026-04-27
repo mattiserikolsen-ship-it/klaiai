@@ -2057,12 +2057,65 @@ def kør_ugerapport_agent():
         print(f"Ugerapport-agent fejl: {e}")
 
 # Planlæg jobs
+def kør_billing_agent():
+    """Deaktiver kunder der har haft past_due status i over 7 dage"""
+    if not db:
+        return
+    print("💳 Billing agent kører...")
+    try:
+        grænse = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        # Find klienter der er past_due og hvor updated_at er for mere end 7 dage siden
+        res = db.table('klienter').select('id, navn, email, subscription_status, updated_at').eq('subscription_status', 'past_due').eq('aktiv', True).execute()
+        if not res.data:
+            return
+        deaktiverede = 0
+        for k in res.data:
+            updated = k.get('updated_at', '')
+            if not updated:
+                continue
+            # Konverter til datetime for sammenligning
+            try:
+                updated_dt = datetime.fromisoformat(updated.replace('Z', '+00:00').replace('+00:00', ''))
+                if updated_dt > datetime.utcnow() - timedelta(days=7):
+                    continue  # Ikke 7 dage endnu
+            except:
+                continue
+
+            # Deaktiver konto
+            db.table('klienter').update({
+                'aktiv': False,
+                'status': 'inaktiv',
+                'subscription_status': 'canceled'
+            }).eq('id', k['id']).execute()
+
+            # Send email til kunden
+            if k.get('email'):
+                send_mail(
+                    k['email'],
+                    'Din NexOlsen konto er deaktiveret',
+                    f"""<p>Hej {k.get('navn', '')},</p>
+                    <p>Vi har desværre måttet deaktivere din NexOlsen konto da vi ikke har kunnet trække betaling i over 7 dage.</p>
+                    <p>Hvis du ønsker at genaktivere din konto, kan du opdatere din betalingsmetode ved at kontakte os på
+                    <a href="mailto:support@nexolsen.dk">support@nexolsen.dk</a>.</p>
+                    <p>Med venlig hilsen,<br>NexOlsen</p>""",
+                    'NexOlsen'
+                )
+
+            _log_agent('billing_agent', k['id'], k['id'], f"Konto deaktiveret efter 7 dage med manglende betaling")
+            deaktiverede += 1
+
+        print(f"💳 Billing agent færdig: {deaktiverede} konto(er) deaktiveret")
+    except Exception as e:
+        print(f"Billing agent fejl: {e}")
+
+
 scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder')
 scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
 scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
 scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerapport', day_of_week='mon')
+scheduler.add_job(kør_billing_agent,    'cron', hour=8,  minute=0, id='billing')
 scheduler.start()
-print("⏰ APScheduler startet med 4 agenter")
+print("⏰ APScheduler startet med 5 agenter")
 
 # ── Agent endpoints ────────────────────────────────────────────
 
@@ -2074,6 +2127,7 @@ def kør_agent_manuelt(navn):
         'review': kør_review_agent,
         'genopvarmning': kør_genopvarmning_agent,
         'ugerapport': kør_ugerapport_agent,
+        'billing': kør_billing_agent,
     }
     if navn not in agenter:
         return jsonify({'error': f'Ukendt agent: {navn}'}), 400
