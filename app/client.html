@@ -262,6 +262,9 @@
     <div class="nav-item" data-view="rapport" onclick="showView('rapport')">
       <span class="ni">◫</span> Rapport
     </div>
+    <div class="nav-item" data-view="abonnement" onclick="showView('abonnement')">
+      <span class="ni">◉</span> Abonnement
+    </div>
   </div>
   <div class="sidebar-footer">
     <div class="powered">Drevet af NexOlsen</div>
@@ -385,6 +388,23 @@
       </div>
     </div>
 
+    <!-- ABONNEMENT -->
+    <div id="view-abonnement" class="hidden">
+      <div class="card" id="aboCard">
+        <div class="card-title">Dit abonnement</div>
+        <div id="aboIndhold"><div class="loading">Henter abonnementsinfo...</div></div>
+      </div>
+      <div class="card" id="aboFakturaCard" style="display:none">
+        <div class="card-title">Fakturering</div>
+        <div style="font-size:.85rem;color:var(--mid);line-height:1.7;margin-bottom:1.25rem">
+          Administrer din betalingsmetode, se fakturaer og opsig dit abonnement via Stripe-portalen.
+        </div>
+        <button onclick="åbnFaktureringsportal()" style="background:#1a1918;color:#fff;border:none;border-radius:10px;padding:.7rem 1.4rem;font-size:.9rem;font-weight:600;cursor:pointer">
+          Administrer fakturering →
+        </button>
+      </div>
+    </div>
+
     <!-- AGENTER -->
     <div id="view-agenter" class="hidden">
       <div class="card">
@@ -431,13 +451,14 @@ function closeMobileNav() {
 }
 
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','leads','bookinger','agenter','rapport'];
+const views = ['overblik','leads','bookinger','agenter','rapport','abonnement'];
 const titles = {
-  overblik:  ['Overblik',      'Din NexOlsen portal'],
-  leads:     ['Leads',         'Kunder der har henvendt sig'],
-  bookinger: ['Bookinger',     'Bekræftede bookinger'],
-  agenter:   ['Mine agenter',  'AI-agenter der kører for dig'],
-  rapport:   ['Rapport',       'Statistik og grafisk overblik']
+  overblik:    ['Overblik',       'Din NexOlsen portal'],
+  leads:       ['Leads',          'Kunder der har henvendt sig'],
+  bookinger:   ['Bookinger',      'Bekræftede bookinger'],
+  agenter:     ['Mine agenter',   'AI-agenter der kører for dig'],
+  rapport:     ['Rapport',        'Statistik og grafisk overblik'],
+  abonnement:  ['Abonnement',     'Din plan og fakturering']
 };
 
 function showView(v) {
@@ -451,6 +472,7 @@ function showView(v) {
   document.getElementById('topbarSub').textContent = titles[v][1];
   closeMobileNav();
   if (v === 'rapport' && !rapportData) loadRapport();
+  if (v === 'abonnement') loadAbonnement();
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
@@ -760,6 +782,81 @@ async function sendRapport() {
   } catch(e) {
     btn.textContent = 'Fejl — prøv igen';
     btn.disabled = false;
+  }
+}
+
+// ── ABONNEMENT ─────────────────────────────────────────
+const planInfo = {
+  starter: { navn: 'Starter', pris: '799 kr/md', farve: '#6b7280', features: ['AI Chatbot 24/7', 'Lead-opsamling', 'Email-notifikationer'] },
+  pro:     { navn: 'Pro',     pris: '1.499 kr/md', farve: '#7c3aed', features: ['Alt i Starter', 'Bookingsystem', 'Automatiske rapporter', 'Lead-mail opfølgning'] },
+  vaekst:  { navn: 'Vækst',  pris: '2.499 kr/md', farve: '#0a2463', features: ['Alt i Pro', 'AI Insights analyse', 'Branche-research AI', 'Genopvarmnings-agent'] },
+};
+
+const statusLabels = {
+  active:   ['Aktiv', '#16a34a', '#f0fdf4'],
+  trialing: ['Prøveperiode', '#0a2463', '#eff6ff'],
+  past_due: ['Betaling fejlet', '#c0392b', '#fdf0ee'],
+  canceled: ['Opsagt', '#9a9590', '#f8f7f4'],
+  inactive: ['Ikke aktiv', '#9a9590', '#f8f7f4'],
+};
+
+async function loadAbonnement() {
+  try {
+    const res = await fetch(`${API}/stripe/status/${CLIENT_ID}`, {
+      headers: { 'Authorization': sessionStorage.getItem('klaiai_token') || '' }
+    });
+    const abo = await res.json();
+    renderAbonnement(abo);
+  } catch(e) {
+    document.getElementById('aboIndhold').innerHTML = '<div style="color:#c0392b;font-size:.85rem">Kunne ikke hente abonnementsinfo.</div>';
+  }
+}
+
+function renderAbonnement(abo) {
+  const plan = planInfo[abo.plan] || planInfo.starter;
+  const [statusTekst, statusFarve, statusBg] = statusLabels[abo.subscription_status] || statusLabels.inactive;
+
+  document.getElementById('aboIndhold').innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:1.5rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:.4rem">Din plan</div>
+        <div style="font-size:1.4rem;font-weight:800;color:${plan.farve}">${plan.navn}</div>
+        <div style="font-size:.95rem;color:var(--mid);margin-top:.2rem">${plan.pris}</div>
+        <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:.3rem">
+          ${plan.features.map(f => `<div style="font-size:.82rem;color:var(--mid)">✓ ${f}</div>`).join('')}
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:.4rem">Status</div>
+        <div style="display:inline-block;background:${statusBg};color:${statusFarve};font-size:.82rem;font-weight:700;padding:.3rem .9rem;border-radius:20px;border:1px solid ${statusFarve}22">
+          ${statusTekst}
+        </div>
+        ${abo.subscription_status === 'past_due' ? `
+        <div style="margin-top:.75rem;font-size:.82rem;color:#c0392b;line-height:1.6">
+          ⚠️ Din betaling fejlede. Opdater din betalingsmetode for at undgå deaktivering.
+        </div>` : ''}
+        ${abo.subscription_status === 'trialing' ? `
+        <div style="margin-top:.75rem;font-size:.82rem;color:#0a2463;line-height:1.6">
+          🎉 Du er i din gratis prøveperiode. Du trækkes ikke noget endnu.
+        </div>` : ''}
+      </div>
+    </div>`;
+
+  document.getElementById('aboFakturaCard').style.display = 'block';
+}
+
+async function åbnFaktureringsportal() {
+  try {
+    const res = await fetch(`${API}/stripe/portal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': sessionStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ klient_id: CLIENT_ID })
+    });
+    const data = await res.json();
+    if (data.url) window.open(data.url, '_blank');
+    else alert('Kunne ikke åbne faktureringsportal. Kontakt support@nexolsen.dk');
+  } catch(e) {
+    alert('Fejl ved åbning af faktureringsportal.');
   }
 }
 
