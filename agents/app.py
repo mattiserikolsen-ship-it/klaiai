@@ -1294,6 +1294,14 @@ def gem_chatbot_config():
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
     data = request.json
     klient_id = data.get('klient_id')
+
+    # Valider token — admin kan redigere alt, klient kun sit eget
+    token = request.headers.get('Authorization', '')
+    if token and token in active_tokens:
+        token_info = active_tokens[token]
+        if token_info.get('role') == 'client' and token_info.get('klient_id') != klient_id:
+            return jsonify({'error': 'Ingen adgang'}), 403
+
     if not klient_id:
         return jsonify({'error': 'klient_id mangler'}), 400
     try:

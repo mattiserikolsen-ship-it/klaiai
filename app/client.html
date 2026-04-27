@@ -265,6 +265,9 @@
     <div class="nav-item" data-view="abonnement" onclick="showView('abonnement')">
       <span class="ni">◉</span> Abonnement
     </div>
+    <div class="nav-item" data-view="indstillinger" onclick="showView('indstillinger')">
+      <span class="ni">⚙</span> Indstillinger
+    </div>
   </div>
   <div class="sidebar-footer">
     <div class="powered">Drevet af NexOlsen</div>
@@ -405,6 +408,61 @@
       </div>
     </div>
 
+    <!-- INDSTILLINGER -->
+    <div id="view-indstillinger" class="hidden">
+      <div class="card">
+        <div class="card-title">Chatbot indstillinger</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Chatbottens navn</label>
+            <input id="cfg_navn" type="text" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit" placeholder="Fx. Alma"/>
+          </div>
+          <div>
+            <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Farve</label>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <input id="cfg_farve" type="color" style="width:44px;height:38px;border:1px solid var(--border);border-radius:9px;cursor:pointer;padding:2px"/>
+              <input id="cfg_farve_hex" type="text" style="flex:1;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit" placeholder="#0a2463" oninput="document.getElementById('cfg_farve').value=this.value"/>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Velkomstbesked</label>
+          <input id="cfg_velkomst" type="text" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit" placeholder="Hej! Hvordan kan jeg hjælpe dig?"/>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Åbningstider</label>
+          <input id="cfg_aabning" type="text" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit" placeholder="Fx. Man-fre 9-17, lør 10-14"/>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Kontaktinfo</label>
+          <input id="cfg_kontakt" type="text" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit" placeholder="Fx. info@firma.dk | +45 12 34 56 78"/>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Produkter og priser</div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Ydelser / produkter</label>
+          <textarea id="cfg_ydelser" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:90px;resize:vertical" placeholder="Fx. Stålbassiner fra 12.000 kr, pool tilbehør, rengøring..."></textarea>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Prisliste</label>
+          <textarea id="cfg_priser" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:90px;resize:vertical" placeholder="Fx. Montage: 2.500 kr, Servicetjek: 800 kr..."></textarea>
+        </div>
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Ekstra viden til chatbot</label>
+          <textarea id="cfg_ekstra" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:110px;resize:vertical" placeholder="Alt chatbotten skal vide: specielle tilbud, FAQ, vigtig info..."></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;align-items:center;margin-top:.25rem">
+        <button onclick="gemIndstillinger()" id="btnGemCfg" style="background:#1a1918;color:#fff;border:none;border-radius:10px;padding:.75rem 1.75rem;font-size:.9rem;font-weight:700;cursor:pointer">
+          Gem ændringer
+        </button>
+        <span id="cfgStatus" style="font-size:.85rem;color:var(--muted)"></span>
+      </div>
+    </div>
+
     <!-- AGENTER -->
     <div id="view-agenter" class="hidden">
       <div class="card">
@@ -451,14 +509,15 @@ function closeMobileNav() {
 }
 
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','leads','bookinger','agenter','rapport','abonnement'];
+const views = ['overblik','leads','bookinger','agenter','rapport','abonnement','indstillinger'];
 const titles = {
-  overblik:    ['Overblik',       'Din NexOlsen portal'],
-  leads:       ['Leads',          'Kunder der har henvendt sig'],
-  bookinger:   ['Bookinger',      'Bekræftede bookinger'],
-  agenter:     ['Mine agenter',   'AI-agenter der kører for dig'],
-  rapport:     ['Rapport',        'Statistik og grafisk overblik'],
-  abonnement:  ['Abonnement',     'Din plan og fakturering']
+  overblik:      ['Overblik',       'Din NexOlsen portal'],
+  leads:         ['Leads',          'Kunder der har henvendt sig'],
+  bookinger:     ['Bookinger',      'Bekræftede bookinger'],
+  agenter:       ['Mine agenter',   'AI-agenter der kører for dig'],
+  rapport:       ['Rapport',        'Statistik og grafisk overblik'],
+  abonnement:    ['Abonnement',     'Din plan og fakturering'],
+  indstillinger: ['Indstillinger',  'Tilpas din chatbot']
 };
 
 function showView(v) {
@@ -473,6 +532,7 @@ function showView(v) {
   closeMobileNav();
   if (v === 'rapport' && !rapportData) loadRapport();
   if (v === 'abonnement') loadAbonnement();
+  if (v === 'indstillinger') loadIndstillinger();
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
@@ -858,6 +918,80 @@ async function åbnFaktureringsportal() {
   } catch(e) {
     alert('Fejl ved åbning af faktureringsportal.');
   }
+}
+
+// ── INDSTILLINGER ──────────────────────────────────────
+let indstillingerIndlæst = false;
+
+async function loadIndstillinger() {
+  if (indstillingerIndlæst) return;
+  try {
+    const res = await fetch(`${API}/widget/${CLIENT_ID}`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    document.getElementById('cfg_navn').value     = cfg.navn || '';
+    document.getElementById('cfg_velkomst').value = cfg.velkomst || '';
+    document.getElementById('cfg_farve').value    = cfg.farve || '#0a2463';
+    document.getElementById('cfg_farve_hex').value = cfg.farve || '#0a2463';
+    document.getElementById('cfg_aabning').value  = cfg.aabningsider || '';
+    document.getElementById('cfg_kontakt').value  = cfg.kontakt || '';
+    document.getElementById('cfg_ydelser').value  = cfg.ydelser || '';
+    document.getElementById('cfg_priser').value   = cfg.priser || '';
+    document.getElementById('cfg_ekstra').value   = cfg.ekstra_viden || '';
+    indstillingerIndlæst = true;
+  } catch(e) {
+    console.error('Indstillinger fejl:', e);
+  }
+}
+
+document.getElementById('cfg_farve')?.addEventListener('input', function() {
+  document.getElementById('cfg_farve_hex').value = this.value;
+});
+
+async function gemIndstillinger() {
+  const btn = document.getElementById('btnGemCfg');
+  const status = document.getElementById('cfgStatus');
+  btn.disabled = true;
+  btn.textContent = 'Gemmer...';
+  status.textContent = '';
+
+  const payload = {
+    klient_id:    CLIENT_ID,
+    chatbot_navn: document.getElementById('cfg_navn').value,
+    velkomst:     document.getElementById('cfg_velkomst').value,
+    farve:        document.getElementById('cfg_farve').value,
+    aabning:      document.getElementById('cfg_aabning').value,
+    aabningsider: document.getElementById('cfg_aabning').value,
+    kontakt:      document.getElementById('cfg_kontakt').value,
+    ydelser:      document.getElementById('cfg_ydelser').value,
+    priser:       document.getElementById('cfg_priser').value,
+    ekstra_viden: document.getElementById('cfg_ekstra').value,
+  };
+
+  try {
+    const res = await fetch(`${API}/chatbot-config`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': sessionStorage.getItem('klaiai_token') || ''
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      status.textContent = '✓ Gemt!';
+      status.style.color = '#16a34a';
+    } else {
+      status.textContent = data.error || 'Fejl ved gem';
+      status.style.color = '#c0392b';
+    }
+  } catch(e) {
+    status.textContent = 'Netværksfejl — prøv igen';
+    status.style.color = '#c0392b';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Gem ændringer';
+  setTimeout(() => status.textContent = '', 4000);
 }
 
 // Init
