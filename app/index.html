@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NexOlsen — AI-agenter til danske virksomheder</title>
+  <title>NexOlsen — AI-chatbot til danske virksomheder</title>
+  <meta name="description" content="Giv din virksomhed en AI-assistent der fanger leads, tager bookinger og sender opfølgningsmails automatisk. 24/7. Klar på 10 minutter. 14 dages gratis prøveperiode."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:      #ffffff;
-      --bg-warm: #f5f4f0;
-      --bg-alt:  #eeece7;
+      --accent:  #7c3aed;
+      --accent2: #0a2463;
+      --bg:      #f8f7f4;
+      --card:    #ffffff;
       --dark:    #1a1918;
       --mid:     #4a4845;
       --muted:   #9a9590;
-      --border:  #e3e1dc;
-      --accent:  #1a1918;
-      --green:   #4a6741;
-      --green-light: #eef2ec;
+      --border:  #e5e3de;
+      --green:   #16a34a;
     }
     html { scroll-behavior: smooth; }
     body { font-family: 'Inter', sans-serif; color: var(--dark); background: var(--bg); overflow-x: hidden; }
@@ -27,667 +28,838 @@
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       padding: 0 6%; height: 72px;
       display: flex; align-items: center; justify-content: space-between;
-      transition: background .3s, border-color .3s;
+      transition: background .3s, box-shadow .3s;
     }
-    nav.scrolled {
-      background: rgba(255,255,255,0.96);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-logo { font-size: 1.4rem; font-weight: 900; color: #fff; letter-spacing: -.5px; text-decoration: none; transition: color .3s; }
+    nav.scrolled { background: rgba(255,255,255,0.97); backdrop-filter: blur(20px); box-shadow: 0 1px 0 var(--border); }
+    .nav-logo { font-size: 1.3rem; font-weight: 900; color: #fff; letter-spacing: -.5px; text-decoration: none; transition: color .3s; }
     nav.scrolled .nav-logo { color: var(--dark); }
-    .nav-links { display: flex; align-items: center; gap: 2.5rem; }
-    .nav-links a { font-size: .875rem; font-weight: 500; color: rgba(255,255,255,0.7); text-decoration: none; transition: color .2s; }
+    .nav-links { display: flex; align-items: center; gap: 2rem; }
+    .nav-links a { font-size: .875rem; font-weight: 500; color: rgba(255,255,255,.75); text-decoration: none; transition: color .2s; }
     nav.scrolled .nav-links a { color: var(--muted); }
     .nav-links a:hover { color: #fff; }
     nav.scrolled .nav-links a:hover { color: var(--dark); }
-    .nav-login {
-      background: rgba(255,255,255,0.15) !important; color: #fff !important;
-      padding: .5rem 1.3rem; border-radius: 6px;
-      font-weight: 600 !important;
-      border: 1px solid rgba(255,255,255,0.3);
+    .nav-cta {
+      background: var(--accent) !important; color: #fff !important;
+      padding: .5rem 1.25rem; border-radius: 8px; font-weight: 700 !important;
+      font-size: .875rem !important;
     }
-    .nav-login:hover { background: rgba(255,255,255,0.25) !important; }
-    nav.scrolled .nav-login { background: var(--dark) !important; color: #fff !important; border-color: var(--dark); }
+    .nav-cta:hover { opacity: .9; }
+    .nav-login {
+      background: rgba(255,255,255,.12) !important; color: #fff !important;
+      padding: .45rem 1.1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,.25);
+    }
+    nav.scrolled .nav-login { background: transparent !important; color: var(--muted) !important; border-color: var(--border); }
+    nav.scrolled .nav-login:hover { color: var(--dark) !important; }
+    .mobile-menu-btn { display: none; background: none; border: none; color: #fff; font-size: 1.4rem; cursor: pointer; }
+    nav.scrolled .mobile-menu-btn { color: var(--dark); }
 
     /* ── HERO ── */
     .hero {
-      position: relative; height: 100vh; min-height: 640px;
-      display: flex; align-items: center; overflow: hidden;
+      min-height: 100vh; background: linear-gradient(135deg, #0a1a4a 0%, #1a1060 40%, #2d1b6e 100%);
+      display: flex; align-items: center; padding: 120px 6% 80px;
+      position: relative; overflow: hidden;
     }
-    .hero-bg {
-      position: absolute; inset: 0;
-      background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80');
-      background-size: cover; background-position: center;
-      transform: scale(1.05);
-      animation: slowzoom 14s ease-out forwards;
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 70% 50%, rgba(124,58,237,.25) 0%, transparent 65%);
     }
-    @keyframes slowzoom { from { transform: scale(1.05); } to { transform: scale(1.0); } }
-    .hero-overlay {
-      position: absolute; inset: 0;
-      background: linear-gradient(to right, rgba(26,25,24,0.80) 0%, rgba(26,25,24,0.45) 100%);
-    }
-    .hero-content { position: relative; z-index: 2; padding: 0 8%; max-width: 820px; }
-    .hero-tag {
-      display: inline-block;
-      font-size: .72rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
-      margin-bottom: 1.75rem;
-    }
-    .hero h1 {
-      font-size: clamp(2.4rem, 5.5vw, 4.5rem);
-      font-weight: 800; line-height: 1.07;
-      color: #fff; letter-spacing: -2px; margin-bottom: 1.5rem;
-    }
-    .hero p {
-      font-size: clamp(1rem, 1.6vw, 1.15rem);
-      color: rgba(255,255,255,0.65); max-width: 480px;
-      line-height: 1.8; margin-bottom: 2.5rem; font-weight: 400;
-    }
-    .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .btn-hero {
-      padding: .85rem 2rem; border-radius: 6px;
-      font-size: .95rem; font-weight: 600;
-      text-decoration: none; transition: all .2s;
-      display: inline-flex; align-items: center; gap: .5rem;
-    }
-    .btn-hero-primary { background: #fff; color: var(--dark); }
-    .btn-hero-primary:hover { background: #f0ede8; }
-    .btn-hero-ghost { background: transparent; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.3); }
-    .btn-hero-ghost:hover { background: rgba(255,255,255,0.08); }
-    .hero-scroll {
-      position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: .5rem;
-      color: rgba(255,255,255,0.35); font-size: .68rem; letter-spacing: 2px; text-transform: uppercase;
-    }
-    .hero-scroll-line {
-      width: 1px; height: 36px;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.35), transparent);
-      animation: scrollpulse 2s ease-in-out infinite;
-    }
-    @keyframes scrollpulse { 0%,100% { opacity: .35; } 50% { opacity: .8; } }
+    .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; position: relative; z-index: 1; }
+    .hero-eyebrow { display: inline-block; background: rgba(124,58,237,.25); color: #c4b5fd; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: .35rem .9rem; border-radius: 20px; margin-bottom: 1.25rem; border: 1px solid rgba(124,58,237,.35); }
+    .hero h1 { font-size: clamp(2.4rem, 4.5vw, 3.8rem); font-weight: 900; color: #fff; line-height: 1.1; letter-spacing: -.03em; margin-bottom: 1.25rem; }
+    .hero h1 span { color: #c4b5fd; }
+    .hero-sub { font-size: 1.05rem; color: rgba(255,255,255,.7); line-height: 1.7; max-width: 460px; margin-bottom: 2rem; }
+    .hero-btns { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .btn-primary { background: var(--accent); color: #fff; padding: .85rem 1.75rem; border-radius: 10px; font-size: 1rem; font-weight: 700; text-decoration: none; display: inline-block; transition: all .2s; border: none; cursor: pointer; }
+    .btn-primary:hover { background: #6d28d9; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,58,237,.4); }
+    .btn-ghost { background: rgba(255,255,255,.1); color: #fff; padding: .85rem 1.75rem; border-radius: 10px; font-size: 1rem; font-weight: 600; text-decoration: none; display: inline-block; transition: all .2s; border: 1px solid rgba(255,255,255,.2); }
+    .btn-ghost:hover { background: rgba(255,255,255,.18); }
+    .hero-trust { font-size: .78rem; color: rgba(255,255,255,.45); display: flex; gap: 1.25rem; flex-wrap: wrap; }
+    .hero-trust span::before { content: '✓ '; color: #86efac; }
+
+    /* CHAT MOCKUP */
+    .chat-mockup { background: #fff; border-radius: 20px; box-shadow: 0 24px 64px rgba(0,0,0,.35); overflow: hidden; max-width: 360px; margin-left: auto; }
+    .chat-mockup-header { background: var(--accent2); padding: 1rem 1.25rem; display: flex; align-items: center; gap: .75rem; }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .chat-header-text { color: #fff; }
+    .chat-header-name { font-weight: 700; font-size: .9rem; }
+    .chat-header-status { font-size: .72rem; opacity: .65; margin-top: .1rem; }
+    .chat-msgs { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+    .msg { max-width: 85%; padding: .65rem .9rem; border-radius: 14px; font-size: .82rem; line-height: 1.5; }
+    .msg.bot { background: #f3f4f6; color: #111; border-bottom-left-radius: 4px; align-self: flex-start; }
+    .msg.user { background: var(--accent2); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
+    .msg-time { font-size: .68rem; color: #aaa; margin-top: .2rem; }
+    .msg.user .msg-time { text-align: right; }
+    .chat-lead-capture { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: .75rem 1rem; margin: .5rem 1rem 1rem; font-size: .78rem; color: #15803d; font-weight: 600; }
+    .chat-input-row { padding: .75rem 1rem; border-top: 1px solid #f0f0f0; display: flex; gap: .5rem; }
+    .chat-input-fake { flex: 1; background: #f3f4f6; border-radius: 8px; padding: .5rem .75rem; font-size: .8rem; color: #aaa; }
 
     /* ── STATS BAR ── */
-    .stats-bar {
-      background: var(--bg-warm);
-      padding: 2.5rem 8%;
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .stat { text-align: center; }
-    .stat-num { font-size: 2rem; font-weight: 800; color: var(--dark); letter-spacing: -1px; }
-    .stat-label { font-size: .78rem; color: var(--muted); margin-top: .25rem; font-weight: 400; }
+    .stats-bar { background: var(--card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .stats-bar-inner { max-width: 1200px; margin: 0 auto; padding: 1.75rem 6%; display: grid; grid-template-columns: repeat(4,1fr); gap: 2rem; }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 900; color: var(--accent); letter-spacing: -.03em; }
+    .stat-label { font-size: .8rem; color: var(--muted); margin-top: .2rem; font-weight: 500; }
 
-    /* ── SECTION HELPERS ── */
-    section { padding: 100px 8%; }
-    .section-eyebrow {
-      font-size: .7rem; font-weight: 600; color: var(--green);
-      text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1rem;
-    }
-    .section-title { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 800; color: var(--dark); line-height: 1.1; letter-spacing: -1px; margin-bottom: 1rem; }
-    .section-sub { font-size: 1rem; color: var(--muted); line-height: 1.8; max-width: 480px; font-weight: 400; }
+    /* ── SECTIONS ── */
+    section { padding: 96px 6%; }
+    .section-inner { max-width: 1200px; margin: 0 auto; }
+    .eyebrow { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent); margin-bottom: .75rem; }
+    h2 { font-size: clamp(1.75rem, 3vw, 2.6rem); font-weight: 900; line-height: 1.15; letter-spacing: -.03em; margin-bottom: 1rem; }
+    .section-sub { font-size: 1rem; color: var(--muted); max-width: 540px; line-height: 1.7; margin-bottom: 3rem; }
+    .text-center { text-align: center; }
+    .text-center .section-sub { margin-left: auto; margin-right: auto; }
+    .section-cta { text-align: center; margin-top: 2.5rem; }
 
-    /* ── SERVICES ── */
-    .services-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 1px; background: var(--border);
-      margin-top: 4rem; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
-    }
-    .service { background: var(--bg); padding: 2.75rem 2.25rem; transition: background .2s; }
-    .service:hover { background: #faf9f6; }
-    .service-icon {
-      font-size: 1.4rem; margin-bottom: 1.5rem;
-      width: 48px; height: 48px; border-radius: 10px;
-      background: var(--bg-warm); display: flex; align-items: center; justify-content: center;
-    }
-    .service-title { font-size: 1rem; font-weight: 700; color: var(--dark); margin-bottom: .65rem; }
-    .service-desc { font-size: .875rem; color: var(--muted); line-height: 1.75; }
-    .service-tag {
-      display: inline-block; margin-top: 1.25rem;
-      font-size: .68rem; font-weight: 600; color: var(--green);
-      background: var(--green-light); padding: .3rem .75rem; border-radius: 4px; letter-spacing: .5px;
-    }
+    /* ── INDUSTRIES ── */
+    .industry-badges { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin-top: 1.25rem; }
+    .industry-badge { background: var(--card); border: 1px solid var(--border); border-radius: 30px; padding: .5rem 1.1rem; font-size: .82rem; font-weight: 600; color: var(--mid); display: flex; align-items: center; gap: .4rem; }
+
+    /* ── HOW IT WORKS ── */
+    .how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+    .steps { display: flex; flex-direction: column; gap: 2rem; }
+    .step { display: flex; gap: 1.25rem; align-items: flex-start; }
+    .step-num { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .85rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .step-content h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: .3rem; }
+    .step-content p { font-size: .88rem; color: var(--muted); line-height: 1.65; }
+    .portal-preview { background: var(--card); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.08); overflow: hidden; border: 1px solid var(--border); }
+    .portal-topbar { background: var(--dark); padding: .75rem 1rem; display: flex; gap: .4rem; }
+    .portal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .portal-body { padding: 1.25rem; }
+    .portal-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    .portal-tab { font-size: .75rem; font-weight: 600; padding: .35rem .85rem; border-radius: 6px; cursor: default; }
+    .portal-tab.active { background: var(--accent); color: #fff; }
+    .portal-tab:not(.active) { background: var(--bg); color: var(--muted); }
+    .portal-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; margin-bottom: 1rem; }
+    .portal-stat { background: var(--bg); border-radius: 8px; padding: .75rem; text-align: center; }
+    .portal-stat-num { font-size: 1.3rem; font-weight: 800; color: var(--dark); }
+    .portal-stat-label { font-size: .65rem; color: var(--muted); margin-top: .15rem; }
+    .portal-lead { background: var(--bg); border-radius: 8px; padding: .75rem; font-size: .78rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+    .portal-lead-name { font-weight: 600; }
+    .portal-lead-time { color: var(--muted); font-size: .7rem; }
+    .new-badge { background: #fef3c7; color: #b45309; font-size: .62rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; }
+
+    /* ── FEATURES ── */
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .feature-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.75rem; transition: box-shadow .2s, transform .2s; }
+    .feature-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,.07); transform: translateY(-2px); }
+    .feature-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+    .feature-card p { font-size: .85rem; color: var(--muted); line-height: 1.65; }
+    .feature-tag { display: inline-block; background: #ede9fe; color: var(--accent); font-size: .68rem; font-weight: 700; padding: .15rem .5rem; border-radius: 4px; margin-top: .75rem; }
 
     /* ── DEMO CHAT ── */
-    .demo-section { background: var(--bg-warm); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
-    .demo-features { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
-    .demo-feat { display: flex; gap: 1.25rem; align-items: flex-start; }
-    .demo-feat-num {
-      width: 28px; height: 28px; border-radius: 50%;
-      border: 1.5px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: .75rem; font-weight: 700; color: var(--mid); flex-shrink: 0;
-    }
-    .demo-feat-title { font-size: .9rem; font-weight: 700; color: var(--dark); margin-bottom: .2rem; }
-    .demo-feat-desc { font-size: .82rem; color: var(--muted); line-height: 1.65; }
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+    .demo-points { display: flex; flex-direction: column; gap: 1.5rem; }
+    .demo-point { display: flex; gap: 1rem; align-items: flex-start; }
+    .demo-point-icon { width: 40px; height: 40px; border-radius: 10px; background: #ede9fe; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .demo-point h3 { font-size: .95rem; font-weight: 700; margin-bottom: .25rem; }
+    .demo-point p { font-size: .83rem; color: var(--muted); line-height: 1.6; }
 
-    /* Chat Widget */
-    .chat-widget {
-      background: var(--bg); border-radius: 16px;
-      box-shadow: 0 8px 40px rgba(26,25,24,.10), 0 2px 8px rgba(26,25,24,.06);
-      overflow: hidden; max-width: 360px; margin: 0 auto;
-      border: 1px solid var(--border);
-    }
-    .chat-header {
-      background: var(--dark); padding: 1rem 1.25rem;
-      display: flex; align-items: center; gap: .75rem;
-    }
-    .chat-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      display: flex; align-items: center; justify-content: center; font-size: 1rem;
-    }
-    .chat-header-name { font-size: .875rem; font-weight: 700; color: #fff; }
-    .chat-header-status { font-size: .7rem; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: .35rem; }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #86efac; }
-    .chat-messages {
-      height: 300px; overflow-y: auto; padding: 1rem;
-      display: flex; flex-direction: column; gap: .75rem; background: #faf9f7;
-    }
-    .chat-messages::-webkit-scrollbar { width: 3px; }
-    .chat-messages::-webkit-scrollbar-track { background: transparent; }
-    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-    .cm { max-width: 86%; }
-    .cm.user { align-self: flex-end; }
-    .cm.bot  { align-self: flex-start; }
-    .cm-bubble {
-      padding: .65rem .9rem; border-radius: 12px;
-      font-size: .8rem; line-height: 1.55;
-    }
-    .cm.user .cm-bubble { background: var(--dark); color: #fff; border-bottom-right-radius: 3px; }
-    .cm.bot  .cm-bubble { background: #fff; color: var(--dark); border: 1px solid var(--border); border-bottom-left-radius: 3px; font-weight: 500; }
-    .cm-time { font-size: .62rem; color: var(--muted); margin-top: .25rem; }
-    .cm.user .cm-time { text-align: right; }
-    .chat-input-bar {
-      padding: .75rem 1rem; border-top: 1px solid var(--border);
-      display: flex; gap: .5rem; background: var(--bg);
-    }
-    .chat-input-bar input {
-      flex: 1; border: 1px solid var(--border); border-radius: 6px;
-      padding: .5rem .75rem; font-size: .8rem; outline: none; font-family: inherit; color: var(--muted);
-      background: var(--bg-warm);
-    }
-    .chat-send {
-      width: 34px; height: 34px; border-radius: 6px;
-      background: var(--dark); border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; color: #fff; font-size: .85rem;
-    }
-    .chat-powered { text-align: center; font-size: .62rem; color: var(--border); padding: .4rem; background: var(--bg-warm); letter-spacing: .5px; }
-
-    /* ── HOW + PORTAL ── */
-    .how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
-    .how-steps { display: flex; flex-direction: column; gap: 2.5rem; margin-top: 3rem; }
-    .how-step { display: flex; gap: 1.5rem; align-items: flex-start; }
-    .how-step-num {
-      width: 32px; height: 32px; border-radius: 50%;
-      border: 1.5px solid var(--border); color: var(--mid);
-      font-size: .8rem; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; margin-top: .1rem;
-    }
-    .how-step-title { font-size: .95rem; font-weight: 700; color: var(--dark); margin-bottom: .3rem; }
-    .how-step-desc { font-size: .875rem; color: var(--muted); line-height: 1.7; }
-
-    /* Portal preview */
-    .usecase-visual {
-      background: var(--dark); border-radius: 16px;
-      overflow: hidden; box-shadow: 0 20px 60px rgba(26,25,24,.15);
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .uc-tabs {
-      display: flex; background: rgba(255,255,255,0.04);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-    }
-    .uc-tab {
-      padding: .75rem 1.25rem;
-      font-size: .72rem; font-weight: 600; color: rgba(255,255,255,0.35);
-      cursor: pointer; transition: color .2s; border-bottom: 1.5px solid transparent;
-      user-select: none; letter-spacing: .5px;
-    }
-    .uc-tab.active { color: rgba(255,255,255,0.85); border-bottom-color: rgba(255,255,255,0.4); }
-    .uc-body { padding: 1.5rem; }
-    .uc-label { font-size: .65rem; color: rgba(255,255,255,0.3); margin-bottom: .75rem; text-transform: uppercase; letter-spacing: 1.5px; }
-    .uc-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-    .uc-stat { text-align: center; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 1rem; }
-    .uc-stat-val { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -.5px; }
-    .uc-stat-lbl { font-size: .65rem; color: rgba(255,255,255,0.35); margin-top: .2rem; }
-    .uc-lead-list { display: flex; flex-direction: column; gap: .5rem; }
-    .uc-lead {
-      background: rgba(255,255,255,0.05); border-radius: 8px;
-      padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center;
-    }
-    .uc-lead-name { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,0.8); }
-    .uc-lead-sub { font-size: .68rem; color: rgba(255,255,255,0.35); margin-top: .1rem; }
-    .uc-badge { font-size: .62rem; font-weight: 700; padding: .25rem .6rem; border-radius: 4px; }
-    .uc-badge.new  { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
-    .uc-badge.sent { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }
-    .uc-badge.hot  { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.45); }
+    /* ── INDUSTRIES SECTION ── */
+    .industry-scroll { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .industry-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; transition: border-color .2s, box-shadow .2s; }
+    .industry-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(124,58,237,.1); }
+    .industry-card-icon { font-size: 2rem; margin-bottom: .75rem; }
+    .industry-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .5rem; }
+    .industry-card-ex { font-size: .78rem; color: var(--muted); font-style: italic; line-height: 1.5; }
+    .industry-card-ex::before { content: '"'; }
+    .industry-card-ex::after { content: '"'; }
 
     /* ── TESTIMONIALS ── */
-    .testi-section { background: var(--bg-warm); border-top: 1px solid var(--border); }
-    .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 4rem; }
-    .testi-card {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 12px; padding: 2rem;
-    }
-    .testi-stars { color: var(--dark); font-size: .8rem; margin-bottom: 1rem; letter-spacing: 3px; }
-    .testi-text { font-size: .875rem; line-height: 1.75; color: var(--mid); margin-bottom: 1.5rem; }
-    .testi-author { display: flex; align-items: center; gap: .75rem; }
-    .testi-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: var(--bg-alt);
-      display: flex; align-items: center; justify-content: center;
-      font-size: .875rem; font-weight: 700; color: var(--mid);
-    }
-    .testi-name { font-size: .875rem; font-weight: 700; color: var(--dark); }
-    .testi-company { font-size: .75rem; color: var(--muted); }
+    .testimonials-section { background: var(--dark); }
+    .testimonials-section h2 { color: #fff; }
+    .testimonials-section .eyebrow { color: #c4b5fd; }
+    .testimonials-section .section-sub { color: rgba(255,255,255,.5); }
+    .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .testimonial-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 1.75rem; }
+    .stars { color: #fbbf24; font-size: 1rem; margin-bottom: 1rem; letter-spacing: 2px; }
+    .testimonial-quote { font-size: .88rem; color: rgba(255,255,255,.8); line-height: 1.7; margin-bottom: 1.25rem; font-style: italic; }
+    .testimonial-author { font-size: .82rem; color: #fff; font-weight: 700; }
+    .testimonial-title { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: .2rem; }
 
     /* ── PRICING ── */
-    .pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 4rem; max-width: 800px; }
-    .price-card {
-      border-radius: 12px; padding: 2.5rem;
-      border: 1px solid var(--border);
-      transition: box-shadow .2s;
-      position: relative;
-    }
-    .price-card:hover { box-shadow: 0 8px 32px rgba(26,25,24,.08); }
-    .price-card.featured { background: var(--dark); border-color: var(--dark); }
-    .price-badge {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      background: var(--dark); color: #fff;
-      font-size: .68rem; font-weight: 700; letter-spacing: 1px;
-      padding: .3rem 1rem; border-radius: 4px; white-space: nowrap; text-transform: uppercase;
-    }
-    .price-tag { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 1rem; }
-    .price-card.featured .price-tag { color: rgba(255,255,255,0.4); }
-    .price-name { font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: .5rem; }
-    .price-card.featured .price-name { color: #fff; }
-    .price-amount { font-size: 2.5rem; font-weight: 900; color: var(--dark); letter-spacing: -1.5px; line-height: 1; margin: 1rem 0 .25rem; }
-    .price-card.featured .price-amount { color: #fff; }
-    .price-amount sup { font-size: 1.1rem; font-weight: 700; vertical-align: top; margin-top: .5rem; }
-    .price-period { font-size: .78rem; color: var(--muted); margin-bottom: .5rem; }
-    .price-card.featured .price-period { color: rgba(255,255,255,0.4); }
-    .price-setup { font-size: .78rem; color: var(--muted); margin-bottom: 1.75rem; padding-bottom: 1.75rem; border-bottom: 1px solid var(--border); }
-    .price-card.featured .price-setup { color: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.1); }
-    .price-features { list-style: none; display: flex; flex-direction: column; gap: .8rem; }
-    .price-features li { font-size: .875rem; color: var(--mid); display: flex; gap: .75rem; align-items: flex-start; }
-    .price-card.featured .price-features li { color: rgba(255,255,255,0.7); }
-    .price-check { color: var(--green); font-weight: 700; flex-shrink: 0; }
-    .price-card.featured .price-check { color: rgba(255,255,255,0.5); }
+    .pricing-section { background: var(--bg); }
+    .pricing-trust { display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 2.5rem; flex-wrap: wrap; }
+    .pricing-trust span { font-size: .82rem; color: var(--green); font-weight: 600; }
+    .pricing-trust span::before { content: '✓ '; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 3rem; }
+    .pricing-card { background: var(--card); border: 2px solid var(--border); border-radius: 20px; padding: 2rem; position: relative; }
+    .pricing-card.featured { background: var(--accent2); border-color: var(--accent2); color: #fff; transform: scale(1.03); }
+    .popular-badge { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; font-size: .72rem; font-weight: 800; padding: .3rem 1rem; border-radius: 20px; white-space: nowrap; }
+    .plan-name { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: .5rem; }
+    .pricing-card.featured .plan-name { color: rgba(255,255,255,.6); }
+    .plan-price { font-size: 2.2rem; font-weight: 900; letter-spacing: -.04em; margin-bottom: .2rem; }
+    .plan-period { font-size: .78rem; color: var(--muted); margin-bottom: .4rem; }
+    .pricing-card.featured .plan-period { color: rgba(255,255,255,.5); }
+    .plan-trial { font-size: .75rem; color: var(--green); font-weight: 700; margin-bottom: 1.5rem; }
+    .pricing-card.featured .plan-trial { color: #86efac; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1.75rem; }
+    .plan-features li { font-size: .85rem; color: var(--mid); display: flex; gap: .5rem; align-items: flex-start; }
+    .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: .05rem; }
+    .pricing-card.featured .plan-features li { color: rgba(255,255,255,.8); }
+    .pricing-card.featured .plan-features li::before { color: #86efac; }
+    .plan-btn { display: block; text-align: center; background: var(--accent); color: #fff; padding: .85rem; border-radius: 10px; font-weight: 700; font-size: .92rem; text-decoration: none; transition: opacity .2s; }
+    .plan-btn:hover { opacity: .88; }
+    .pricing-card.featured .plan-btn { background: #fff; color: var(--accent2); }
+    .pricing-objections { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; }
+    .pricing-objection h4 { font-size: .88rem; font-weight: 700; margin-bottom: .35rem; }
+    .pricing-objection p { font-size: .82rem; color: var(--muted); line-height: 1.6; }
 
-    /* ── CTA ── */
-    .cta-section { text-align: center; background: var(--green); }
-    .cta-section .section-eyebrow { color: rgba(255,255,255,0.5); }
-    .cta-section h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 800; color: #fff; letter-spacing: -1px; margin-bottom: 1rem; }
-    .cta-section p { font-size: 1rem; color: rgba(255,255,255,0.6); margin-bottom: 2.5rem; }
-    .btn-cta {
-      display: inline-flex; align-items: center; gap: .6rem;
-      background: #fff; color: var(--green);
-      padding: 1rem 2.5rem; border-radius: 6px;
-      font-size: .95rem; font-weight: 700;
-      text-decoration: none; transition: all .2s;
-    }
-    .btn-cta:hover { background: #f5f4f0; }
+    /* ── FAQ ── */
+    .faq-list { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: .75rem; }
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .faq-q { padding: 1.1rem 1.25rem; font-size: .92rem; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 1rem; user-select: none; }
+    .faq-q:hover { background: var(--bg); }
+    .faq-icon { font-size: 1.1rem; color: var(--muted); flex-shrink: 0; transition: transform .2s; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-a { padding: 0 1.25rem; max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s; font-size: .87rem; color: var(--muted); line-height: 1.7; }
+    .faq-item.open .faq-a { max-height: 200px; padding: 0 1.25rem 1.1rem; }
+
+    /* ── FINAL CTA ── */
+    .final-cta { background: linear-gradient(135deg, #4c1d95, #1e1b4b); text-align: center; padding: 96px 6%; }
+    .final-cta .eyebrow { color: #c4b5fd; }
+    .final-cta h2 { color: #fff; margin-bottom: 1rem; }
+    .final-cta p { color: rgba(255,255,255,.6); font-size: 1rem; max-width: 480px; margin: 0 auto 2rem; line-height: 1.7; }
+    .btn-white { background: #fff; color: var(--accent2); padding: 1rem 2.25rem; border-radius: 10px; font-size: 1rem; font-weight: 800; text-decoration: none; display: inline-block; transition: all .2s; }
+    .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+    .final-trust { display: flex; gap: 1.5rem; justify-content: center; margin-top: 1.25rem; flex-wrap: wrap; }
+    .final-trust span { font-size: .78rem; color: rgba(255,255,255,.4); }
+    .final-trust span::before { content: '✓ '; color: #86efac; }
 
     /* ── FOOTER ── */
-    footer {
-      padding: 2.5rem 8%; background: #111;
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 1.5rem;
-    }
-    .footer-logo { font-size: 1.1rem; font-weight: 900; color: rgba(255,255,255,0.5); }
-    .footer-links { display: flex; gap: 2rem; }
-    .footer-links a { font-size: .78rem; color: rgba(255,255,255,0.25); text-decoration: none; transition: color .2s; }
-    .footer-links a:hover { color: rgba(255,255,255,0.6); }
-    .footer-copy { font-size: .75rem; color: rgba(255,255,255,0.18); }
+    footer { background: var(--dark); color: rgba(255,255,255,.5); padding: 3rem 6% 2rem; }
+    .footer-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 3rem; margin-bottom: 2rem; }
+    .footer-logo { font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: .5rem; }
+    .footer-tagline { font-size: .82rem; line-height: 1.6; }
+    .footer-col h4 { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: rgba(255,255,255,.35); margin-bottom: 1rem; }
+    .footer-col a { display: block; font-size: .85rem; color: rgba(255,255,255,.5); text-decoration: none; margin-bottom: .5rem; transition: color .2s; }
+    .footer-col a:hover { color: #fff; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,.07); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; font-size: .78rem; }
 
-    @media (max-width: 900px) {
-      .demo-grid, .how-grid { grid-template-columns: 1fr; }
-      .testi-grid { grid-template-columns: 1fr; }
+    /* ── MOBILE STICKY CTA ── */
+    .mobile-sticky { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90; background: #fff; padding: .75rem 1.25rem; box-shadow: 0 -2px 16px rgba(0,0,0,.1); border-top: 1px solid var(--border); }
+    .mobile-sticky a { display: block; background: var(--accent); color: #fff; text-align: center; padding: .85rem; border-radius: 10px; font-weight: 700; font-size: .95rem; text-decoration: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1024px) {
+      .features-grid { grid-template-columns: repeat(2,1fr); }
+      .industry-scroll { grid-template-columns: repeat(2,1fr); }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+      .pricing-card.featured { transform: none; }
+      .pricing-objections { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 768px) {
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .services-grid { grid-template-columns: 1fr; }
-      .pricing-grid { grid-template-columns: 1fr; }
-      .nav-links a:not(.nav-login) { display: none; }
+      section { padding: 64px 5%; }
+      .nav-links { display: none; }
+      .mobile-menu-btn { display: block; }
+      .hero-inner { grid-template-columns: 1fr; }
+      .chat-mockup { display: none; }
+      .how-grid { grid-template-columns: 1fr; }
+      .portal-preview { display: none; }
+      .demo-grid { grid-template-columns: 1fr; }
+      .testimonials-grid { grid-template-columns: 1fr; }
+      .stats-bar-inner { grid-template-columns: repeat(2,1fr); }
+      .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+      .mobile-sticky { display: block; }
+      body { padding-bottom: 72px; }
     }
   </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav id="navbar">
-  <a href="/" class="nav-logo">NexOlsen</a>
+<!-- ── NAVIGATION ── -->
+<nav id="mainNav">
+  <a href="/app/index.html" class="nav-logo">NexOlsen</a>
   <div class="nav-links">
-    <a href="#ydelser">Ydelser</a>
-    <a href="#demo">Demo</a>
+    <a href="#funktioner">Funktioner</a>
+    <a href="#brancher">Brancher</a>
     <a href="#priser">Priser</a>
-    <a href="#kontakt">Kontakt</a>
-    <a href="/login" class="nav-login">Log ind →</a>
+    <a href="/app/login.html" class="nav-login">Log ind</a>
+    <a href="https://klaiai.onrender.com/app/onboarding.html" class="nav-cta">Start gratis →</a>
   </div>
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
 </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-bg"></div>
-  <div class="hero-overlay"></div>
-  <div class="hero-content">
-    <div class="hero-tag">AI-agenter til danske SMV'er</div>
-    <h1>Din virksomhed<br>arbejder 24/7<br>— uden ekstra folk</h1>
-    <p>NexOlsen installerer AI-agenter der svarer kunder, følger op på leads og tager imod bookinger. Automatisk. Hele døgnet.</p>
-    <div class="hero-cta">
-      <a href="#kontakt" class="btn-hero btn-hero-primary">Få en gratis demo →</a>
-      <a href="#demo" class="btn-hero btn-hero-ghost">Se det i praksis</a>
+<!-- ── HERO ── -->
+<section class="hero" id="hero">
+  <div class="hero-inner">
+    <div>
+      <span class="hero-eyebrow">AI-chatbot til danske virksomheder — 14 dages gratis prøveperiode</span>
+      <h1>Din chatbot svarer kunder<br><span>— mens du sover</span></h1>
+      <p class="hero-sub">NexOlsen giver din virksomhed en AI-assistent der fanger leads, tager bookinger og sender opfølgningsmails automatisk. 24/7. Ingen teknisk viden kræves.</p>
+      <div class="hero-btns">
+        <a href="https://klaiai.onrender.com/app/onboarding.html" class="btn-primary">Start din gratis prøveperiode →</a>
+        <a href="#demo" class="btn-ghost">Se hvordan det virker ↓</a>
+      </div>
+      <div class="hero-trust">
+        <span>Ingen kreditkort kræves</span>
+        <span>Klar på 10 minutter</span>
+        <span>Opsig når som helst</span>
+      </div>
     </div>
-  </div>
-  <div class="hero-scroll">
-    <div class="hero-scroll-line"></div>
-    Scroll
+    <div>
+      <div class="chat-mockup">
+        <div class="chat-mockup-header">
+          <div class="chat-avatar">✂️</div>
+          <div class="chat-header-text">
+            <div class="chat-header-name">Mia — Solskin Frisørsalon</div>
+            <div class="chat-header-status">● Online — svarer straks</div>
+          </div>
+        </div>
+        <div class="chat-msgs">
+          <div>
+            <div class="msg bot">Hej! 👋 Klar til en ny frisure? Book en tid eller stil mig et spørgsmål 😊</div>
+            <div class="msg-time">10:32</div>
+          </div>
+          <div style="align-self:flex-end">
+            <div class="msg user">Hvad koster et hårklip til herre?</div>
+            <div class="msg-time" style="text-align:right">10:33</div>
+          </div>
+          <div>
+            <div class="msg bot">Et herreklip koster <strong>259 kr</strong> og tager ca. 30 min. Vi har ledige tider allerede i morgen — vil du booke? 📅</div>
+            <div class="msg-time">10:33</div>
+          </div>
+          <div style="align-self:flex-end">
+            <div class="msg user">Ja gerne, kl. 10?</div>
+            <div class="msg-time" style="text-align:right">10:34</div>
+          </div>
+          <div>
+            <div class="msg bot">Perfekt! Hvad er dit navn og mobilnummer, så sender jeg en bekræftelse? 😊</div>
+            <div class="msg-time">10:34</div>
+          </div>
+        </div>
+        <div class="chat-lead-capture">✓ Lead fanget — sendes til din indbakke</div>
+        <div class="chat-input-row">
+          <div class="chat-input-fake">Skriv en besked...</div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- STATS -->
+<!-- ── STATS BAR ── -->
 <div class="stats-bar">
-  <div class="stat"><div class="stat-num">24/7</div><div class="stat-label">Kunderservice uden pause</div></div>
-  <div class="stat"><div class="stat-num">&lt;10s</div><div class="stat-label">Svartid på henvendelser</div></div>
-  <div class="stat"><div class="stat-num">10 min</div><div class="stat-label">Fra aftale til live</div></div>
-  <div class="stat"><div class="stat-num">0 kr</div><div class="stat-label">Ekstra personaleomkostninger</div></div>
+  <div class="stats-bar-inner">
+    <div class="stat-item">
+      <div class="stat-num">24/7</div>
+      <div class="stat-label">Aktiv for dine kunder</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">10 min</div>
+      <div class="stat-label">Fra tilmelding til live</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">7</div>
+      <div class="stat-label">Branche-skabeloner klar</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">14 dage</div>
+      <div class="stat-label">Gratis, ingen binding</div>
+    </div>
+  </div>
 </div>
 
-<!-- SERVICES -->
-<section id="ydelser">
-  <div class="section-eyebrow">Ydelser</div>
-  <div class="section-title">Tre agenter.<br>Ét abonnement.</div>
-  <p class="section-sub">Vælg de agenter der passer til din forretning. Alt leveres som en samlet løsning — vi klarer hele opsætningen.</p>
-  <div class="services-grid">
-    <div class="service">
-      <div class="service-icon">💬</div>
-      <div class="service-title">AI Chatbot</div>
-      <div class="service-desc">Svarer øjeblikkeligt på kundespørgsmål om priser, ydelser, åbningstider og meget mere — på dit website, døgnet rundt. Konfigureret med præcis din virksomheds viden.</div>
-      <div class="service-tag">Svar på under 3 sekunder</div>
-    </div>
-    <div class="service">
-      <div class="service-icon">🎯</div>
-      <div class="service-title">Lead-opfølgning</div>
-      <div class="service-desc">Når en kunde sender en forespørgsel, svarer AI'en personligt inden for sekunder. Herefter sendes automatiske opfølgningsmails de næste dage — helt uden du løfter en finger.</div>
-      <div class="service-tag">Op til 3× flere konverteringer</div>
-    </div>
-    <div class="service">
-      <div class="service-icon">📅</div>
-      <div class="service-title">Booking-agent</div>
-      <div class="service-desc">Lad kunderne booke tid direkte på hjemmesiden. Bekræftelsesmails sendes automatisk. Ingen telefoner, ingen manuelle indtastninger — bookinger falder bare ind.</div>
-      <div class="service-tag">Integrerer med din kalender</div>
+<!-- ── INDUSTRY TRUST ── -->
+<section style="padding: 48px 6%; background: var(--card); border-bottom: 1px solid var(--border);">
+  <div class="section-inner text-center">
+    <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:1.25rem">Brugt af virksomheder på tværs af Danmark</div>
+    <div class="industry-badges">
+      <div class="industry-badge">✂️ Frisørvirksomheder</div>
+      <div class="industry-badge">🦷 Tandlæger</div>
+      <div class="industry-badge">🔨 Håndværkere</div>
+      <div class="industry-badge">🍽️ Restauranter</div>
+      <div class="industry-badge">🏠 Ejendomsmæglere</div>
+      <div class="industry-badge">🧹 Rengøring</div>
+      <div class="industry-badge">🏊 Pool & Spa</div>
     </div>
   </div>
 </section>
 
-<!-- LIVE DEMO CHATBOT -->
-<section class="demo-section" id="demo">
-  <div class="demo-grid">
-    <div>
-      <div class="section-eyebrow">Live demo</div>
-      <div class="section-title">Sådan oplever dine kunder det</div>
-      <p class="section-sub">Chatbotten kender din forretning — åbningstider, priser, ydelser og FAQ. Den svarer på sekunder, på dansk, præcis som du ville gøre det selv.</p>
-      <div class="demo-features">
-        <div class="demo-feat">
-          <div class="demo-feat-num">1</div>
-          <div>
-            <div class="demo-feat-title">Trænet på din viden</div>
-            <div class="demo-feat-desc">Du giver os info om din virksomhed — chatbotten svarer præcist, og kun på det den ved.</div>
+<!-- ── HOW IT WORKS ── -->
+<section style="background:var(--bg)" id="funktioner">
+  <div class="section-inner">
+    <div class="how-grid">
+      <div>
+        <div class="eyebrow">Sådan virker det</div>
+        <h2>Live på 10 minutter.<br>Selv.</h2>
+        <p class="section-sub" style="margin-bottom:2rem">Intet at installere. Ingen udvikler. Du tilmelder dig, vælger brancheskabelon, og chatbotten er klar på din hjemmeside.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Opret konto — gratis i 14 dage</h3>
+              <p>Vælg din brancheskabelon og udfyld dine virksomhedsoplysninger. Chatbotten kender allerede de typiske spørgsmål i din branche.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Sæt én linje kode ind</h3>
+              <p>Kopiér et enkelt script-tag ind på din hjemmeside. Virker med WordPress, Squarespace, Wix og alle andre platforme. Eller send os linjen — vi hjælper.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Leads, bookinger og mails kører selv</h3>
+              <p>Du modtager notifikationer. Chatbotten håndterer resten: svarer kunder, fanger leads, sender opfølgningsmails og rapporterer til dig hver uge.</p>
+            </div>
           </div>
         </div>
-        <div class="demo-feat">
-          <div class="demo-feat-num">2</div>
-          <div>
-            <div class="demo-feat-title">Virker på alle platforme</div>
-            <div class="demo-feat-desc">WordPress, Shopify, Squarespace — ét script-tag og den virker.</div>
-          </div>
-        </div>
-        <div class="demo-feat">
-          <div class="demo-feat-num">3</div>
-          <div>
-            <div class="demo-feat-title">Du ser alle samtaler</div>
-            <div class="demo-feat-desc">I din personlige portal kan du følge med i alle chatsamtaler, leads og bookinger.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="chat-widget">
-        <div class="chat-header">
-          <div class="chat-avatar">🤖</div>
-          <div>
-            <div class="chat-header-name">HaldEl AI-assistent</div>
-            <div class="chat-header-status"><span class="status-dot"></span> Online nu</div>
-          </div>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-          <div class="cm bot">
-            <div class="cm-bubble">Hej! Jeg er HaldEls AI-assistent. Hvad kan jeg hjælpe dig med i dag?</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm user">
-            <div class="cm-bubble">Hvad koster det at få lavet en ny elinstallation?</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm bot">
-            <div class="cm-bubble">Prisen afhænger af opgavens størrelse og omfang. Vi tilbyder altid et gratis uforpligtende tilbud. Du er velkommen til at ringe på 86 12 34 56 eller udfylde vores kontaktformular — så kontakter vi dig inden for 24 timer.</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm user">
-            <div class="cm-bubble">Arbejder I i hele Aarhus-området?</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm bot">
-            <div class="cm-bubble">Ja! Vi dækker hele Aarhus og omegn — inkl. Risskov, Viby, Brabrand, Hasselager og Beder. Har du en adresse vi ikke er sikre på, ringer vi gerne og bekræfter det.</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm user">
-            <div class="cm-bubble">Har I åbent i weekenden?</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm bot">
-            <div class="cm-bubble">Vi har åbent mandag–fredag kl. 7–16. Akutopgaver i weekenden kan aftales — ring på 86 12 34 56 og vi ser hvad vi kan gøre.</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm user">
-            <div class="cm-bubble">Hvor hurtigt kan I komme ud?</div>
-            <div class="cm-time">Nu</div>
-          </div>
-          <div class="cm bot">
-            <div class="cm-bubble">Ved normale opgaver er vi typisk fremme inden 2–3 hverdage. Akutopkald samme dag kan ofte arrangeres — bare ring til os direkte.</div>
-            <div class="cm-time">Nu</div>
-          </div>
-        </div>
-        <div class="chat-input-bar">
-          <input type="text" placeholder="Skriv en besked..." readonly/>
-          <button class="chat-send">→</button>
-        </div>
-        <div class="chat-powered">Drevet af NexOlsen</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS + PORTAL PREVIEW -->
-<section>
-  <div class="how-grid">
-    <div>
-      <div class="section-eyebrow">Sådan virker det</div>
-      <div class="section-title">Op og køre på 10 minutter</div>
-      <div class="how-steps">
-        <div class="how-step">
-          <div class="how-step-num">1</div>
-          <div>
-            <div class="how-step-title">Vi sætter det op for dig</div>
-            <div class="how-step-desc">Du sender os info om din virksomhed. Vi konfigurerer AI-agenterne med præcis din viden — priser, ydelser, FAQ, åbningstider.</div>
-          </div>
-        </div>
-        <div class="how-step">
-          <div class="how-step-num">2</div>
-          <div>
-            <div class="how-step-title">Én linje kode på din hjemmeside</div>
-            <div class="how-step-desc">Du kopierer et script-tag ind. Det virker på WordPress, Shopify og alle andre platforme — ingen udvikler nødvendig.</div>
-          </div>
-        </div>
-        <div class="how-step">
-          <div class="how-step-num">3</div>
-          <div>
-            <div class="how-step-title">AI'en arbejder — du følger med</div>
-            <div class="how-step-desc">Se alle leads, bookinger og chatsamtaler i din personlige portal. Du griber kun ind når kunden er klar til at købe.</div>
-          </div>
+        <div style="margin-top:2rem">
+          <a href="https://klaiai.onrender.com/app/onboarding.html" class="btn-primary">Kom i gang gratis →</a>
         </div>
       </div>
-    </div>
-
-    <div class="usecase-visual">
-      <div class="uc-tabs">
-        <div class="uc-tab active" onclick="showTab('leads',this)">Leads</div>
-        <div class="uc-tab" onclick="showTab('stats',this)">Statistik</div>
-      </div>
-      <div class="uc-body" id="tab-leads">
-        <div class="uc-label">Nye leads i dag</div>
-        <div class="uc-lead-list">
-          <div class="uc-lead">
-            <div><div class="uc-lead-name">Søren Kirkegaard</div><div class="uc-lead-sub">Ny elinstallation · Aarhus C</div></div>
-            <div class="uc-badge new">Ny</div>
+      <div>
+        <div class="portal-preview">
+          <div class="portal-topbar">
+            <div class="portal-dot" style="background:#ff5f57"></div>
+            <div class="portal-dot" style="background:#febc2e"></div>
+            <div class="portal-dot" style="background:#28c840"></div>
           </div>
-          <div class="uc-lead">
-            <div><div class="uc-lead-name">Lene Andersen</div><div class="uc-lead-sub">Skiftepanel · Viby J</div></div>
-            <div class="uc-badge sent">Mail sendt</div>
+          <div class="portal-body">
+            <div class="portal-tabs">
+              <div class="portal-tab active">Overblik</div>
+              <div class="portal-tab">Leads</div>
+              <div class="portal-tab">Rapport</div>
+            </div>
+            <div class="portal-stats">
+              <div class="portal-stat">
+                <div class="portal-stat-num" style="color:var(--accent)">47</div>
+                <div class="portal-stat-label">Leads</div>
+              </div>
+              <div class="portal-stat">
+                <div class="portal-stat-num" style="color:#16a34a">12</div>
+                <div class="portal-stat-label">Bookinger</div>
+              </div>
+              <div class="portal-stat">
+                <div class="portal-stat-num">2</div>
+                <div class="portal-stat-label">Agenter</div>
+              </div>
+            </div>
+            <div style="font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:.5rem">Seneste leads</div>
+            <div class="portal-lead">
+              <div>
+                <div class="portal-lead-name">Mikkel Hansen</div>
+                <div class="portal-lead-time">Spørger om pris på herreklip</div>
+              </div>
+              <div class="new-badge">NY</div>
+            </div>
+            <div class="portal-lead">
+              <div>
+                <div class="portal-lead-name">Sofie Møller</div>
+                <div class="portal-lead-time">Vil booke tid til farve</div>
+              </div>
+              <div class="new-badge">NY</div>
+            </div>
+            <div class="portal-lead" style="opacity:.5">
+              <div>
+                <div class="portal-lead-name">Lars Thomsen</div>
+                <div class="portal-lead-time">Spurgte om åbningstider</div>
+              </div>
+            </div>
           </div>
-          <div class="uc-lead">
-            <div><div class="uc-lead-name">Thomas Holm</div><div class="uc-lead-sub">Akutopkald · Brabrand</div></div>
-            <div class="uc-badge hot">Varmt lead</div>
-          </div>
-          <div class="uc-lead">
-            <div><div class="uc-lead-name">Birgitte Møller</div><div class="uc-lead-sub">Eleftersyn · Risskov</div></div>
-            <div class="uc-badge sent">Mail sendt</div>
-          </div>
-        </div>
-      </div>
-      <div class="uc-body" id="tab-stats" style="display:none;">
-        <div class="uc-stat-row">
-          <div class="uc-stat"><div class="uc-stat-val">47</div><div class="uc-stat-lbl">Chats i dag</div></div>
-          <div class="uc-stat"><div class="uc-stat-val">12</div><div class="uc-stat-lbl">Nye leads</div></div>
-          <div class="uc-stat"><div class="uc-stat-val">3</div><div class="uc-stat-lbl">Bookinger</div></div>
-        </div>
-        <div class="uc-label">Mest stillede spørgsmål</div>
-        <div class="uc-lead-list">
-          <div class="uc-lead"><div><div class="uc-lead-name">Priser på installation</div></div><div class="uc-badge new">18×</div></div>
-          <div class="uc-lead"><div><div class="uc-lead-name">Åbningstider</div></div><div class="uc-badge sent">11×</div></div>
-          <div class="uc-lead"><div><div class="uc-lead-name">Dækningsområde</div></div><div class="uc-badge sent">9×</div></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- TESTIMONIALS -->
-<section class="testi-section">
-  <div class="section-eyebrow">Kunder</div>
-  <div class="section-title">Hvad vores kunder siger</div>
-  <div class="testi-grid">
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <div class="testi-text">Vi fik sat NexOlsen op på vores hjemmeside på under en time. Nu svarer chatbotten automatisk på alle de spørgsmål vi før brugte timer på at besvare pr. mail.</div>
-      <div class="testi-author">
-        <div class="testi-avatar">M</div>
-        <div><div class="testi-name">Morten Hald</div><div class="testi-company">HaldEl · Elektriker i Aarhus</div></div>
+<!-- ── DEMO / FEATURES ── -->
+<section style="background:var(--card)" id="demo">
+  <div class="section-inner">
+    <div class="demo-grid">
+      <div>
+        <div class="eyebrow">Live demo</div>
+        <h2>Se hvad dine kunder oplever</h2>
+        <p class="section-sub">Chatbotten kender din branche fra dag ét — og svarer præcist som du ville gøre det selv.</p>
+        <div class="demo-points">
+          <div class="demo-point">
+            <div class="demo-point-icon">🧠</div>
+            <div>
+              <h3>Konfigureret med din viden</h3>
+              <p>Priser, ydelser, åbningstider og FAQ er indbygget fra start. Chatbotten svarer kun på det du har godkendt — aldrig med forkerte oplysninger.</p>
+            </div>
+          </div>
+          <div class="demo-point">
+            <div class="demo-point-icon">🎯</div>
+            <div>
+              <h3>Fanger leads automatisk</h3>
+              <p>Når en kunde er interesseret, opsamles navn, email og telefon — og opfølgningsmailen sendes af sig selv. Du lukker ordren, AI'en varmer den op.</p>
+            </div>
+          </div>
+          <div class="demo-point">
+            <div class="demo-point-icon">🔒</div>
+            <div>
+              <h3>Du ejer alle data</h3>
+              <p>Alle samtaler og leads vises i dit dashboard. GDPR-kompatibelt og sikkert. Eksportér dine data til enhver tid.</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <div class="testi-text">Bookingagenten har sparet os for mindst 2 timer om dagen. Kunderne booker selv, får bekræftelse på sekunder — og vi slipper for telefoner i arbejdstiden.</div>
-      <div class="testi-author">
-        <div class="testi-avatar">A</div>
-        <div><div class="testi-name">Anne Svendsen</div><div class="testi-company">Svendsen Fysioterapi · Odense</div></div>
-      </div>
-    </div>
-    <div class="testi-card">
-      <div class="testi-stars">★★★★★</div>
-      <div class="testi-text">Lead-agenten begyndte at sende opfølgningsmails samme dag vi gik live. Inden for ugen havde vi lukket tre nye ordrer som ellers ville være druknet i indbakken.</div>
-      <div class="testi-author">
-        <div class="testi-avatar">K</div>
-        <div><div class="testi-name">Kasper Juhl</div><div class="testi-company">Juhl Tømrer & Snedker · Vejle</div></div>
+      <div>
+        <div class="chat-mockup" style="max-width:100%">
+          <div class="chat-mockup-header">
+            <div class="chat-avatar">🔧</div>
+            <div class="chat-header-text">
+              <div class="chat-header-name">Viktor — Juhl VVS & El</div>
+              <div class="chat-header-status">● Online — svarer straks</div>
+            </div>
+          </div>
+          <div class="chat-msgs">
+            <div>
+              <div class="msg bot">Hej! 👋 Har du brug for en håndværker? Beskriv opgaven, så giver vi dig et hurtigt svar.</div>
+              <div class="msg-time">14:12</div>
+            </div>
+            <div style="align-self:flex-end">
+              <div class="msg user">Kan I komme og kigge på et badeværelse der skal renoveres?</div>
+              <div class="msg-time" style="text-align:right">14:13</div>
+            </div>
+            <div>
+              <div class="msg bot">Ja, det laver vi meget af! Vi giver altid et <strong>gratis tilbud</strong> inden vi starter. Hvornår passer det dig at vi kigger forbi? 🏠</div>
+              <div class="msg-time">14:13</div>
+            </div>
+            <div style="align-self:flex-end">
+              <div class="msg user">Næste uge passer godt</div>
+              <div class="msg-time" style="text-align:right">14:14</div>
+            </div>
+            <div>
+              <div class="msg bot">Perfekt! Hvad er dit navn, adresse og telefonnummer? Så booker vi et besøg til næste uge. 📋</div>
+              <div class="msg-time">14:14</div>
+            </div>
+          </div>
+          <div class="chat-lead-capture">✓ Lead fanget — booking sendt til din kalender</div>
+          <div class="chat-input-row">
+            <div class="chat-input-fake">Skriv en besked...</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- PRICING -->
-<section id="priser">
-  <div class="section-eyebrow">Priser</div>
-  <div class="section-title">Enkle priser.<br>Ingen overraskelser.</div>
-  <p class="section-sub">Fast månedlig pris. Ingen binding. Opsætning inkluderet — vi klarer det hele.</p>
-  <div class="pricing-grid">
-    <div class="price-card">
-      <div class="price-tag">Starter</div>
-      <div class="price-name">Kom godt i gang</div>
-      <div class="price-amount"><sup>kr</sup>5.500</div>
-      <div class="price-period">per måned ekskl. moms</div>
-      <div class="price-setup">+ 9.995 kr i opsætning</div>
-      <ul class="price-features">
-        <li><span class="price-check">✓</span> AI Chatbot på din hjemmeside</li>
-        <li><span class="price-check">✓</span> Lead-opfølgning (3 automatiske mails)</li>
-        <li><span class="price-check">✓</span> Klientportal med live overblik</li>
-        <li><span class="price-check">✓</span> Opsætning og konfiguration inkluderet</li>
-        <li><span class="price-check">✓</span> Support via email</li>
-      </ul>
+<!-- ── FEATURES GRID ── -->
+<section style="background:var(--bg)">
+  <div class="section-inner">
+    <div class="text-center">
+      <div class="eyebrow">Hvad du får</div>
+      <h2>Alt hvad din virksomhed behøver</h2>
+      <p class="section-sub">Ikke bare en chatbot. Et komplet system der håndterer kundekontakt fra første spørgsmål til bekræftet aftale.</p>
     </div>
-    <div class="price-card featured">
-      <div class="price-badge">Mest populær</div>
-      <div class="price-tag">Vækst</div>
-      <div class="price-name">Fuld pakke</div>
-      <div class="price-amount"><sup>kr</sup>9.500</div>
-      <div class="price-period">per måned ekskl. moms</div>
-      <div class="price-setup">+ 14.995 kr i opsætning</div>
-      <ul class="price-features">
-        <li><span class="price-check">✓</span> Alt i Starter</li>
-        <li><span class="price-check">✓</span> Booking-agent med kalenderintegration</li>
-        <li><span class="price-check">✓</span> Månedlige performance-rapporter</li>
-        <li><span class="price-check">✓</span> Løbende optimering af AI-svar</li>
-        <li><span class="price-check">✓</span> Prioriteret telefonsupport</li>
-      </ul>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Svarer kunder hele døgnet</h3>
+        <p>Din chatbot er aldrig syg, holder ikke ferie og husker altid at svare. Kunder får svar på sekunder — selv klokken 23.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Ingen leads forsvinder</h3>
+        <p>Alle interesserede kunder registreres automatisk med navn, kontaktinfo og hvad de vil have. Direkte i dit dashboard.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✉️</div>
+        <h3>Opfølgning sker af sig selv</h3>
+        <p>Systemet sender personlige opfølgningsmails i 1–3 dage efter en henvendelse. Du lukker ordren — AI'en varmer den op.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📅</div>
+        <h3>Bookinger falder bare ind</h3>
+        <p>Kunder kan booke direkte i chatten. Bekræftelse sendes automatisk. Integrerer med Google Kalender.</p>
+        <span class="feature-tag">Fra Pro-plan</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Ugentlig rapport til din indbakke</h3>
+        <p>Hver mandag får du et overblik: antal chats, nye leads, bookinger og de oftest stillede spørgsmål — uden at åbne noget.</p>
+        <span class="feature-tag">Fra Pro-plan</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏪</div>
+        <h3>Klar til din branche fra dag ét</h3>
+        <p>7 brancheskabeloner med det rigtige indhold klar til brug. Frisør, tandlæge, håndværker, restaurant, ejendomsmægler, rengøring og pool & spa.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- CTA -->
-<section class="cta-section" id="kontakt">
-  <div class="section-eyebrow">Kom i gang</div>
-  <h2>Klar til at vinde mere tid<br>og flere kunder?</h2>
-  <p>Book en gratis 30-minutters demo — vi viser dig præcis hvad AI kan gøre for din virksomhed.</p>
-  <a href="mailto:kontakt@klaiai.dk" class="btn-cta">Kontakt os i dag →</a>
+<!-- ── INDUSTRIES ── -->
+<section style="background:var(--card)" id="brancher">
+  <div class="section-inner">
+    <div class="text-center">
+      <div class="eyebrow">Din branche</div>
+      <h2>Bygget til din type virksomhed</h2>
+      <p class="section-sub">Vi ved hvad kunder spørger om hos frisøren, på restauranten og hos håndværkeren. Vores skabeloner er klar til brug — du behøver ikke starte fra nul.</p>
+    </div>
+    <div class="industry-scroll">
+      <div class="industry-card">
+        <div class="industry-card-icon">✂️</div>
+        <h3>Frisør</h3>
+        <div class="industry-card-ex">Hvad koster et hårklip? Har I tid til i morgen?</div>
+      </div>
+      <div class="industry-card">
+        <div class="industry-card-icon">🦷</div>
+        <h3>Tandlæge</h3>
+        <div class="industry-card-ex">Kan I tage imod nye patienter? Hvad koster en undersøgelse?</div>
+      </div>
+      <div class="industry-card">
+        <div class="industry-card-icon">🔨</div>
+        <h3>Håndværker</h3>
+        <div class="industry-card-ex">Kan I komme og se på et badeværelse? Giver I gratis tilbud?</div>
+      </div>
+      <div class="industry-card">
+        <div class="industry-card-icon">🍽️</div>
+        <h3>Restaurant</h3>
+        <div class="industry-card-ex">Er der ledige borde lørdag aften? Har I vegetarmuligheder?</div>
+      </div>
+      <div class="industry-card">
+        <div class="industry-card-icon">🏠</div>
+        <h3>Ejendomsmægler</h3>
+        <div class="industry-card-ex">Hvad er min bolig værd? Hvordan starter jeg en salgsproces?</div>
+      </div>
+      <div class="industry-card">
+        <div class="industry-card-icon">🧹</div>
+        <h3>Rengøring</h3>
+        <div class="industry-card-ex">Hvad koster en kontorrengøring pr. måned? Gør I erhverv?</div>
+      </div>
+      <div class="industry-card">
+        <div class="industry-card-icon">🏊</div>
+        <h3>Pool & Spa</h3>
+        <div class="industry-card-ex">Hvornår har I åbent? Hvad koster installation af en swim spa?</div>
+      </div>
+    </div>
+    <div class="section-cta">
+      <a href="https://klaiai.onrender.com/app/onboarding.html" class="btn-primary">Vælg din branche og start gratis →</a>
+    </div>
+  </div>
 </section>
 
-<!-- FOOTER -->
+<!-- ── TESTIMONIALS ── -->
+<section class="testimonials-section">
+  <div class="section-inner">
+    <div class="text-center">
+      <div class="eyebrow">Kunder fortæller</div>
+      <h2>Hvad de siger om NexOlsen</h2>
+      <p class="section-sub">Virksomheder der bruger NexOlsen får leads og bookinger mens de sover.</p>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-quote">"Vi fik sat chatbotten op på 20 minutter. Den dag vi gik live, svarede den på 11 spørgsmål om priser og åbningstider — som jeg selv ville have brugt en time på."</div>
+        <div class="testimonial-author">Morten Hald</div>
+        <div class="testimonial-title">HaldEl · Elektriker, Aarhus</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-quote">"Bookingagenten har sparet os for mindst 2 timer om dagen. Kunderne booker selv og får bekræftelse på sekunder — ingen telefoner i arbejdstiden mere."</div>
+        <div class="testimonial-author">Anne Svendsen</div>
+        <div class="testimonial-title">Svendsen Fysioterapi · Odense</div>
+      </div>
+      <div class="testimonial-card">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-quote">"Opfølgningsmailen virker. Inden for 5 dage lukkede vi tre ordrer fra kunder der ellers bare ville have glemt at ringe tilbage."</div>
+        <div class="testimonial-author">Kasper Juhl</div>
+        <div class="testimonial-title">Juhl Tømrer & Snedker · Vejle</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section class="pricing-section" id="priser">
+  <div class="section-inner">
+    <div class="text-center">
+      <div class="eyebrow">Priser</div>
+      <h2>Enkle priser. Ingen binding.<br>Ingen overraskelser.</h2>
+      <p class="section-sub">Start gratis i 14 dage — ingen kreditkort kræves. Abonnér når du er klar.</p>
+    </div>
+    <div class="pricing-trust">
+      <span>14 dages gratis prøveperiode</span>
+      <span>Ingen binding</span>
+      <span>Opsig til enhver tid</span>
+      <span>Ingen kreditkort kræves ved opstart</span>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">799 kr</div>
+        <div class="plan-period">per måned ekskl. moms</div>
+        <div class="plan-trial">14 dages gratis prøveperiode</div>
+        <ul class="plan-features">
+          <li>AI Chatbot 24/7</li>
+          <li>Lead-opsamling og gemning</li>
+          <li>Email-notifikationer ved nye leads</li>
+          <li>1 brancheskabelon inkluderet</li>
+          <li>Support via chat</li>
+        </ul>
+        <a href="https://klaiai.onrender.com/app/onboarding.html" class="plan-btn">Start gratis →</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="popular-badge">Mest populær</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">1.499 kr</div>
+        <div class="plan-period">per måned ekskl. moms</div>
+        <div class="plan-trial">14 dages gratis prøveperiode</div>
+        <ul class="plan-features">
+          <li>Alt i Starter</li>
+          <li>Bookingsystem med kalenderintegration</li>
+          <li>Automatisk lead-mail opfølgning (3 mails)</li>
+          <li>Ugentlig AI-rapport til e-mail</li>
+          <li>Prioriteret support</li>
+        </ul>
+        <a href="https://klaiai.onrender.com/app/onboarding.html" class="plan-btn">Start gratis →</a>
+      </div>
+      <div class="pricing-card">
+        <div class="plan-name">Vækst</div>
+        <div class="plan-price">2.499 kr</div>
+        <div class="plan-period">per måned ekskl. moms</div>
+        <div class="plan-trial">14 dages gratis prøveperiode</div>
+        <ul class="plan-features">
+          <li>Alt i Pro</li>
+          <li>AI Insights analyse</li>
+          <li>Branche-research AI</li>
+          <li>Genopvarmnings-agent</li>
+          <li>Dedikeret onboarding-assistance</li>
+        </ul>
+        <a href="https://klaiai.onrender.com/app/onboarding.html" class="plan-btn">Start gratis →</a>
+      </div>
+    </div>
+    <div class="pricing-objections">
+      <div class="pricing-objection">
+        <h4>Kræves kreditkort for at starte?</h4>
+        <p>Nej. Du tilmelder dig med e-mail og går i gang med det samme. Kreditkort kræves kun når du aktiverer dit abonnement efter prøveperioden.</p>
+      </div>
+      <div class="pricing-objection">
+        <h4>Kan jeg opgradere eller nedgradere?</h4>
+        <p>Ja. Du kan skifte plan når som helst direkte i dit dashboard. Ingen gebyrer, ingen ventetid.</p>
+      </div>
+      <div class="pricing-objection">
+        <h4>Hvad sker der når prøveperioden udløber?</h4>
+        <p>Du vælger selv om du vil aktivere et abonnement. Vi minder dig et par dage i forvejen — ingen automatisk opkrævning.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section style="background:var(--card)">
+  <div class="section-inner">
+    <div class="text-center" style="margin-bottom:2.5rem">
+      <div class="eyebrow">Spørgsmål & svar</div>
+      <h2>Det spurgte du sikkert om</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Skal jeg have teknisk viden for at sætte det op? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Nej. Onboarding tager 10 minutter og kræver ingen kodning. Du udfylder dine virksomhedsoplysninger, vælger brancheskabelon og kopierer én linje kode ind på din hjemmeside. Har du brug for hjælp, sidder vi klar.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Virker det på min hjemmeside? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Ja. NexOlsen virker på alle platforme — WordPress, Squarespace, Wix, Webflow, Shopify og mere. Du sætter et enkelt script-tag ind, og det virker med det samme.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Hvad sker der med mine kunders data? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Alle data opbevares sikkert og er GDPR-kompatible. Dine leads og chatdata tilhører dig — du kan eksportere dem til enhver tid.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Kan chatbotten forstå specifikke spørgsmål om min virksomhed? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Ja. Under opsætning angiver du priser, ydelser, åbningstider og andet. Chatbotten svarer kun på det du har godkendt — den finder aldrig på svar.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Kan jeg prøve det uden at binde mig? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Ja, 14 dage gratis — ingen kreditkort, ingen binding. Du bestemmer selv om du fortsætter. Ingen automatisk opkrævning når prøveperioden udløber.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Hvad sker der hvis chatbotten ikke kan svare? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Chatbotten informerer kunden om at du vender tilbage og sender dig en notifikation. Den svarer aldrig med forkerte eller opdigtede oplysninger.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Kan jeg tilpasse chatbottens udseende? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Ja. Du vælger farver, navn og velkomsttekst under opsætningen, så den matcher din virksomheds identitet. Du kan også ændre det når som helst i dit dashboard.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Hvad koster det at komme i gang? <span class="faq-icon">+</span></div>
+        <div class="faq-a">Ingenting de første 14 dage. Ingen oprettelsesgebyr, ingen setup-pris, ingen kreditkort. Herefter fra 799 kr/md — og du kan opsige med én måneds varsel.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ── -->
+<section class="final-cta">
+  <div class="eyebrow">Klar til at komme i gang?</div>
+  <h2>Din chatbot er klar<br>på 10 minutter</h2>
+  <p>14 dages gratis prøveperiode. Ingen kreditkort. Ingen binding. Opret konto nu og se det virke.</p>
+  <a href="https://klaiai.onrender.com/app/onboarding.html" class="btn-white">Start din gratis prøveperiode →</a>
+  <div class="final-trust">
+    <span>Gratis i 14 dage</span>
+    <span>Klar på 10 min</span>
+    <span>Ingen kreditkort kræves</span>
+    <span>Opsig når som helst</span>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
 <footer>
-  <div class="footer-logo">NexOlsen</div>
-  <div class="footer-links">
-    <a href="#ydelser">Ydelser</a>
-    <a href="#priser">Priser</a>
-    <a href="mailto:kontakt@klaiai.dk">kontakt@klaiai.dk</a>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-logo">NexOlsen</div>
+      <div class="footer-tagline">AI-chatbot til danske SMV'er.<br>Klar på 10 minutter. Ingen binding.</div>
+    </div>
+    <div class="footer-col">
+      <h4>Produkt</h4>
+      <a href="#funktioner">Funktioner</a>
+      <a href="#brancher">Brancher</a>
+      <a href="#priser">Priser</a>
+      <a href="https://klaiai.onrender.com/app/onboarding.html">Kom i gang gratis</a>
+    </div>
+    <div class="footer-col">
+      <h4>Konto</h4>
+      <a href="/app/login.html">Log ind</a>
+      <a href="https://klaiai.onrender.com/app/onboarding.html">Opret konto</a>
+      <a href="mailto:support@nexolsen.dk">support@nexolsen.dk</a>
+    </div>
   </div>
-  <div class="footer-copy">© 2026 NexOlsen · AI-agenter til danske virksomheder</div>
+  <div class="footer-bottom">
+    <div>© 2026 NexOlsen · GDPR-kompatibel · Dansk virksomhed</div>
+    <div style="display:flex;gap:1.5rem">
+      <a href="#" style="color:rgba(255,255,255,.3);text-decoration:none;font-size:.78rem">Privatlivspolitik</a>
+      <a href="#" style="color:rgba(255,255,255,.3);text-decoration:none;font-size:.78rem">Handelsbetingelser</a>
+    </div>
+  </div>
 </footer>
 
-<script>
-  const navbar = document.getElementById('navbar');
-  window.addEventListener('scroll', () => {
-    navbar.classList.toggle('scrolled', window.scrollY > 60);
-  });
-  function showTab(tab, el) {
-    document.getElementById('tab-leads').style.display = tab === 'leads' ? '' : 'none';
-    document.getElementById('tab-stats').style.display = tab === 'stats' ? '' : 'none';
-    document.querySelectorAll('.uc-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-  }
-  const cm = document.getElementById('chatMessages');
-  if (cm) cm.scrollTop = cm.scrollHeight;
-</script>
+<!-- ── MOBILE STICKY CTA ── -->
+<div class="mobile-sticky">
+  <a href="https://klaiai.onrender.com/app/onboarding.html">Start gratis — 14 dage gratis prøveperiode →</a>
+</div>
 
+<script>
+// Nav scroll
+window.addEventListener('scroll', () => {
+  document.getElementById('mainNav').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// FAQ accordion
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// Mobile menu (simpel toggle)
+function toggleMobileMenu() {
+  const links = document.querySelector('.nav-links');
+  if (links.style.display === 'flex') {
+    links.style.display = '';
+  } else {
+    links.style.cssText = 'display:flex; flex-direction:column; position:fixed; top:72px; left:0; right:0; background:#fff; padding:1.5rem 6%; gap:1rem; box-shadow:0 4px 16px rgba(0,0,0,.1); z-index:99;';
+    links.querySelectorAll('a').forEach(a => { a.style.color = '#1a1918'; a.style.fontSize = '1rem'; });
+  }
+}
+</script>
 </body>
 </html>
