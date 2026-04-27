@@ -202,6 +202,7 @@
         <button type="button" class="tpl-btn" data-nøgle="restaurant" onclick="vælgSkabelon('restaurant', this)">🍽️ Restaurant</button>
         <button type="button" class="tpl-btn" data-nøgle="ejendomsmaeger" onclick="vælgSkabelon('ejendomsmaeger', this)">🏠 Ejendomsmægler</button>
         <button type="button" class="tpl-btn" data-nøgle="rengøring" onclick="vælgSkabelon('rengøring', this)">🧹 Rengøring</button>
+        <button type="button" class="tpl-btn" data-nøgle="haandvaerker" onclick="vælgSkabelon('haandvaerker', this)">🔨 Håndværker</button>
       </div>
       <div style="font-size:.75rem;color:var(--muted);margin-top:.5rem">Skabelonen udfylder felterne nedenfor — du kan ændre alt bagefter.</div>
     </div>
@@ -519,6 +520,15 @@ const SKABELONER = {
     velkomst: 'Hej! 👋 Overvejer du at sælge, købe eller leje? Jeg er klar til at hjælpe dig.',
     aabning: 'Man–fre 9–17, lørdag efter aftale',
     ekstra_viden: 'Kunder spørger ofte om: gratis vurdering af bolig, salærsatser, markedsforhold, tid fra udbud til salg, hvad der sker ved boligkøb, og om vi hjælper med boligsøgning.'
+  },
+  haandvaerker: {
+    branche: 'Håndværker',
+    beskrivelse: 'Vi er en erfaren håndværkervirksomhed med speciale i el, VVS, murer- og tømrerarbejde. Vi løser alt fra mindre reparationer til større renoveringsprojekter for private og erhverv.',
+    ydelser: 'El-installationer, VVS, murværk, tømrerarbejde, badeværelsesrenovering, køkkenrenovering, tagarbejde, malerarbejde, gulvlægning',
+    chatbot_navn: 'Viktor',
+    velkomst: 'Hej! 👋 Har du brug for en håndværker? Beskriv opgaven, så giver vi dig et hurtigt svar.',
+    aabning: 'Man–fre 7–16, akutte opgaver døgnet rundt',
+    ekstra_viden: 'Kunder spørger ofte om: prisoverslag på opgaver, ventetid på besøg, om vi giver gratis tilbud, hvilke fagområder vi dækker, om vi er autoriserede (el og VVS), og om vi arbejder med forsikringsskader.'
   },
   rengøring: {
     branche: 'Rengøring',
