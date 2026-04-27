@@ -103,6 +103,14 @@
     .btn-pay:hover { background: #0a1a4a; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
 
+    /* BRANCHE-SKABELONER */
+    .template-strip { margin-bottom: 1.5rem; }
+    .template-strip-label { font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: .6rem; text-transform: uppercase; letter-spacing: .5px; }
+    .template-btns { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .tpl-btn { border: 1.5px solid var(--border); background: #fff; color: var(--text); border-radius: 20px; padding: .4rem 1rem; font-size: .83rem; font-weight: 500; cursor: pointer; transition: all .15s; font-family: inherit; }
+    .tpl-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .tpl-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
     /* SUCCESS */
     .success-screen { text-align: center; padding: 3rem 1rem; }
     .success-icon { font-size: 4rem; margin-bottom: 1rem; }
@@ -184,6 +192,20 @@
   <div class="step-panel" id="step-2">
     <h1>Om din virksomhed</h1>
     <p class="step-desc">Disse oplysninger bruges til at tilpasse din chatbot.</p>
+
+    <div class="template-strip">
+      <div class="template-strip-label">Kom hurtigt i gang — vælg en brancheskabelon</div>
+      <div class="template-btns">
+        <button type="button" class="tpl-btn" data-nøgle="pool_spa" onclick="vælgSkabelon('pool_spa', this)">🏊 Pool & Spa</button>
+        <button type="button" class="tpl-btn" data-nøgle="frisoer" onclick="vælgSkabelon('frisoer', this)">✂️ Frisør</button>
+        <button type="button" class="tpl-btn" data-nøgle="tandlaege" onclick="vælgSkabelon('tandlaege', this)">🦷 Tandlæge</button>
+        <button type="button" class="tpl-btn" data-nøgle="restaurant" onclick="vælgSkabelon('restaurant', this)">🍽️ Restaurant</button>
+        <button type="button" class="tpl-btn" data-nøgle="ejendomsmaeger" onclick="vælgSkabelon('ejendomsmaeger', this)">🏠 Ejendomsmægler</button>
+        <button type="button" class="tpl-btn" data-nøgle="rengøring" onclick="vælgSkabelon('rengøring', this)">🧹 Rengøring</button>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.5rem">Skabelonen udfylder felterne nedenfor — du kan ændre alt bagefter.</div>
+    </div>
+
     <div class="form-group">
       <label>Virksomhedsnavn *</label>
       <input type="text" id="s2_navn" placeholder="Fx. Berle Pool & Spa"/>
@@ -220,6 +242,10 @@
     <div class="form-group">
       <label>Dine ydelser / produkter</label>
       <textarea id="s2_ydelser" placeholder="Fx. Stålbassiner, pool tilbehør, rengøring..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Ekstra viden til chatbot</label>
+      <textarea id="s2_ekstra_viden" placeholder="Fx. FAQ, særlige tilbud, vigtig info som chatbotten skal kende..."></textarea>
     </div>
     <div class="form-group">
       <label>Kontaktinfo (til chatbot)</label>
@@ -448,6 +474,78 @@ function forrige() {
 
 const planNavne = { starter: 'Starter – 799 kr/md', pro: 'Pro – 1.499 kr/md', vaekst: 'Vækst – 2.499 kr/md' };
 
+const SKABELONER = {
+  pool_spa: {
+    branche: 'Pool og spa',
+    beskrivelse: 'Vi er specialister i pool- og spainstallationer samt vedligeholdelse. Vi hjælper private og erhvervskunder med alt fra stålbassiner og swim spas til vandpleje og servicepakker.',
+    ydelser: 'Stålbassiner, swim spa, udendørs jacuzzi, poolrengøring, vandanalyse, servicetjek, tilbehør og kemikalier',
+    chatbot_navn: 'Alma',
+    velkomst: 'Hej! 👋 Drømmer du om din egen pool eller spa? Jeg hjælper dig gerne – hvad kan jeg gøre for dig?',
+    aabning: 'Man–fre 9–17, lørdag 10–14',
+    ekstra_viden: 'Kunder spørger ofte om: installation af stålbassin vs. betonbassin, prisoverslag, vedligeholdelsesabonnement, vinterdækning af pool, og hvilke kemikalier der bruges til vandpleje.'
+  },
+  frisoer: {
+    branche: 'Frisør',
+    beskrivelse: 'Vi er en moderne frisørsalon med fokus på klipning, farvebehandlinger og hårpleje til hele familien.',
+    ydelser: 'Herreklip, dameklip, børneklip, farve, highlights, balayage, keratin-behandling, skæg og barbering',
+    chatbot_navn: 'Mia',
+    velkomst: 'Hej! 👋 Klar til en ny frisure? Book en tid eller stil mig et spørgsmål 😊',
+    aabning: 'Man–fre 9–18, lørdag 9–15, søndag lukket',
+    ekstra_viden: 'Kunder spørger ofte om: priser på klip og farve, om der kræves booking, ventetid, om vi arbejder med specifikke hårmærker, gavekort og parkering.'
+  },
+  tandlaege: {
+    branche: 'Tandlæge',
+    beskrivelse: 'Vi er en moderne tandlægeklinik med fokus på forebyggelse, behandling og tandestetik. Vi tager imod nye patienter.',
+    ydelser: 'Tandeftersyn, røntgen, tandrensning, tandudtrækning, rodbehandling, blegning, tandregulering, implantater, børnetandpleje',
+    chatbot_navn: 'Klara',
+    velkomst: 'Hej! 👋 Jeg kan hjælpe dig med at booke en tid eller svare på spørgsmål om vores behandlinger.',
+    aabning: 'Man–tor 8–16, fredag 8–14',
+    ekstra_viden: 'Kunder spørger ofte om: om vi tager imod nye patienter, sygesikring gruppe 1 og 2, priser på undersøgelse og rensning, akuttider, tandpine, og om vi har børnetandlæge.'
+  },
+  restaurant: {
+    branche: 'Restaurant',
+    beskrivelse: 'Vi er en hyggelig restaurant med fokus på dansk-inspireret mad lavet af friske, lokale råvarer. Vi tilbyder både á la carte og selskabsmenuer.',
+    ydelser: 'Frokost, middag, selskabsarrangementer, catering, take-away, kaffe og kage',
+    chatbot_navn: 'Bo',
+    velkomst: 'Hej og velkommen! 👋 Vil du booke et bord, høre om menuen eller noget helt andet?',
+    aabning: 'Tirsdag–lørdag 12–22, søndag 12–17, mandag lukket',
+    ekstra_viden: 'Kunder spørger ofte om: bordreservation, menukort og dagens ret, allergivenlige retter, mulighed for selskab og privat arrangement, parkering og adresse.'
+  },
+  ejendomsmaeger: {
+    branche: 'Ejendomsmægler',
+    beskrivelse: 'Vi er et lokalt ejendomsmæglerfirma med speciale i boligsalg, vurderinger og udlejning i lokalområdet.',
+    ydelser: 'Boligsalg, gratis vurdering, boligsøgning, udlejning, energimærkning, advokatrådgivning, boligfotografering',
+    chatbot_navn: 'Emma',
+    velkomst: 'Hej! 👋 Overvejer du at sælge, købe eller leje? Jeg er klar til at hjælpe dig.',
+    aabning: 'Man–fre 9–17, lørdag efter aftale',
+    ekstra_viden: 'Kunder spørger ofte om: gratis vurdering af bolig, salærsatser, markedsforhold, tid fra udbud til salg, hvad der sker ved boligkøb, og om vi hjælper med boligsøgning.'
+  },
+  rengøring: {
+    branche: 'Rengøring',
+    beskrivelse: 'Vi leverer professionel rengøring til private hjem, erhverv og boligforeninger. Vi er til at stole på og arbejder med miljøvenlige produkter.',
+    ydelser: 'Hjemmerengøring, erhvervsrengøring, vinduespolering, flytterengøring, trappevask, stofrens, grundig rengøring',
+    chatbot_navn: 'Sara',
+    velkomst: 'Hej! 👋 Vil du have et tilbud på rengøring, eller har du spørgsmål til vores ydelser?',
+    aabning: 'Man–fre 7–16',
+    ekstra_viden: 'Kunder spørger ofte om: priser på fast rengøring vs. engangsvask, om vi medbringer udstyr og rengøringsmidler, om vi er forsikrede, aftaler om nøgle/adgang, og miljøcertificering.'
+  }
+};
+
+function vælgSkabelon(nøgle, el) {
+  const tpl = SKABELONER[nøgle];
+  if (!tpl) return;
+  document.getElementById('s2_branche').value      = tpl.branche;
+  document.getElementById('s2_beskrivelse').value   = tpl.beskrivelse;
+  document.getElementById('s2_ydelser').value       = tpl.ydelser;
+  document.getElementById('s2_ekstra_viden').value  = tpl.ekstra_viden;
+  document.getElementById('s3_navn').value          = tpl.chatbot_navn;
+  document.getElementById('s3_velkomst').value      = tpl.velkomst;
+  document.getElementById('s3_aabning').value       = tpl.aabning;
+  opdaterPreview();
+  document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
 function byggSummary() {
   const box = document.getElementById('summary-box');
   const rows = [
@@ -475,6 +573,7 @@ async function gåTilBetaling() {
     hjemmeside: document.getElementById('s2_website').value,
     platform: document.getElementById('s2_platform').value,
     beskrivelse: document.getElementById('s2_beskrivelse').value,
+    ekstra_viden: document.getElementById('s2_ekstra_viden').value,
     ydelser: document.getElementById('s2_ydelser').value,
     kontakt: document.getElementById('s2_kontakt').value,
     chatbot_navn: document.getElementById('s3_navn').value,
