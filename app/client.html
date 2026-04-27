@@ -307,6 +307,20 @@
           <div class="stat-sub">kører 24/7</div>
         </div>
       </div>
+
+      <!-- KONVERTERINGSDATA -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem" id="konvSektion" class="hidden">
+        <div class="card" style="background:linear-gradient(135deg,#0a2463,#1a3a8f);color:#fff;border:none">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:.5rem">Estimeret omsætning — denne måned</div>
+          <div style="font-size:2rem;font-weight:800;letter-spacing:-1px" id="ovOmsætning">—</div>
+          <div style="font-size:.78rem;opacity:.6;margin-top:.25rem">baseret på dine priser × bookinger</div>
+        </div>
+        <div class="card" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:.5rem">Konverteringsrate</div>
+          <div style="font-size:2rem;font-weight:800;letter-spacing:-1px" id="ovKonvertering">—</div>
+          <div style="font-size:.78rem;opacity:.6;margin-top:.25rem" id="ovKonvSub">leads der blev til bookinger</div>
+        </div>
+      </div>
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
           <div class="card-title" style="margin:0">Seneste leads</div>
@@ -351,6 +365,25 @@
           <button class="send-rapport-btn" id="sendRapportBtn" onclick="sendRapport()">
             ✉ Send pr. mail
           </button>
+        </div>
+      </div>
+
+      <!-- VÆRDIKORT -->
+      <div class="card" id="værdiKort" style="background:linear-gradient(135deg,#0a2463 0%,#1a3a8f 100%);color:#fff;border:none;margin-bottom:1.25rem;display:none">
+        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.5;margin-bottom:.75rem">Din chatbot i tal</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem">
+          <div>
+            <div style="font-size:1.6rem;font-weight:800;letter-spacing:-1px" id="rapOmsætning">—</div>
+            <div style="font-size:.75rem;opacity:.6;margin-top:.15rem">Est. omsætning</div>
+          </div>
+          <div>
+            <div style="font-size:1.6rem;font-weight:800;letter-spacing:-1px" id="rapKonvertering">—</div>
+            <div style="font-size:.75rem;opacity:.6;margin-top:.15rem">Konverteringsrate</div>
+          </div>
+          <div>
+            <div style="font-size:1.6rem;font-weight:800;letter-spacing:-1px" id="rapROI">—</div>
+            <div style="font-size:.75rem;opacity:.6;margin-top:.15rem">ROI vs. abonnement</div>
+          </div>
         </div>
       </div>
 
@@ -555,12 +588,50 @@ async function loadData() {
     document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine NexOlsen-agenter laver for dig.`;
     document.title = `NexOlsen – ${navn}`;
 
-    document.getElementById('ovLeads').textContent = klient?.leads || 0;
-    document.getElementById('ovBookinger').textContent = klient?.bookinger || 0;
+    const leads = klient?.leads || 0;
+    const bookinger = klient?.bookinger || 0;
+    document.getElementById('ovLeads').textContent = leads;
+    document.getElementById('ovBookinger').textContent = bookinger;
     document.getElementById('ovAgenter').textContent = '2';
+
+    // Konverteringsdata
+    beregnKonvertering(leads, bookinger, data.chatbot, klient);
 
     renderAgenter();
   } catch(e) { console.error(e); }
+}
+
+function beregnKonvertering(leads, bookinger, cfg, klient) {
+  if (!leads && !bookinger) return;
+
+  // Estimér gennemsnitspris: brug mdpris fra klient eller standard 2000 kr
+  const mdpris = klient?.mdpris || 0;
+  const gensnPris = mdpris > 0 ? mdpris : 2000;
+  const estOmsætning = bookinger * gensnPris;
+  const planPris = { starter: 799, pro: 1499, vaekst: 2499 }[klient?.plan] || 799;
+  const roi = estOmsætning > 0 ? Math.round(estOmsætning / planPris) : null;
+  const konvRate = leads > 0 ? Math.round((bookinger / leads) * 100) : 0;
+
+  // Overblik-kortene
+  if (bookinger > 0 || leads > 0) {
+    document.getElementById('konvSektion').classList.remove('hidden');
+    document.getElementById('ovOmsætning').textContent = estOmsætning > 0
+      ? estOmsætning.toLocaleString('da-DK') + ' kr'
+      : 'Sæt dine priser';
+    document.getElementById('ovKonvertering').textContent = konvRate + '%';
+    document.getElementById('ovKonvSub').textContent = `${bookinger} af ${leads} leads bookede`;
+  }
+
+  // Rapport-kortet
+  const kort = document.getElementById('værdiKort');
+  if (kort && (bookinger > 0 || leads > 0)) {
+    kort.style.display = 'block';
+    document.getElementById('rapOmsætning').textContent = estOmsætning > 0
+      ? estOmsætning.toLocaleString('da-DK') + ' kr'
+      : '—';
+    document.getElementById('rapKonvertering').textContent = konvRate + '%';
+    document.getElementById('rapROI').textContent = roi ? roi + 'x' : '—';
+  }
 }
 
 // ── LEADS ──────────────────────────────────────────────
@@ -715,6 +786,9 @@ async function loadRapport() {
     const total = rapportData.total_leads || 1;
     const chatbotPct = Math.round((rapportData.kilde?.chatbot || 0) / total * 100);
     document.getElementById('rapChatbot').textContent = `${rapportData.kilde?.chatbot ?? 0} (${chatbotPct}%)`;
+
+    // Opdater konverteringsdata med præcise tal fra rapport
+    beregnKonvertering(rapportData.total_leads ?? 0, rapportData.total_bookinger ?? 0, data.chatbot, data.klient);
 
     renderRapChart(aktivPeriode);
     renderKildeChart();
