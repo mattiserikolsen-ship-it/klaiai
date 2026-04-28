@@ -16,6 +16,8 @@ from sendgrid.helpers.mail import Mail
 from supabase import create_client
 import functools
 import stripe
+import requests as http_requests
+from bs4 import BeautifulSoup
 
 # ── STRIPE ────────────────────────────────────────────
 STRIPE_SECRET_KEY     = os.environ.get('STRIPE_SECRET_KEY', '')
@@ -1597,6 +1599,73 @@ def onboarding_opret():
     if db:
         db.table('klienter').update({'aktiv': True, 'status': 'aktiv'}).eq('id', klient_id).execute()
     return jsonify({'klient_id': klient_id, 'checkout_url': None})
+
+
+@app.route('/scan-hjemmeside', methods=['POST'])
+def scan_hjemmeside():
+    """Scanner en hjemmeside og returnerer struktureret chatbot-konfiguration"""
+    data = request.json
+    url = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'error': 'URL mangler'}), 400
+    if not url.startswith('http'):
+        url = 'https://' + url
+
+    # Hent hjemmesiden
+    try:
+        resp = http_requests.get(url, timeout=10, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; KlarAI-scanner/1.0)'
+        })
+        resp.encoding = resp.apparent_encoding or 'utf-8'
+        html = resp.text
+    except Exception as e:
+        return jsonify({'error': f'Kunne ikke hente siden: {e}'}), 400
+
+    # Rens HTML → ren tekst
+    soup = BeautifulSoup(html, 'html.parser')
+    for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'noscript', 'iframe']):
+        tag.decompose()
+    tekst = ' '.join(soup.get_text(separator=' ').split())[:6000]
+
+    # Send til Claude til analyse
+    prompt = f"""Du er en assistent der hjælper med at opsætte en AI-chatbot for en dansk virksomhed.
+
+Analyser denne tekst fra virksomhedens hjemmeside og udtræk følgende information på dansk.
+Svar KUN med valid JSON i præcis dette format — ingen tekst udenfor JSON:
+
+{{
+  "virksomhed_navn": "...",
+  "beskrivelse": "1-2 sætninger om hvad virksomheden laver og hvem kunderne er",
+  "ydelser": "Kommasepareret liste over ydelser/produkter (max 6)",
+  "priser": "Priser hvis nævnt, ellers tom streng",
+  "aabning": "Åbningstider hvis nævnt, ellers tom streng",
+  "kontakt": "Telefon og/eller email hvis fundet",
+  "chatbot_navn": "Et venligt danskklingende fornavn til chatbotten (ikke virksomhedsnavnet)",
+  "velkomst": "En kort, venlig velkomsttekst på dansk til chatbotten (max 15 ord)",
+  "branche": "Én branche: frisør/tandlæge/håndværker/restaurant/ejendomsmægler/rengøring/pool_spa/andet"
+}}
+
+Hjemmesidetekst:
+{tekst}"""
+
+    try:
+        msg = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=800,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        raw = msg.content[0].text.strip()
+        # Fjern evt. markdown code fences
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        resultat = json.loads(raw)
+        return jsonify({'success': True, 'data': resultat, 'url': url})
+    except json.JSONDecodeError as e:
+        return jsonify({'error': f'Kunne ikke parse AI-svar: {e}', 'raw': raw[:300]}), 500
+    except Exception as e:
+        return jsonify({'error': f'AI-analyse fejlede: {e}'}), 500
 
 
 @app.route('/test-mail', methods=['GET'])

@@ -549,11 +549,17 @@
               </div>
               <div class="form-group full">
                 <label class="form-label">Hjemmeside</label>
-                <input class="form-input" id="nc_website" placeholder="https://firma.dk"/>
+                <div style="display:flex;gap:.5rem">
+                  <input class="form-input" id="nc_website" placeholder="https://firma.dk" style="flex:1"/>
+                  <button type="button" class="btn btn-generate btn-sm" id="scanBtn" onclick="scanHjemmeside()" style="white-space:nowrap;flex-shrink:0">
+                    🔍 Scan side
+                  </button>
+                </div>
+                <div id="scanStatus" style="font-size:.75rem;margin-top:.4rem;color:var(--muted);min-height:1rem"></div>
               </div>
               <div class="form-group full">
                 <label class="form-label">Kort beskrivelse af virksomheden</label>
-                <textarea class="form-input" id="nc_desc" placeholder="Hvad laver de, hvem er kunderne, branche..."></textarea>
+                <textarea class="form-input" id="nc_desc" placeholder="Udfyldes automatisk ved scanning..."></textarea>
               </div>
             </div>
           </div>
@@ -2001,14 +2007,20 @@ function createClient() {
   clients.push(client);
   saveClients();
   syncKlientToDB(client);
-  // Opret standard chatbot config
+  // Opret chatbot config — brug scan-data hvis tilgængeligt
+  const sd = window._scanData || {};
   syncChatbotConfigToDB(client.id, {
-    chatbot_navn: 'Alma',
-    velkomst: `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`,
+    chatbot_navn: sd.chatbot_navn || 'Alma',
+    velkomst: sd.velkomst || `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`,
     farve: '#0a2463',
-    ydelser: client.desc || '',
-    priser: '', kontakt: email, aabning: '', andet: '', ekstra_viden: ''
+    ydelser: sd.ydelser || client.desc || '',
+    priser: sd.priser || '',
+    kontakt: sd.kontakt || email,
+    aabning: sd.aabning || '',
+    andet: '',
+    ekstra_viden: ''
   });
+  window._scanData = null;
 
   // Reset form
   ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris','nc_login_email','nc_login_password'].forEach(id => document.getElementById(id).value = '');
@@ -3240,6 +3252,62 @@ async function initAdmin() {
 }
 
 initAdmin();
+
+// ── HJEMMESIDE SCANNER ────────────────────────────────
+async function scanHjemmeside() {
+  const url = document.getElementById('nc_website').value.trim();
+  if (!url) { alert('Skriv hjemmesideadressen først'); return; }
+
+  const btn = document.getElementById('scanBtn');
+  const status = document.getElementById('scanStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanner...';
+  status.textContent = 'Henter siden og analyserer indhold...';
+  status.style.color = 'var(--muted)';
+
+  try {
+    const res = await fetch(AGENT_URL + '/scan-hjemmeside', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const json = await res.json();
+
+    if (!json.success) {
+      status.textContent = '❌ ' + (json.error || 'Scanning mislykkedes');
+      status.style.color = 'var(--red)';
+      return;
+    }
+
+    const d = json.data;
+    // Udfyld felter
+    if (d.virksomhed_navn) document.getElementById('nc_name').value = d.virksomhed_navn;
+    if (d.beskrivelse) document.getElementById('nc_desc').value = d.beskrivelse;
+
+    // Gem scan-data til chatbot config (bruges ved oprettelse)
+    window._scanData = d;
+
+    status.textContent = '✅ Siden er scannet — felter udfyldt automatisk. Tjek og juster om nødvendigt.';
+    status.style.color = 'var(--green)';
+
+    // Vis hvad der blev fundet
+    const fundne = [];
+    if (d.ydelser) fundne.push('ydelser');
+    if (d.priser) fundne.push('priser');
+    if (d.aabning) fundne.push('åbningstider');
+    if (d.kontakt) fundne.push('kontaktinfo');
+    if (fundne.length > 0) {
+      status.textContent += ` Fandt: ${fundne.join(', ')}.`;
+    }
+
+  } catch(e) {
+    status.textContent = '❌ Netværksfejl — prøv igen';
+    status.style.color = 'var(--red)';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Scan side';
+  }
+}
 
 // ── PLAN VALGT → auto-sæt produkter ──────────────────
 function planValgt() {
