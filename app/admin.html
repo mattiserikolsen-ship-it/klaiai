@@ -2018,7 +2018,7 @@ function createClient() {
     kontakt: sd.kontakt || email,
     aabning: sd.aabning || '',
     andet: '',
-    ekstra_viden: ''
+    ekstra_viden: sd.ekstra_viden || ''
   });
   window._scanData = null;
 
@@ -3287,18 +3287,17 @@ async function scanHjemmeside() {
     // Gem scan-data til chatbot config (bruges ved oprettelse)
     window._scanData = d;
 
-    status.textContent = '✅ Siden er scannet — felter udfyldt automatisk. Tjek og juster om nødvendigt.';
-    status.style.color = 'var(--green)';
-
-    // Vis hvad der blev fundet
+    // Vis status med antal sider og hvad der blev fundet
+    const sider = json.sider_skannet || ['forside'];
     const fundne = [];
     if (d.ydelser) fundne.push('ydelser');
     if (d.priser) fundne.push('priser');
     if (d.aabning) fundne.push('åbningstider');
     if (d.kontakt) fundne.push('kontaktinfo');
-    if (fundne.length > 0) {
-      status.textContent += ` Fandt: ${fundne.join(', ')}.`;
-    }
+    if (d.ekstra_viden) fundne.push('ekstra viden');
+
+    status.innerHTML = `✅ Scannede <strong>${sider.length} side${sider.length !== 1 ? 'r' : ''}</strong> (${sider.join(', ')}) · Fandt: ${fundne.join(', ')}`;
+    status.style.color = 'var(--green)';
 
   } catch(e) {
     status.textContent = '❌ Netværksfejl — prøv igen';

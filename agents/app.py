@@ -1601,9 +1601,71 @@ def onboarding_opret():
     return jsonify({'klient_id': klient_id, 'checkout_url': None})
 
 
+HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; KlarAI-scanner/1.0)'}
+
+# Nøgleord der indikerer vigtige undersider
+VIGTIGE_SIDER = [
+    'ydelser', 'services', 'service', 'priser', 'pris', 'produkter',
+    'om-os', 'om-mig', 'about', 'kontakt', 'contact', 'behandlinger',
+    'behandling', 'menu', 'hvad-vi-tilbyder', 'hvad-tilbyder',
+    'arbejde', 'projekter', 'cases', 'faq', 'sporgsmaal', 'team',
+    'medarbejdere', 'booking', 'book', 'tilbud', 'pakker'
+]
+
+def hent_side_tekst(url, max_tegn=3000):
+    """Henter én side og returnerer renset tekst"""
+    try:
+        resp = http_requests.get(url, timeout=8, headers=HEADERS)
+        resp.encoding = resp.apparent_encoding or 'utf-8'
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        for tag in soup(['script', 'style', 'noscript', 'iframe', 'svg', 'img']):
+            tag.decompose()
+        tekst = ' '.join(soup.get_text(separator=' ').split())
+        return tekst[:max_tegn], soup
+    except:
+        return '', None
+
+def find_vigtige_links(soup, base_url):
+    """Finder interne links til vigtige undersider"""
+    from urllib.parse import urljoin, urlparse
+    base = urlparse(base_url)
+    base_origin = f"{base.scheme}://{base.netloc}"
+    fundne = []
+    seen = set()
+
+    if not soup:
+        return fundne
+
+    for a in soup.find_all('a', href=True):
+        href = a['href'].strip()
+        full = urljoin(base_url, href)
+        parsed = urlparse(full)
+
+        # Kun interne links, ikke ankre, ikke filer
+        if parsed.netloc != base.netloc:
+            continue
+        if parsed.fragment and not parsed.path:
+            continue
+        if any(full.lower().endswith(ext) for ext in ['.pdf','.jpg','.png','.zip','.docx']):
+            continue
+
+        path = parsed.path.lower().strip('/')
+        if path in seen or path == '':
+            continue
+
+        # Check om stien indeholder et vigtigt nøgleord
+        if any(kw in path for kw in VIGTIGE_SIDER):
+            seen.add(path)
+            fundne.append(full)
+            if len(fundne) >= 6:
+                break
+
+    return fundne
+
+
 @app.route('/scan-hjemmeside', methods=['POST'])
 def scan_hjemmeside():
-    """Scanner en hjemmeside og returnerer struktureret chatbot-konfiguration"""
+    """Scanner hjemmeside + vigtige undersider og returnerer struktureret chatbot-konfiguration"""
     data = request.json
     url = (data.get('url') or '').strip()
     if not url:
@@ -1611,57 +1673,67 @@ def scan_hjemmeside():
     if not url.startswith('http'):
         url = 'https://' + url
 
-    # Hent hjemmesiden
-    try:
-        resp = http_requests.get(url, timeout=10, headers={
-            'User-Agent': 'Mozilla/5.0 (compatible; KlarAI-scanner/1.0)'
-        })
-        resp.encoding = resp.apparent_encoding or 'utf-8'
-        html = resp.text
-    except Exception as e:
-        return jsonify({'error': f'Kunne ikke hente siden: {e}'}), 400
+    # Hent forside
+    forside_tekst, soup = hent_side_tekst(url, max_tegn=3000)
+    if not forside_tekst:
+        return jsonify({'error': 'Kunne ikke hente siden — tjek at URL er korrekt og siden er tilgængelig'}), 400
 
-    # Rens HTML → ren tekst
-    soup = BeautifulSoup(html, 'html.parser')
-    for tag in soup(['script', 'style', 'nav', 'footer', 'header', 'noscript', 'iframe']):
-        tag.decompose()
-    tekst = ' '.join(soup.get_text(separator=' ').split())[:6000]
+    # Find og hent vigtige undersider
+    undersider_tekst = ''
+    sider_skannet = ['forside']
+    vigtige_links = find_vigtige_links(soup, url)
+
+    for link in vigtige_links:
+        tekst, _ = hent_side_tekst(link, max_tegn=1500)
+        if tekst:
+            side_navn = link.split('/')[-1] or link.split('/')[-2]
+            undersider_tekst += f"\n\n--- Underside: {side_navn} ---\n{tekst}"
+            sider_skannet.append(side_navn)
+
+    samlet_tekst = forside_tekst + undersider_tekst
 
     # Send til Claude til analyse
     prompt = f"""Du er en assistent der hjælper med at opsætte en AI-chatbot for en dansk virksomhed.
 
-Analyser denne tekst fra virksomhedens hjemmeside og udtræk følgende information på dansk.
+Analyser denne tekst fra virksomhedens hjemmeside (forside + {len(vigtige_links)} undersider) og udtræk ALT tilgængelig information.
+Vær grundig — hellere for meget end for lidt i felterne.
 Svar KUN med valid JSON i præcis dette format — ingen tekst udenfor JSON:
 
 {{
-  "virksomhed_navn": "...",
-  "beskrivelse": "1-2 sætninger om hvad virksomheden laver og hvem kunderne er",
-  "ydelser": "Kommasepareret liste over ydelser/produkter (max 6)",
-  "priser": "Priser hvis nævnt, ellers tom streng",
-  "aabning": "Åbningstider hvis nævnt, ellers tom streng",
-  "kontakt": "Telefon og/eller email hvis fundet",
+  "virksomhed_navn": "Virksomhedens fulde navn",
+  "beskrivelse": "2-4 sætninger om hvad virksomheden laver, hvem kunderne er og hvad der gør dem særlige",
+  "ydelser": "Detaljeret liste over alle ydelser/produkter/behandlinger — adskilt med komma. Vær specifik.",
+  "priser": "Alle priser der er nævnt på siden, med beskrivelse. Tom streng hvis ingen priser.",
+  "aabning": "Åbningstider for alle dage. Tom streng hvis ikke nævnt.",
+  "kontakt": "Telefon, email og adresse hvis fundet",
   "chatbot_navn": "Et venligt danskklingende fornavn til chatbotten (ikke virksomhedsnavnet)",
-  "velkomst": "En kort, venlig velkomsttekst på dansk til chatbotten (max 15 ord)",
-  "branche": "Én branche: frisør/tandlæge/håndværker/restaurant/ejendomsmægler/rengøring/pool_spa/andet"
+  "velkomst": "En imødekommende velkomsttekst på dansk til chatbotten (max 20 ord) der afspejler virksomhedens tone",
+  "branche": "Én branche: frisør/tandlæge/håndværker/restaurant/ejendomsmægler/rengøring/pool_spa/andet",
+  "ekstra_viden": "Alt andet nyttigt: særlige tilbud, garantier, certifikater, brandværdier, FAQ-svar, geografisk område, parkering, specielle services, betingelser osv. Skriv i punktform med linjeskift."
 }}
 
-Hjemmesidetekst:
-{tekst}"""
+Hjemmesidetekst ({len(samlet_tekst)} tegn fra {len(sider_skannet)} sider):
+{samlet_tekst[:12000]}"""
 
     try:
         msg = ai.messages.create(
-            model='claude-haiku-4-5-20251001',
-            max_tokens=800,
+            model='claude-sonnet-4-6',
+            max_tokens=1500,
             messages=[{'role': 'user', 'content': prompt}]
         )
         raw = msg.content[0].text.strip()
-        # Fjern evt. markdown code fences
         if raw.startswith('```'):
             raw = raw.split('```')[1]
             if raw.startswith('json'):
                 raw = raw[4:]
         resultat = json.loads(raw)
-        return jsonify({'success': True, 'data': resultat, 'url': url})
+        return jsonify({
+            'success': True,
+            'data': resultat,
+            'url': url,
+            'sider_skannet': sider_skannet,
+            'tegn_analyseret': len(samlet_tekst)
+        })
     except json.JSONDecodeError as e:
         return jsonify({'error': f'Kunne ikke parse AI-svar: {e}', 'raw': raw[:300]}), 500
     except Exception as e:
