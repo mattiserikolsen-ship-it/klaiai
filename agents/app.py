@@ -18,6 +18,7 @@ import functools
 import stripe
 import requests as http_requests
 from bs4 import BeautifulSoup
+import threading
 
 # ── STRIPE ────────────────────────────────────────────
 STRIPE_SECRET_KEY     = os.environ.get('STRIPE_SECRET_KEY', '')
@@ -1601,6 +1602,9 @@ def onboarding_opret():
     return jsonify({'klient_id': klient_id, 'checkout_url': None})
 
 
+# ── SCAN JOBS (in-memory) ─────────────────────────────
+scan_jobs = {}  # job_id -> {'status': 'running'/'done'/'error', 'data': ..., 'meta': ...}
+
 HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; KlarAI-scanner/1.0)'}
 
 # Nøgleord → info-sider
@@ -1760,67 +1764,63 @@ def formater_produkter_til_tekst(alle_produkter):
     return '\n'.join(linjer)
 
 
-@app.route('/scan-hjemmeside', methods=['POST'])
-def scan_hjemmeside():
-    """Scanner hjemmeside + info-sider + produktkatalog og returnerer chatbot-konfiguration"""
-    data = request.json
-    url = (data.get('url') or '').strip()
-    if not url:
-        return jsonify({'error': 'URL mangler'}), 400
-    if not url.startswith('http'):
-        url = 'https://' + url
+def _kør_scanning(job_id, url):
+    """Kører scanning i baggrundstråd"""
+    try:
+        scan_jobs[job_id]['status'] = 'running'
 
-    # ── Trin 1: Hent forside ──────────────────────────────
-    forside_tekst, forside_soup = hent_side_tekst(url, max_tegn=3000)
-    if not forside_tekst:
-        return jsonify({'error': 'Kunne ikke hente siden — tjek at URL er korrekt og siden er tilgængelig'}), 400
+        # Trin 1: Forside
+        forside_tekst, forside_soup = hent_side_tekst(url, max_tegn=3000)
+        if not forside_tekst:
+            scan_jobs[job_id] = {'status': 'error', 'error': 'Kunne ikke hente siden'}
+            return
 
-    sider_skannet = ['forside']
-    undersider_tekst = ''
+        scan_jobs[job_id]['fremgang'] = 'Forside hentet — scanner undersider...'
+        sider_skannet = ['forside']
+        undersider_tekst = ''
 
-    # ── Trin 2: Info-sider (ydelser, priser, kontakt osv.) ─
-    info_links = find_links_med_noegleord(forside_soup, url, INFO_SIDER, max_antal=6)
-    for link in info_links:
-        tekst, _ = hent_side_tekst(link, max_tegn=1500)
-        if tekst:
-            side_navn = link.rstrip('/').split('/')[-1] or 'underside'
-            undersider_tekst += f"\n\n--- {side_navn} ---\n{tekst}"
-            sider_skannet.append(side_navn)
+        # Trin 2: Info-sider
+        info_links = find_links_med_noegleord(forside_soup, url, INFO_SIDER, max_antal=6)
+        for link in info_links:
+            tekst, _ = hent_side_tekst(link, max_tegn=1500)
+            if tekst:
+                side_navn = link.rstrip('/').split('/')[-1] or 'underside'
+                undersider_tekst += f"\n\n--- {side_navn} ---\n{tekst}"
+                sider_skannet.append(side_navn)
 
-    # ── Trin 3: Scan produktkatalog ───────────────────────
-    alle_produkter = []
-    shop_links = find_links_med_noegleord(forside_soup, url, SHOP_SIDER, max_antal=4)
+        scan_jobs[job_id]['fremgang'] = f'{len(sider_skannet)} sider skannet — leder efter produkter...'
 
-    # Tjek også om forside-URL selv er en shop
-    for shop_url in ([url] + shop_links)[:5]:
-        shop_soup = hent_raa_soup(shop_url)
-        if not shop_soup:
-            continue
+        # Trin 3: Produktkatalog
+        alle_produkter = []
+        shop_links = find_links_med_noegleord(forside_soup, url, SHOP_SIDER, max_antal=4)
 
-        # Find også kategori-undersider på shop-siden
-        kat_links = find_links_med_noegleord(shop_soup, url, SHOP_SIDER + ['collections', 'kategori'], max_antal=3)
-
-        for scan_url in ([shop_url] + kat_links):
-            s = hent_raa_soup(scan_url) if scan_url != shop_url else shop_soup
-            if not s:
+        for shop_url in ([url] + shop_links)[:5]:
+            shop_soup = hent_raa_soup(shop_url)
+            if not shop_soup:
                 continue
-            produkter = udtræk_produkter_fra_side(s, scan_url)
-            for p in produkter:
-                if not any(x['url'] == p['url'] for x in alle_produkter):
-                    alle_produkter.append(p)
+            kat_links = find_links_med_noegleord(shop_soup, url, SHOP_SIDER + ['collections', 'kategori'], max_antal=3)
+            for scan_url in ([shop_url] + kat_links):
+                s = hent_raa_soup(scan_url) if scan_url != shop_url else shop_soup
+                if not s:
+                    continue
+                produkter = udtræk_produkter_fra_side(s, scan_url)
+                for p in produkter:
+                    if not any(x['url'] == p['url'] for x in alle_produkter):
+                        alle_produkter.append(p)
+                if len(alle_produkter) >= 80:
+                    break
+            if shop_links and shop_url not in sider_skannet:
+                sider_skannet.append(f"shop ({len(alle_produkter)} produkter)")
             if len(alle_produkter) >= 80:
                 break
 
-        if shop_links and shop_url not in sider_skannet:
-            sider_skannet.append(f"shop ({len(alle_produkter)} produkter)")
-        if len(alle_produkter) >= 80:
-            break
+        scan_jobs[job_id]['fremgang'] = f'Fandt {len(alle_produkter)} produkter — analyserer med AI...'
 
-    produkt_tekst = formater_produkter_til_tekst(alle_produkter)
-    samlet_tekst = forside_tekst + undersider_tekst
+        produkt_tekst = formater_produkter_til_tekst(alle_produkter)
+        samlet_tekst = forside_tekst + undersider_tekst
 
-    # ── Trin 4: AI-analyse ────────────────────────────────
-    prompt = f"""Du er en assistent der hjælper med at opsætte en AI-chatbot for en dansk virksomhed.
+        # Trin 4: AI-analyse
+        prompt = f"""Du er en assistent der hjælper med at opsætte en AI-chatbot for en dansk virksomhed.
 
 Analyser denne tekst fra virksomhedens hjemmeside ({len(sider_skannet)} sider skannet) og udtræk ALT tilgængelig information.
 Vær grundig — hellere for meget end for lidt.
@@ -1842,7 +1842,6 @@ Svar KUN med valid JSON i præcis dette format — ingen tekst udenfor JSON:
 Hjemmesidetekst:
 {samlet_tekst[:10000]}"""
 
-    try:
         msg = ai.messages.create(
             model='claude-sonnet-4-6',
             max_tokens=1500,
@@ -1855,24 +1854,44 @@ Hjemmesidetekst:
                 raw = raw[4:]
         resultat = json.loads(raw)
 
-        # Tilføj produktkatalog til ekstra_viden
         if produkt_tekst:
             eksisterende = resultat.get('ekstra_viden', '')
             resultat['ekstra_viden'] = (eksisterende + '\n\n' + produkt_tekst).strip()
-            resultat['produkter_fundet'] = len(alle_produkter)
 
-        return jsonify({
-            'success': True,
+        scan_jobs[job_id] = {
+            'status': 'done',
             'data': resultat,
             'url': url,
             'sider_skannet': sider_skannet,
             'produkter_fundet': len(alle_produkter),
-            'tegn_analyseret': len(samlet_tekst)
-        })
-    except json.JSONDecodeError as e:
-        return jsonify({'error': f'Kunne ikke parse AI-svar: {e}', 'raw': raw[:300]}), 500
+        }
     except Exception as e:
-        return jsonify({'error': f'AI-analyse fejlede: {e}'}), 500
+        scan_jobs[job_id] = {'status': 'error', 'error': str(e)}
+
+
+@app.route('/scan-hjemmeside', methods=['POST'])
+def scan_hjemmeside():
+    """Starter asynkron scanning — returnerer job_id med det samme"""
+    data = request.json
+    url = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'error': 'URL mangler'}), 400
+    if not url.startswith('http'):
+        url = 'https://' + url
+
+    job_id = secrets.token_hex(8)
+    scan_jobs[job_id] = {'status': 'running', 'fremgang': 'Starter scanning...'}
+    threading.Thread(target=_kør_scanning, args=(job_id, url), daemon=True).start()
+    return jsonify({'job_id': job_id, 'status': 'running'})
+
+
+@app.route('/scan-status/<job_id>', methods=['GET'])
+def scan_status(job_id):
+    """Tjek status på en igangværende scanning"""
+    job = scan_jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Job ikke fundet'}), 404
+    return jsonify(job)
 
 
 @app.route('/test-mail', methods=['GET'])

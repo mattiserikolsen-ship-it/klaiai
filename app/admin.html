@@ -3262,49 +3262,77 @@ async function scanHjemmeside() {
   const status = document.getElementById('scanStatus');
   btn.disabled = true;
   btn.textContent = '⏳ Scanner...';
-  status.textContent = 'Henter siden og analyserer indhold...';
   status.style.color = 'var(--muted)';
 
+  const fremgangsTekster = [
+    'Henter forsiden...', 'Scanner undersider...', 'Leder efter produkter...',
+    'Analyserer indhold med AI...', 'Næsten klar...'
+  ];
+  let fremgangsIdx = 0;
+  status.textContent = fremgangsTekster[0];
+
+  const fremgangsInterval = setInterval(() => {
+    fremgangsIdx = Math.min(fremgangsIdx + 1, fremgangsTekster.length - 1);
+    status.textContent = fremgangsTekster[fremgangsIdx];
+  }, 8000);
+
   try {
-    const res = await fetch(AGENT_URL + '/scan-hjemmeside', {
+    // Start scanning (returnerer job_id med det samme)
+    const startRes = await fetch(AGENT_URL + '/scan-hjemmeside', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
     });
-    const json = await res.json();
+    const startJson = await startRes.json();
 
-    if (!json.success) {
-      status.textContent = '❌ ' + (json.error || 'Scanning mislykkedes');
-      status.style.color = 'var(--red)';
-      return;
+    if (!startJson.job_id) {
+      throw new Error(startJson.error || 'Kunne ikke starte scanning');
     }
 
-    const d = json.data;
-    // Udfyld felter
+    // Poll for resultat hvert 3. sekund
+    const jobId = startJson.job_id;
+    let resultat = null;
+    for (let i = 0; i < 40; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const pollRes = await fetch(AGENT_URL + '/scan-status/' + jobId);
+      const poll = await pollRes.json();
+
+      if (poll.fremgang) status.textContent = poll.fremgang;
+
+      if (poll.status === 'done') {
+        resultat = poll;
+        break;
+      }
+      if (poll.status === 'error') {
+        throw new Error(poll.error || 'Scanning fejlede');
+      }
+    }
+
+    if (!resultat) throw new Error('Scanning tog for lang tid — prøv igen');
+
+    const d = resultat.data;
     if (d.virksomhed_navn) document.getElementById('nc_name').value = d.virksomhed_navn;
     if (d.beskrivelse) document.getElementById('nc_desc').value = d.beskrivelse;
-
-    // Gem scan-data til chatbot config (bruges ved oprettelse)
     window._scanData = d;
 
-    // Vis status med antal sider og hvad der blev fundet
-    const sider = json.sider_skannet || ['forside'];
-    const produkterFundet = json.produkter_fundet || 0;
+    const sider = resultat.sider_skannet || ['forside'];
+    const produkterFundet = resultat.produkter_fundet || 0;
     const fundne = [];
     if (d.ydelser) fundne.push('ydelser');
     if (d.priser) fundne.push('priser');
     if (d.aabning) fundne.push('åbningstider');
     if (d.kontakt) fundne.push('kontaktinfo');
     if (produkterFundet > 0) fundne.push(`<strong>${produkterFundet} produkter med links</strong>`);
-    if (d.ekstra_viden && !produkterFundet) fundne.push('ekstra viden');
+    else if (d.ekstra_viden) fundne.push('ekstra viden');
 
     status.innerHTML = `✅ Scannede <strong>${sider.length} side${sider.length !== 1 ? 'r' : ''}</strong> (${sider.join(', ')}) · Fandt: ${fundne.join(', ')}`;
     status.style.color = 'var(--green)';
 
   } catch(e) {
-    status.textContent = '❌ Netværksfejl — prøv igen';
+    status.textContent = '❌ ' + e.message;
     status.style.color = 'var(--red)';
   } finally {
+    clearInterval(fremgangsInterval);
     btn.disabled = false;
     btn.textContent = '🔍 Scan side';
   }
