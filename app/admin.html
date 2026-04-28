@@ -3289,12 +3289,14 @@ async function scanHjemmeside() {
 
     // Vis status med antal sider og hvad der blev fundet
     const sider = json.sider_skannet || ['forside'];
+    const produkterFundet = json.produkter_fundet || 0;
     const fundne = [];
     if (d.ydelser) fundne.push('ydelser');
     if (d.priser) fundne.push('priser');
     if (d.aabning) fundne.push('åbningstider');
     if (d.kontakt) fundne.push('kontaktinfo');
-    if (d.ekstra_viden) fundne.push('ekstra viden');
+    if (produkterFundet > 0) fundne.push(`<strong>${produkterFundet} produkter med links</strong>`);
+    if (d.ekstra_viden && !produkterFundet) fundne.push('ekstra viden');
 
     status.innerHTML = `✅ Scannede <strong>${sider.length} side${sider.length !== 1 ? 'r' : ''}</strong> (${sider.join(', ')}) · Fandt: ${fundne.join(', ')}`;
     status.style.color = 'var(--green)';

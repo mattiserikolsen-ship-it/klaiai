@@ -1603,69 +1603,166 @@ def onboarding_opret():
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; KlarAI-scanner/1.0)'}
 
-# Nøgleord der indikerer vigtige undersider
-VIGTIGE_SIDER = [
-    'ydelser', 'services', 'service', 'priser', 'pris', 'produkter',
+# Nøgleord → info-sider
+INFO_SIDER = [
+    'ydelser', 'services', 'service', 'priser', 'pris',
     'om-os', 'om-mig', 'about', 'kontakt', 'contact', 'behandlinger',
-    'behandling', 'menu', 'hvad-vi-tilbyder', 'hvad-tilbyder',
-    'arbejde', 'projekter', 'cases', 'faq', 'sporgsmaal', 'team',
-    'medarbejdere', 'booking', 'book', 'tilbud', 'pakker'
+    'behandling', 'menu', 'hvad-vi-tilbyder', 'arbejde', 'projekter',
+    'cases', 'faq', 'team', 'medarbejdere', 'booking', 'book', 'tilbud', 'pakker'
 ]
 
-def hent_side_tekst(url, max_tegn=3000):
-    """Henter én side og returnerer renset tekst"""
+# Nøgleord → produkt/shop-sider
+SHOP_SIDER = [
+    'shop', 'butik', 'webshop', 'varer', 'produkter', 'products',
+    'collections', 'kategori', 'categories', 'sortiment', 'udvalg',
+    'webbutik', 'bestil', 'køb', 'store'
+]
+
+
+def hent_raa_soup(url):
+    """Henter en side og returnerer BeautifulSoup objekt"""
     try:
         resp = http_requests.get(url, timeout=8, headers=HEADERS)
         resp.encoding = resp.apparent_encoding or 'utf-8'
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        for tag in soup(['script', 'style', 'noscript', 'iframe', 'svg', 'img']):
-            tag.decompose()
-        tekst = ' '.join(soup.get_text(separator=' ').split())
-        return tekst[:max_tegn], soup
+        return BeautifulSoup(resp.text, 'html.parser')
     except:
-        return '', None
+        return None
 
-def find_vigtige_links(soup, base_url):
-    """Finder interne links til vigtige undersider"""
+
+def hent_side_tekst(url, max_tegn=3000):
+    """Henter én side og returnerer renset tekst"""
+    soup = hent_raa_soup(url)
+    if not soup:
+        return '', None
+    for tag in soup(['script', 'style', 'noscript', 'iframe', 'svg', 'img']):
+        tag.decompose()
+    tekst = ' '.join(soup.get_text(separator=' ').split())
+    return tekst[:max_tegn], soup
+
+
+def find_links_med_noegleord(soup, base_url, noegleord, max_antal=6):
+    """Finder interne links hvis sti matcher nøgleordsliste"""
     from urllib.parse import urljoin, urlparse
     base = urlparse(base_url)
-    base_origin = f"{base.scheme}://{base.netloc}"
     fundne = []
     seen = set()
-
     if not soup:
         return fundne
-
     for a in soup.find_all('a', href=True):
         href = a['href'].strip()
         full = urljoin(base_url, href)
         parsed = urlparse(full)
-
-        # Kun interne links, ikke ankre, ikke filer
         if parsed.netloc != base.netloc:
             continue
-        if parsed.fragment and not parsed.path:
+        if any(full.lower().endswith(ext) for ext in ['.pdf','.jpg','.png','.zip']):
             continue
-        if any(full.lower().endswith(ext) for ext in ['.pdf','.jpg','.png','.zip','.docx']):
-            continue
-
         path = parsed.path.lower().strip('/')
         if path in seen or path == '':
             continue
-
-        # Check om stien indeholder et vigtigt nøgleord
-        if any(kw in path for kw in VIGTIGE_SIDER):
+        if any(kw in path for kw in noegleord):
             seen.add(path)
             fundne.append(full)
-            if len(fundne) >= 6:
+            if len(fundne) >= max_antal:
+                break
+    return fundne
+
+
+def udtræk_produkter_fra_side(soup, side_url):
+    """
+    Forsøger at udtrække produktliste fra en shop/kategori-side.
+    Returnerer liste af dict: {navn, pris, url}
+    """
+    from urllib.parse import urljoin, urlparse
+    base = urlparse(side_url)
+    produkter = []
+    seen_urls = set()
+
+    # Typiske CSS-klasser/strukturer på webshops
+    kandidat_selectors = [
+        # Shopify
+        '.product-card', '.product-item', '.grid__item',
+        # WooCommerce
+        '.woocommerce-LoopProduct-link', 'li.product',
+        # DanDomain / generiske
+        '.product', '.item', '.card', '.product-tile',
+        '[class*="product"]', '[class*="item"]', '[class*="card"]'
+    ]
+
+    links_med_priser = []
+
+    # Strategi 1: Scan kendte produkt-selectors
+    for sel in kandidat_selectors:
+        elementer = soup.select(sel)
+        if len(elementer) < 2:
+            continue
+        for el in elementer[:40]:
+            a_tag = el.find('a', href=True)
+            if not a_tag:
+                continue
+            href = a_tag['href']
+            full_url = urljoin(side_url, href)
+            if urlparse(full_url).netloc != base.netloc:
+                continue
+            if full_url in seen_urls:
+                continue
+
+            # Navn: brug alt-tekst, titel eller linktekst
+            navn = (a_tag.get('title') or a_tag.get_text(strip=True) or
+                    el.find(['h2','h3','h4','span'], class_=lambda c: c and 'name' in c.lower() if c else False) or '')
+            if hasattr(navn, 'get_text'):
+                navn = navn.get_text(strip=True)
+            navn = str(navn).strip()[:80]
+            if not navn or len(navn) < 2:
+                continue
+
+            # Pris: søg efter kr/,-/DKK i nærheden
+            pris = ''
+            pris_el = el.find(string=lambda t: t and any(x in t for x in ['kr', 'Kr', 'DKK', ',-']))
+            if pris_el:
+                pris = pris_el.strip()[:30]
+
+            seen_urls.add(full_url)
+            links_med_priser.append({'navn': navn, 'pris': pris, 'url': full_url})
+        if len(links_med_priser) >= 5:
+            break
+
+    # Strategi 2: Hvis ingen produktkort fundet — find alle interne links med produkt-lignende URLs
+    if not links_med_priser:
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            full_url = urljoin(side_url, href)
+            if urlparse(full_url).netloc != base.netloc:
+                continue
+            path = urlparse(full_url).path.lower()
+            # Produktsider har typisk dybde /shop/produkt-navn
+            if path.count('/') >= 2 and full_url not in seen_urls:
+                tekst = a.get_text(strip=True)
+                if tekst and len(tekst) > 3:
+                    seen_urls.add(full_url)
+                    links_med_priser.append({'navn': tekst[:80], 'pris': '', 'url': full_url})
+            if len(links_med_priser) >= 30:
                 break
 
-    return fundne
+    return links_med_priser[:60]  # Max 60 produkter per side
+
+
+def formater_produkter_til_tekst(alle_produkter):
+    """Formaterer produktliste til tekst chatbotten kan bruge"""
+    if not alle_produkter:
+        return ''
+    linjer = ['PRODUKTKATALOG (brug disse links når kunder spørger om specifikke produkter):']
+    for p in alle_produkter:
+        linje = f"- {p['navn']}"
+        if p.get('pris'):
+            linje += f" — {p['pris']}"
+        linje += f" | URL: {p['url']}"
+        linjer.append(linje)
+    return '\n'.join(linjer)
 
 
 @app.route('/scan-hjemmeside', methods=['POST'])
 def scan_hjemmeside():
-    """Scanner hjemmeside + vigtige undersider og returnerer struktureret chatbot-konfiguration"""
+    """Scanner hjemmeside + info-sider + produktkatalog og returnerer chatbot-konfiguration"""
     data = request.json
     url = (data.get('url') or '').strip()
     if not url:
@@ -1673,47 +1770,77 @@ def scan_hjemmeside():
     if not url.startswith('http'):
         url = 'https://' + url
 
-    # Hent forside
-    forside_tekst, soup = hent_side_tekst(url, max_tegn=3000)
+    # ── Trin 1: Hent forside ──────────────────────────────
+    forside_tekst, forside_soup = hent_side_tekst(url, max_tegn=3000)
     if not forside_tekst:
         return jsonify({'error': 'Kunne ikke hente siden — tjek at URL er korrekt og siden er tilgængelig'}), 400
 
-    # Find og hent vigtige undersider
-    undersider_tekst = ''
     sider_skannet = ['forside']
-    vigtige_links = find_vigtige_links(soup, url)
+    undersider_tekst = ''
 
-    for link in vigtige_links:
+    # ── Trin 2: Info-sider (ydelser, priser, kontakt osv.) ─
+    info_links = find_links_med_noegleord(forside_soup, url, INFO_SIDER, max_antal=6)
+    for link in info_links:
         tekst, _ = hent_side_tekst(link, max_tegn=1500)
         if tekst:
-            side_navn = link.split('/')[-1] or link.split('/')[-2]
-            undersider_tekst += f"\n\n--- Underside: {side_navn} ---\n{tekst}"
+            side_navn = link.rstrip('/').split('/')[-1] or 'underside'
+            undersider_tekst += f"\n\n--- {side_navn} ---\n{tekst}"
             sider_skannet.append(side_navn)
 
+    # ── Trin 3: Scan produktkatalog ───────────────────────
+    alle_produkter = []
+    shop_links = find_links_med_noegleord(forside_soup, url, SHOP_SIDER, max_antal=4)
+
+    # Tjek også om forside-URL selv er en shop
+    for shop_url in ([url] + shop_links)[:5]:
+        shop_soup = hent_raa_soup(shop_url)
+        if not shop_soup:
+            continue
+
+        # Find også kategori-undersider på shop-siden
+        kat_links = find_links_med_noegleord(shop_soup, url, SHOP_SIDER + ['collections', 'kategori'], max_antal=3)
+
+        for scan_url in ([shop_url] + kat_links):
+            s = hent_raa_soup(scan_url) if scan_url != shop_url else shop_soup
+            if not s:
+                continue
+            produkter = udtræk_produkter_fra_side(s, scan_url)
+            for p in produkter:
+                if not any(x['url'] == p['url'] for x in alle_produkter):
+                    alle_produkter.append(p)
+            if len(alle_produkter) >= 80:
+                break
+
+        if shop_links and shop_url not in sider_skannet:
+            sider_skannet.append(f"shop ({len(alle_produkter)} produkter)")
+        if len(alle_produkter) >= 80:
+            break
+
+    produkt_tekst = formater_produkter_til_tekst(alle_produkter)
     samlet_tekst = forside_tekst + undersider_tekst
 
-    # Send til Claude til analyse
+    # ── Trin 4: AI-analyse ────────────────────────────────
     prompt = f"""Du er en assistent der hjælper med at opsætte en AI-chatbot for en dansk virksomhed.
 
-Analyser denne tekst fra virksomhedens hjemmeside (forside + {len(vigtige_links)} undersider) og udtræk ALT tilgængelig information.
-Vær grundig — hellere for meget end for lidt i felterne.
+Analyser denne tekst fra virksomhedens hjemmeside ({len(sider_skannet)} sider skannet) og udtræk ALT tilgængelig information.
+Vær grundig — hellere for meget end for lidt.
 Svar KUN med valid JSON i præcis dette format — ingen tekst udenfor JSON:
 
 {{
   "virksomhed_navn": "Virksomhedens fulde navn",
   "beskrivelse": "2-4 sætninger om hvad virksomheden laver, hvem kunderne er og hvad der gør dem særlige",
   "ydelser": "Detaljeret liste over alle ydelser/produkter/behandlinger — adskilt med komma. Vær specifik.",
-  "priser": "Alle priser der er nævnt på siden, med beskrivelse. Tom streng hvis ingen priser.",
+  "priser": "Alle priser der er nævnt, med beskrivelse. Tom streng hvis ingen priser.",
   "aabning": "Åbningstider for alle dage. Tom streng hvis ikke nævnt.",
   "kontakt": "Telefon, email og adresse hvis fundet",
   "chatbot_navn": "Et venligt danskklingende fornavn til chatbotten (ikke virksomhedsnavnet)",
-  "velkomst": "En imødekommende velkomsttekst på dansk til chatbotten (max 20 ord) der afspejler virksomhedens tone",
-  "branche": "Én branche: frisør/tandlæge/håndværker/restaurant/ejendomsmægler/rengøring/pool_spa/andet",
-  "ekstra_viden": "Alt andet nyttigt: særlige tilbud, garantier, certifikater, brandværdier, FAQ-svar, geografisk område, parkering, specielle services, betingelser osv. Skriv i punktform med linjeskift."
+  "velkomst": "En imødekommende velkomsttekst på dansk til chatbotten (max 20 ord)",
+  "branche": "Én branche: frisør/tandlæge/håndværker/restaurant/ejendomsmægler/rengøring/webshop/pool_spa/andet",
+  "ekstra_viden": "Alt andet nyttigt: garantier, certifikater, FAQ-svar, geografisk område, leveringsbetingelser, returpolitik, specielle tilbud osv. Punktform med linjeskift."
 }}
 
-Hjemmesidetekst ({len(samlet_tekst)} tegn fra {len(sider_skannet)} sider):
-{samlet_tekst[:12000]}"""
+Hjemmesidetekst:
+{samlet_tekst[:10000]}"""
 
     try:
         msg = ai.messages.create(
@@ -1727,11 +1854,19 @@ Hjemmesidetekst ({len(samlet_tekst)} tegn fra {len(sider_skannet)} sider):
             if raw.startswith('json'):
                 raw = raw[4:]
         resultat = json.loads(raw)
+
+        # Tilføj produktkatalog til ekstra_viden
+        if produkt_tekst:
+            eksisterende = resultat.get('ekstra_viden', '')
+            resultat['ekstra_viden'] = (eksisterende + '\n\n' + produkt_tekst).strip()
+            resultat['produkter_fundet'] = len(alle_produkter)
+
         return jsonify({
             'success': True,
             'data': resultat,
             'url': url,
             'sider_skannet': sider_skannet,
+            'produkter_fundet': len(alle_produkter),
             'tegn_analyseret': len(samlet_tekst)
         })
     except json.JSONDecodeError as e:
