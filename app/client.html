@@ -224,6 +224,23 @@
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .lead-right { display: none; }
     }
+
+    /* ── KOM I GANG ── */
+    .tjek-item { display:flex;align-items:center;gap:.85rem;padding:.75rem .9rem;border-radius:10px;background:var(--bg);border:1px solid var(--border); }
+    .tjek-item.done { background:#f0fdf4;border-color:#bbf7d0; }
+    .tjek-check { width:22px;height:22px;border-radius:50%;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.7rem;color:#fff; }
+    .tjek-item.done .tjek-check { background:#16a34a;border-color:#16a34a; }
+    .tjek-item.done .tjek-check::after { content:'✓'; }
+    .tjek-label { font-size:.85rem;font-weight:600;color:var(--text); }
+    .tjek-item.done .tjek-label { color:#16a34a;text-decoration:line-through;opacity:.6; }
+    .tjek-desc { font-size:.75rem;color:var(--muted);margin-top:.1rem; }
+    .plat-btn { background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:.4rem .9rem;border-radius:20px;font-family:Inter,sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .15s; }
+    .plat-btn:hover { border-color:var(--accent);color:var(--accent); }
+    .plat-btn.active { background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600; }
+    .guide-step { display:flex;gap:.85rem;margin-bottom:1rem;align-items:flex-start; }
+    .guide-num { width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem; }
+    .guide-text { font-size:.82rem;color:var(--text);line-height:1.6; }
+    .guide-text strong { font-weight:700; }
   </style>
 </head>
 <body>
@@ -267,6 +284,10 @@
     </div>
     <div class="nav-item" data-view="indstillinger" onclick="showView('indstillinger')">
       <span class="ni">⚙</span> Indstillinger
+    </div>
+    <div class="nav-item" data-view="kom-i-gang" onclick="showView('kom-i-gang')">
+      <span class="ni">🚀</span> Kom i gang
+      <span id="opgaveBadge" class="hidden" style="margin-left:auto;background:#7c3aed;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
   </div>
   <div class="sidebar-footer">
@@ -508,6 +529,57 @@
       </div>
     </div>
 
+    <!-- KOM I GANG -->
+    <div id="view-kom-i-gang" class="hidden">
+
+      <!-- Tjekliste -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div>
+            <div class="card-title" style="margin:0">Kom i gang — tjekliste</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">Følg disse trin for at få det mest ud af KlarAI</div>
+          </div>
+          <div id="tjekProcent" style="font-size:1.4rem;font-weight:800;color:#7c3aed">0%</div>
+        </div>
+        <div style="background:#f0e8ff;border-radius:8px;height:6px;margin-bottom:1.5rem;overflow:hidden">
+          <div id="tjekBar" style="background:#7c3aed;height:100%;border-radius:8px;width:0%;transition:width .4s"></div>
+        </div>
+        <div id="tjekListe" style="display:flex;flex-direction:column;gap:.6rem"></div>
+      </div>
+
+      <!-- Widget-guide -->
+      <div class="card">
+        <div class="card-title">Installer chatbot på din hjemmeside</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.25rem">Indsæt én linje kode på din hjemmeside — så er chatbotten klar. Vælg din platform:</div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem" id="platformBtns">
+          <button class="plat-btn active" onclick="visPlatform('html', this)">HTML</button>
+          <button class="plat-btn" onclick="visPlatform('wordpress', this)">WordPress</button>
+          <button class="plat-btn" onclick="visPlatform('shopify', this)">Shopify</button>
+          <button class="plat-btn" onclick="visPlatform('wix', this)">Wix</button>
+          <button class="plat-btn" onclick="visPlatform('squarespace', this)">Squarespace</button>
+          <button class="plat-btn" onclick="visPlatform('webflow', this)">Webflow</button>
+          <button class="plat-btn" onclick="visPlatform('dandomain', this)">DanDomain</button>
+        </div>
+
+        <div id="platformGuide"></div>
+
+        <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+          <div style="font-size:.82rem;font-weight:600;margin-bottom:.6rem">Din widget-kode</div>
+          <div style="background:#1a1918;border-radius:10px;padding:1rem;position:relative">
+            <code id="widgetKodeBox" style="color:#a8d8a8;font-family:monospace;font-size:.78rem;word-break:break-all;display:block"></code>
+            <button onclick="kopierWidgetKode()" id="kopierKodeBtn" style="position:absolute;top:.6rem;right:.6rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:#fff;font-size:.72rem;padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-family:Inter,sans-serif">Kopier</button>
+          </div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Spørg dit webbureau om hjælp hvis du er i tvivl — det tager dem under 2 minutter.</div>
+        </div>
+
+        <div style="margin-top:1.25rem">
+          <button class="btn btn-primary btn-sm" onclick="markerWidgetInstalleret()">✅ Jeg har installeret widgetten</button>
+        </div>
+      </div>
+
+    </div>
+
   </div>
 </div>
 
@@ -542,7 +614,7 @@ function closeMobileNav() {
 }
 
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','leads','bookinger','agenter','rapport','abonnement','indstillinger'];
+const views = ['overblik','leads','bookinger','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
 const titles = {
   overblik:      ['Overblik',       'Din NexOlsen portal'],
   leads:         ['Leads',          'Kunder der har henvendt sig'],
@@ -550,7 +622,8 @@ const titles = {
   agenter:       ['Mine agenter',   'AI-agenter der kører for dig'],
   rapport:       ['Rapport',        'Statistik og grafisk overblik'],
   abonnement:    ['Abonnement',     'Din plan og fakturering'],
-  indstillinger: ['Indstillinger',  'Tilpas din chatbot']
+  indstillinger: ['Indstillinger',  'Tilpas din chatbot'],
+  'kom-i-gang':  ['Kom i gang',     'Installer chatbot og fuldfør opsætning']
 };
 
 function showView(v) {
@@ -566,6 +639,7 @@ function showView(v) {
   if (v === 'rapport' && !rapportData) loadRapport();
   if (v === 'abonnement') loadAbonnement();
   if (v === 'indstillinger') loadIndstillinger();
+  if (v === 'kom-i-gang') { genererWidgetKode(); visPlatform('html', document.querySelector('.plat-btn.active') || document.querySelector('.plat-btn')); }
 }
 
 // ── LOAD DATA ──────────────────────────────────────────
@@ -1070,9 +1144,154 @@ async function gemIndstillinger() {
 
 // Init
 if (CLIENT_ID) {
-  loadData().then(() => loadLeadsOgBookinger());
+  loadData().then(() => { loadLeadsOgBookinger(); loadKomIGang(); });
 }
 showView('overblik');
+
+// ── VIEWS UPDATE ──────────────────────────────────────
+const _origShowView = showView;
+// Extend showView for kom-i-gang
+const _showViewOrig = showView;
+
+// ── KOM I GANG ────────────────────────────────────────
+const tjekKey = 'klaiai_tjek_' + CLIENT_ID;
+
+const TJEK_TRIN = [
+  { id: 'chatbot_konfigureret', label: 'Chatbot konfigureret', desc: 'Navn, farve og velkomsttekst er sat op' },
+  { id: 'widget_installeret',   label: 'Widget installeret på hjemmeside', desc: 'Koden er indsat på din side' },
+  { id: 'forste_lead',          label: 'Første lead modtaget', desc: 'En besøgende har henvendt sig via chatbotten', auto: true },
+  { id: 'portalen_besogt',      label: 'Portalen besøgt', desc: 'Du er nu i gang — godt gået!', auto: true },
+];
+
+function loadKomIGang() {
+  const gemt = JSON.parse(localStorage.getItem(tjekKey) || '{}');
+  // Auto-markér besøgt
+  gemt['portalen_besogt'] = true;
+  // Auto: check om der er leads
+  if ((data.leads||[]).length > 0) gemt['forste_lead'] = true;
+  localStorage.setItem(tjekKey, JSON.stringify(gemt));
+
+  renderTjekliste(gemt);
+  genererWidgetKode();
+
+  // Vis badge hvis ikke alt er done
+  const done = TJEK_TRIN.filter(t => gemt[t.id]).length;
+  const total = TJEK_TRIN.length;
+  const badge = document.getElementById('opgaveBadge');
+  if (done < total) {
+    badge.textContent = total - done;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+function renderTjekliste(gemt) {
+  const liste = document.getElementById('tjekListe');
+  if (!liste) return;
+  const done = TJEK_TRIN.filter(t => gemt[t.id]).length;
+  const pct = Math.round(done / TJEK_TRIN.length * 100);
+  document.getElementById('tjekProcent').textContent = pct + '%';
+  document.getElementById('tjekBar').style.width = pct + '%';
+
+  liste.innerHTML = TJEK_TRIN.map(t => `
+    <div class="tjek-item ${gemt[t.id] ? 'done' : ''}">
+      <div class="tjek-check"></div>
+      <div>
+        <div class="tjek-label">${t.label}</div>
+        <div class="tjek-desc">${t.desc}</div>
+      </div>
+      ${!gemt[t.id] && !t.auto ? `<button style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:.35rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:Inter,sans-serif" onclick="markerTjek('${t.id}')">Marker færdig</button>` : ''}
+    </div>`).join('');
+}
+
+function markerTjek(id) {
+  const gemt = JSON.parse(localStorage.getItem(tjekKey) || '{}');
+  gemt[id] = true;
+  localStorage.setItem(tjekKey, JSON.stringify(gemt));
+  renderTjekliste(gemt);
+  loadKomIGang();
+}
+
+function markerWidgetInstalleret() {
+  markerTjek('widget_installeret');
+}
+
+// ── WIDGET GUIDE ──────────────────────────────────────
+function genererWidgetKode() {
+  const kode = `<script src="${API}/widget.js" data-id="${CLIENT_ID}"><\/script>`;
+  const el = document.getElementById('widgetKodeBox');
+  if (el) el.textContent = kode;
+}
+
+const PLATFORM_GUIDES = {
+  html: [
+    { tekst: 'Åbn din hjemmesides HTML-fil (f.eks. <strong>index.html</strong>) i en teksteditor.' },
+    { tekst: 'Find linjen der slutter med <strong>&lt;/body&gt;</strong> — den er typisk helt nede i bunden.' },
+    { tekst: 'Indsæt widget-koden (se nedenfor) <strong>lige over</strong> &lt;/body&gt;.' },
+    { tekst: 'Gem filen og upload den til din webserver via FTP eller dit hosting-panel.' },
+  ],
+  wordpress: [
+    { tekst: 'Log ind i dit WordPress admin-panel (<strong>dinside.dk/wp-admin</strong>).' },
+    { tekst: 'Gå til <strong>Udseende → Tema-editor</strong> eller installer pluginnet "Insert Headers and Footers".' },
+    { tekst: 'Find <strong>footer.php</strong> og indsæt widget-koden lige over <strong>&lt;/body&gt;</strong>.' },
+    { tekst: 'Klik <strong>Opdater fil</strong>. Chatbotten vises øjeblikkeligt på alle sider.' },
+  ],
+  shopify: [
+    { tekst: 'Gå til din Shopify admin → <strong>Online Butik → Temaer</strong>.' },
+    { tekst: 'Klik på <strong>Handlinger → Rediger kode</strong> ved dit aktive tema.' },
+    { tekst: 'Find filen <strong>theme.liquid</strong> i venstre side under Layout.' },
+    { tekst: 'Indsæt widget-koden lige over den afsluttende <strong>&lt;/body&gt;</strong> tag og klik Gem.' },
+  ],
+  wix: [
+    { tekst: 'Gå til din Wix Editor og klik på <strong>Tilføj → Mere → HTML iframe</strong>.' },
+    { tekst: 'Alternativt: gå til <strong>Indstillinger → Avanceret → Brugerdefineret kode</strong>.' },
+    { tekst: 'Under "Tilføj kode til hjemmeside" — vælg <strong>Body - end</strong> og indsæt widget-koden.' },
+    { tekst: 'Klik <strong>Anvend</strong> og udgiv din side.' },
+  ],
+  squarespace: [
+    { tekst: 'Gå til <strong>Indstillinger → Avanceret → Kode-injeksjon</strong>.' },
+    { tekst: 'Find feltet <strong>Footer</strong> og indsæt widget-koden der.' },
+    { tekst: 'Klik <strong>Gem</strong>. Chatbotten vises nu på alle sider på dit site.' },
+  ],
+  webflow: [
+    { tekst: 'Åbn dit Webflow-projekt og gå til <strong>Projektindstillinger → Brugerdefineret kode</strong>.' },
+    { tekst: 'Find feltet <strong>Footer kode</strong> og indsæt widget-koden.' },
+    { tekst: 'Klik <strong>Gem ændringer</strong> og publicer dit site igen.' },
+  ],
+  dandomain: [
+    { tekst: 'Log ind i dit DanDomain kontrolpanel.' },
+    { tekst: 'Gå til <strong>Webshop → Design → HTML-skabeloner</strong>.' },
+    { tekst: 'Åbn <strong>footer.html</strong> og indsæt widget-koden lige over <strong>&lt;/body&gt;</strong>.' },
+    { tekst: 'Klik <strong>Gem</strong>. Siden opdateres automatisk.' },
+  ],
+};
+
+function visPlatform(platform, el) {
+  document.querySelectorAll('.plat-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const guide = document.getElementById('platformGuide');
+  const trin = PLATFORM_GUIDES[platform] || PLATFORM_GUIDES.html;
+  guide.innerHTML = trin.map((t, i) => `
+    <div class="guide-step">
+      <div class="guide-num">${i+1}</div>
+      <div class="guide-text">${t.tekst}</div>
+    </div>`).join('');
+}
+
+function kopierWidgetKode() {
+  const kode = document.getElementById('widgetKodeBox').textContent;
+  navigator.clipboard.writeText(kode).then(() => {
+    const btn = document.getElementById('kopierKodeBtn');
+    btn.textContent = '✅ Kopieret!';
+    setTimeout(() => btn.textContent = 'Kopier', 2000);
+  });
+}
+
+// Init platform guide
+document.addEventListener('DOMContentLoaded', () => {
+  visPlatform('html', document.querySelector('.plat-btn.active'));
+});
 </script>
 </body>
 </html>

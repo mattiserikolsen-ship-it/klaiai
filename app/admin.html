@@ -592,13 +592,22 @@
           <div style="margin-bottom:1.5rem">
             <div class="generator-section-title">Pakke & pris</div>
             <div class="form-grid">
+              <div class="form-group full">
+                <label class="form-label">Abonnementsplan</label>
+                <select class="form-input" id="nc_plan" onchange="planValgt()">
+                  <option value="starter">Starter — 799 kr/md (Chatbot + Lead)</option>
+                  <option value="pro" selected>Pro — 1.499 kr/md (+ Booking + Rapport)</option>
+                  <option value="vaekst">Vækst — 2.499 kr/md (+ Mail flow)</option>
+                  <option value="gratis">Gratis prøveperiode (ingen fakturering)</option>
+                </select>
+              </div>
               <div class="form-group">
                 <label class="form-label">Startpris (kr. ex. moms)</label>
-                <input class="form-input" id="nc_startpris" type="number" placeholder="9995"/>
+                <input class="form-input" id="nc_startpris" type="number" placeholder="0"/>
               </div>
               <div class="form-group">
                 <label class="form-label">Månedlig pris (kr. ex. moms)</label>
-                <input class="form-input" id="nc_mdpris" type="number" placeholder="1795"/>
+                <input class="form-input" id="nc_mdpris" type="number" placeholder="1499"/>
               </div>
             </div>
           </div>
@@ -1960,11 +1969,13 @@ function createClient() {
   const name = document.getElementById('nc_name').value.trim();
   const email = document.getElementById('nc_email').value.trim();
   if (!name) { alert('Udfyld venligst virksomhedsnavnet'); return; }
+  if (!email) { alert('Udfyld venligst e-mail'); return; }
 
   const prods = [...document.querySelectorAll('.product-opt input:checked')].map(i => i.value);
+  const plan = document.getElementById('nc_plan')?.value || 'pro';
 
   const loginEmail = document.getElementById('nc_login_email').value.trim() || email;
-  const loginPassword = document.getElementById('nc_login_password').value.trim();
+  const loginPassword = document.getElementById('nc_login_password').value.trim() || name.split(' ')[0] + Math.floor(Math.random()*900+100);
 
   const client = {
     id: Date.now().toString(),
@@ -1978,7 +1989,9 @@ function createClient() {
     login_email: loginEmail,
     login_password: loginPassword,
     products: prods,
-    status: 'opsætning',
+    plan: plan,
+    status: 'aktiv',
+    aktiv: true,
     progress: 0,
     tasks: prods.flatMap(p => defaultTasks(p)),
     messages: [],
@@ -1988,13 +2001,21 @@ function createClient() {
   clients.push(client);
   saveClients();
   syncKlientToDB(client);
+  // Opret standard chatbot config
+  syncChatbotConfigToDB(client.id, {
+    chatbot_navn: 'Alma',
+    velkomst: `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`,
+    farve: '#0a2463',
+    ydelser: client.desc || '',
+    priser: '', kontakt: email, aabning: '', andet: '', ekstra_viden: ''
+  });
 
   // Reset form
   ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris','nc_login_email','nc_login_password'].forEach(id => document.getElementById(id).value = '');
   document.querySelectorAll('.product-opt').forEach(el => el.classList.remove('selected'));
   document.querySelectorAll('.product-opt input').forEach(el => el.checked = false);
 
-  openClient(client.id);
+  visOpretSucces(client.id, client.name, loginEmail, loginPassword, plan);
 }
 
 function defaultTasks(prod) {
@@ -3219,6 +3240,80 @@ async function initAdmin() {
 }
 
 initAdmin();
+
+// ── PLAN VALGT → auto-sæt produkter ──────────────────
+function planValgt() {
+  const plan = document.getElementById('nc_plan').value;
+  const planProds = {
+    starter: ['chatbot','lead'],
+    pro: ['chatbot','lead','booking','rapport'],
+    vaekst: ['chatbot','lead','booking','rapport','mail'],
+    gratis: ['chatbot','lead']
+  };
+  const priser = { starter: 799, pro: 1499, vaekst: 2499, gratis: 0 };
+  const valgte = planProds[plan] || [];
+  document.querySelectorAll('.product-opt').forEach(el => {
+    const v = el.querySelector('input').value;
+    const skal = valgte.includes(v);
+    el.querySelector('input').checked = skal;
+    if (skal) el.classList.add('selected'); else el.classList.remove('selected');
+  });
+  document.getElementById('nc_mdpris').value = priser[plan] || '';
+}
+
+// ── OPRET KLIENT SUCCESS MODAL ────────────────────────
+function visOpretSucces(klient_id, navn, loginEmail, loginPassword, plan) {
+  const AGENT_URL = window.__AGENT_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5001' : 'https://klaiai.onrender.com');
+  const portalUrl = `${AGENT_URL}/app/client.html`;
+  const widgetKode = `<script src="${AGENT_URL}/widget.js" data-id="${klient_id}"><\/script>`;
+  document.getElementById('succes_navn').textContent = navn;
+  document.getElementById('succes_plan').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+  document.getElementById('succes_email').textContent = loginEmail;
+  document.getElementById('succes_pw').textContent = loginPassword;
+  document.getElementById('succes_portal').href = portalUrl;
+  document.getElementById('succes_widget').textContent = widgetKode;
+  document.getElementById('succesModal').classList.remove('hidden');
+}
+
+function kopierWidget() {
+  const kode = document.getElementById('succes_widget').textContent;
+  navigator.clipboard.writeText(kode).then(() => {
+    const btn = document.getElementById('kopierWidgetBtn');
+    btn.textContent = '✅ Kopieret!';
+    setTimeout(() => btn.textContent = '📋 Kopier kode', 2000);
+  });
+}
+
 </script>
+
+<!-- ── SUCCESS MODAL ── -->
+<div id="succesModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:20px;max-width:540px;width:100%;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div style="text-align:center;margin-bottom:1.5rem">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">🎉</div>
+      <div style="font-size:1.2rem;font-weight:800;color:#0a2463"><span id="succes_navn"></span> er oprettet!</div>
+      <div style="font-size:.82rem;color:#6b7a99;margin-top:.25rem">Plan: <strong id="succes_plan"></strong> · Aktiv med det samme</div>
+    </div>
+
+    <div style="background:#f7f8fc;border-radius:12px;padding:1.1rem;margin-bottom:1rem">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#6b7a99;margin-bottom:.6rem">Login til klientportal</div>
+      <div style="font-size:.85rem;margin-bottom:.3rem">📧 <strong>Email:</strong> <span id="succes_email"></span></div>
+      <div style="font-size:.85rem;margin-bottom:.8rem">🔑 <strong>Adgangskode:</strong> <span id="succes_pw"></span></div>
+      <a id="succes_portal" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-flex">Åbn klientportal →</a>
+    </div>
+
+    <div style="background:#f0f4ff;border-radius:12px;padding:1.1rem;margin-bottom:1.25rem">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#6b7a99;margin-bottom:.6rem">Widget-kode til hjemmeside</div>
+      <div style="font-size:.75rem;color:#333;font-family:monospace;background:#e8ecf8;padding:.75rem;border-radius:8px;word-break:break-all;margin-bottom:.6rem" id="succes_widget"></div>
+      <button id="kopierWidgetBtn" class="btn btn-secondary btn-sm" onclick="kopierWidget()">📋 Kopier kode</button>
+      <div style="font-size:.72rem;color:#6b7a99;margin-top:.5rem">Indsæt koden lige før &lt;/body&gt; på klientens hjemmeside</div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="document.getElementById('succesModal').classList.add('hidden')">Luk</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
