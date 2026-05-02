@@ -19,6 +19,12 @@ import stripe
 import requests as http_requests
 from bs4 import BeautifulSoup
 import threading
+import io
+try:
+    import pdfplumber
+    HAR_PDFPLUMBER = True
+except ImportError:
+    HAR_PDFPLUMBER = False
 
 # ── STRIPE ────────────────────────────────────────────
 STRIPE_SECRET_KEY     = os.environ.get('STRIPE_SECRET_KEY', '')
@@ -1836,6 +1842,83 @@ def formater_produkter_til_tekst(alle_produkter):
     return '\n'.join(linjer)
 
 
+def udtræk_pdf_tekst(pdf_url, max_tegn=3000):
+    """Downloader og udtrækker tekst fra en PDF-fil"""
+    if not HAR_PDFPLUMBER:
+        return ''
+    try:
+        resp = http_requests.get(pdf_url, timeout=15, headers=HEADERS, stream=True)
+        if resp.status_code >= 400:
+            return ''
+        indhold = resp.content
+        if len(indhold) > 15 * 1024 * 1024:  # Max 15 MB
+            return ''
+        with pdfplumber.open(io.BytesIO(indhold)) as pdf:
+            sider = []
+            for side in pdf.pages[:20]:  # Max 20 sider
+                tekst = side.extract_text()
+                if tekst:
+                    sider.append(tekst.strip())
+            return '\n'.join(sider)[:max_tegn]
+    except Exception as e:
+        print(f"PDF fejl ({pdf_url}): {e}")
+        return ''
+
+
+def find_pdf_links(soup, base_url, max_antal=8):
+    """Finder PDF-links på en side"""
+    base = urlparse(base_url)
+    fundne = []
+    seen = set()
+    if not soup:
+        return fundne
+    for a in soup.find_all('a', href=True):
+        href = a['href'].strip()
+        full = urljoin(base_url, href)
+        if full in seen:
+            continue
+        parsed = urlparse(full)
+        # Kun PDF'er fra samme domæne eller absolutte links
+        if not parsed.path.lower().endswith('.pdf'):
+            continue
+        seen.add(full)
+        navn = a.get_text(strip=True) or parsed.path.split('/')[-1]
+        fundne.append({'url': full, 'navn': navn[:80]})
+        if len(fundne) >= max_antal:
+            break
+    return fundne
+
+
+def kombiner_scan_resultater(resultater):
+    """
+    Kombinerer data fra flere URL-scanninger til ét samlet resultat.
+    Første URL er primær — dens virksomhedsnavn/beskrivelse/kontakt bruges.
+    Øvrige URLs' ekstra_viden, produkter og ydelser tilføjes.
+    """
+    if not resultater:
+        return {}
+    primær = resultater[0].copy()
+
+    alle_ydelser = [primær.get('data', {}).get('ydelser', '')]
+    alle_ekstra = [primær.get('data', {}).get('ekstra_viden', '')]
+    alle_produkter = primær.get('produkter_fundet', 0)
+
+    for r in resultater[1:]:
+        d = r.get('data', {})
+        kilde = urlparse(r.get('url', '')).netloc
+        if d.get('ydelser'):
+            alle_ydelser.append(f"[Fra {kilde}]: {d['ydelser']}")
+        if d.get('ekstra_viden'):
+            alle_ekstra.append(f"\n--- Fra {kilde} ---\n{d['ekstra_viden']}")
+        alle_produkter += r.get('produkter_fundet', 0)
+
+    primær['data']['ydelser'] = ' | '.join(filter(None, alle_ydelser))
+    primær['data']['ekstra_viden'] = '\n'.join(filter(None, alle_ekstra))
+    primær['produkter_fundet'] = alle_produkter
+    primær['sider_skannet'] = sum([r.get('sider_skannet', []) for r in resultater], [])
+    return primær
+
+
 def _kør_scanning(job_id, url):
     """Kører komplet scanning i baggrundstråd"""
     try:
@@ -1942,6 +2025,35 @@ def _kør_scanning(job_id, url):
             if len(alle_produkter) >= 500:
                 break
 
+        scan_jobs[job_id]['fremgang'] = f'Fandt {len(alle_produkter)} produkter — scanner PDF-filer...'
+
+        # ── Trin 4: PDF-filer ────────────────────────────
+        pdf_tekst_samlet = ''
+        pdf_links = find_pdf_links(forside_soup, url, max_antal=8)
+        # Find også PDFs på info-sider
+        for info_link in info_links[:3]:
+            info_s = hent_raa_soup(info_link)
+            if info_s:
+                pdf_links += find_pdf_links(info_s, url, max_antal=4)
+
+        # Dedupliker
+        seen_pdf = set()
+        unikke_pdfs = []
+        for p in pdf_links:
+            if p['url'] not in seen_pdf:
+                seen_pdf.add(p['url'])
+                unikke_pdfs.append(p)
+
+        for pdf in unikke_pdfs[:8]:
+            scan_jobs[job_id]['fremgang'] = f"Læser PDF: {pdf['navn'][:40]}..."
+            pdf_t = udtræk_pdf_tekst(pdf['url'])
+            if pdf_t:
+                pdf_tekst_samlet += f"\n\n--- PDF: {pdf['navn']} ({pdf['url']}) ---\n{pdf_t}"
+
+        if pdf_tekst_samlet:
+            undersider_tekst += pdf_tekst_samlet
+            sider_skannet.append(f"PDFs ({len(unikke_pdfs)} filer)")
+
         scan_jobs[job_id]['fremgang'] = f'Fandt {len(alle_produkter)} produkter — analyserer med AI...'
 
         produkt_tekst = formater_produkter_til_tekst(alle_produkter)
@@ -2025,6 +2137,54 @@ def scan_status(job_id):
     if not job:
         return jsonify({'error': 'Job ikke fundet'}), 404
     return jsonify(job)
+
+
+def _kør_multi_scanning(job_id, urls):
+    """Scanner flere URLs og kombinerer resultaterne"""
+    resultater = []
+    total = len(urls)
+
+    for i, url in enumerate(urls):
+        sub_id = f"{job_id}_sub_{i}"
+        scan_jobs[sub_id] = {'status': 'running', 'fremgang': 'Starter...'}
+        scan_jobs[job_id]['fremgang'] = f'Scanner {i+1}/{total}: {url[:50]}...'
+        scan_jobs[job_id]['sub_jobs'] = [f"{job_id}_sub_{j}" for j in range(total)]
+
+        _kør_scanning(sub_id, url)
+
+        sub_job = scan_jobs.get(sub_id, {})
+        if sub_job.get('status') == 'done':
+            resultater.append(sub_job)
+            scan_jobs[job_id]['fremgang'] = f'✅ {i+1}/{total} sider scannet — fortsætter...'
+        else:
+            scan_jobs[job_id]['fremgang'] = f'⚠️ {url[:40]} kunne ikke scannes — fortsætter...'
+
+    if not resultater:
+        scan_jobs[job_id] = {'status': 'error', 'error': 'Ingen af URLs kunne scannes'}
+        return
+
+    # Kombiner alle resultater
+    kombineret = kombiner_scan_resultater(resultater)
+    kombineret['status'] = 'done'
+    scan_jobs[job_id] = kombineret
+
+
+@app.route('/scan-multi', methods=['POST'])
+def scan_multi():
+    """Scanner flere URLs og kombinerer data — returnerer job_id"""
+    data = request.json
+    urls = data.get('urls', [])
+    urls = [u.strip() for u in urls if u and u.strip()]
+    urls = [('https://' + u if not u.startswith('http') else u) for u in urls]
+    if not urls:
+        return jsonify({'error': 'Ingen URLs angivet'}), 400
+    if len(urls) > 5:
+        urls = urls[:5]
+
+    job_id = secrets.token_hex(8)
+    scan_jobs[job_id] = {'status': 'running', 'fremgang': f'Starter scanning af {len(urls)} hjemmesider...'}
+    threading.Thread(target=_kør_multi_scanning, args=(job_id, urls), daemon=True).start()
+    return jsonify({'job_id': job_id, 'status': 'running', 'antal_urls': len(urls)})
 
 
 @app.route('/test-mail', methods=['GET'])

@@ -1000,13 +1000,20 @@
 
           <div class="generator-section">
             <div class="generator-section-title">Klientens information — det chatbotten ved</div>
-            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap">
-              <div style="font-size:.78rem;color:var(--muted);flex:1">Jo mere du udfylder, jo bedre svar giver chatbotten.</div>
-              <div style="display:flex;gap:.5rem;align-items:center">
-                <input class="form-input" id="cb_scan_url" placeholder="https://klientensside.dk" style="width:220px;font-size:.8rem;padding:.45rem .75rem"/>
-                <button type="button" class="btn btn-generate btn-sm" id="cbScanBtn" onclick="scanTilChatbot()" style="white-space:nowrap">🔍 Scan side</button>
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:.75rem">Tilføj én eller flere hjemmesider — scanneren henter tekst, produkter og PDF-filer automatisk.</div>
+
+            <!-- Multi-URL liste -->
+            <div id="scanUrlListe" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem">
+              <div class="scan-url-row" style="display:flex;gap:.5rem">
+                <input class="form-input scan-url-input" placeholder="https://klientensside.dk (primær)" style="flex:1;font-size:.82rem"/>
+                <button type="button" onclick="fjernScanUrl(this)" style="background:none;border:1px solid var(--border);border-radius:8px;padding:.4rem .7rem;cursor:pointer;color:var(--muted);font-size:.85rem" title="Fjern">✕</button>
               </div>
             </div>
+            <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:.75rem">
+              <button type="button" onclick="tilfoejScanUrl()" class="btn btn-secondary btn-sm">+ Tilføj hjemmeside</button>
+              <span style="font-size:.72rem;color:var(--muted)">Op til 5 — fx datterselskaber, produktsider, leverandørsider</span>
+            </div>
+            <button type="button" class="btn btn-generate btn-sm" id="cbScanBtn" onclick="scanTilChatbot()" style="margin-bottom:.75rem">🔍 Scan alle sider</button>
             <div id="cbScanStatus" style="font-size:.75rem;color:var(--muted);margin-bottom:.6rem;min-height:1rem"></div>
             <div class="form-grid">
               <div class="form-group">
@@ -3345,58 +3352,78 @@ async function scanHjemmeside() {
   }
 }
 
-// ── SCAN TIL CHATBOT GENERATOR ───────────────────────
-async function scanTilChatbot() {
-  const urlEl = document.getElementById('cb_scan_url');
-  // Prøv først det indtastede felt, derefter klientens hjemmeside
-  let url = urlEl.value.trim();
-  if (!url) {
-    const sel = document.getElementById('chatbotClientSel');
-    const klientId = sel.value;
+// ── MULTI-URL SCAN HELPERS ────────────────────────────
+function tilfoejScanUrl() {
+  const liste = document.getElementById('scanUrlListe');
+  if (liste.children.length >= 5) { alert('Maksimalt 5 hjemmesider'); return; }
+  const row = document.createElement('div');
+  row.className = 'scan-url-row';
+  row.style.cssText = 'display:flex;gap:.5rem';
+  row.innerHTML = `<input class="form-input scan-url-input" placeholder="https://datterselskab.dk" style="flex:1;font-size:.82rem"/>
+    <button type="button" onclick="fjernScanUrl(this)" style="background:none;border:1px solid var(--border);border-radius:8px;padding:.4rem .7rem;cursor:pointer;color:var(--muted);font-size:.85rem" title="Fjern">✕</button>`;
+  liste.appendChild(row);
+}
+
+function fjernScanUrl(btn) {
+  const liste = document.getElementById('scanUrlListe');
+  if (liste.children.length <= 1) { btn.closest('.scan-url-row').querySelector('input').value = ''; return; }
+  btn.closest('.scan-url-row').remove();
+}
+
+function getScanUrls() {
+  const inputs = document.querySelectorAll('.scan-url-input');
+  let urls = [...inputs].map(i => i.value.trim()).filter(Boolean);
+  // Hvis ingen URL er skrevet — prøv klientens hjemmeside
+  if (urls.length === 0) {
+    const klientId = document.getElementById('chatbotClientSel')?.value;
     if (klientId) {
       const klient = clients.find(c => c.id === klientId);
       if (klient?.website) {
-        url = klient.website;
-        urlEl.value = url;
+        urls = [klient.website];
+        document.querySelector('.scan-url-input').value = klient.website;
       }
     }
   }
-  if (!url) { alert('Skriv klientens hjemmeside-URL i feltet'); return; }
+  return urls;
+}
+
+// ── SCAN TIL CHATBOT GENERATOR ───────────────────────
+async function scanTilChatbot() {
+  const urls = getScanUrls();
+  if (!urls.length) { alert('Skriv mindst én hjemmeside-URL'); return; }
 
   const btn = document.getElementById('cbScanBtn');
   const status = document.getElementById('cbScanStatus');
   btn.disabled = true;
   btn.textContent = '⏳ Scanner...';
   status.style.color = 'var(--muted)';
+  status.textContent = urls.length > 1
+    ? `Scanner ${urls.length} hjemmesider — dette tager 1-3 minutter...`
+    : 'Henter forsiden...';
 
-  const fremgangsTekster = [
-    'Henter forsiden...', 'Scanner undersider...', 'Leder efter produkter...',
-    'Analyserer indhold med AI...', 'Næsten klar...'
-  ];
-  let fi = 0;
-  status.textContent = fremgangsTekster[0];
-  const iv = setInterval(() => { fi = Math.min(fi+1, fremgangsTekster.length-1); status.textContent = fremgangsTekster[fi]; }, 8000);
+  // Brug multi-endpoint hvis flere URLs, ellers enkelt
+  const endpoint = urls.length > 1 ? '/scan-multi' : '/scan-hjemmeside';
+  const body = urls.length > 1 ? { urls } : { url: urls[0] };
 
   try {
-    const startRes = await fetch(AGENT_URL + '/scan-hjemmeside', {
+    const startRes = await fetch(AGENT_URL + endpoint, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ url })
+      body: JSON.stringify(body)
     });
     const startJson = await startRes.json();
     if (!startJson.job_id) throw new Error(startJson.error || 'Kunne ikke starte scanning');
 
     let resultat = null;
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 80; i++) {
       await new Promise(r => setTimeout(r, 3000));
       const poll = await (await fetch(AGENT_URL + '/scan-status/' + startJson.job_id)).json();
       if (poll.fremgang) status.textContent = poll.fremgang;
       if (poll.status === 'done') { resultat = poll; break; }
       if (poll.status === 'error') throw new Error(poll.error || 'Scanning fejlede');
     }
-    if (!resultat) throw new Error('Scanning tog for lang tid');
+    if (!resultat) throw new Error('Scanning tog for lang tid — prøv igen');
 
     const d = resultat.data;
-    // Udfyld chatbot-felterne
     if (d.chatbot_navn) document.getElementById('chatbotName').value = d.chatbot_navn;
     if (d.velkomst) document.getElementById('chatbotGreeting').value = d.velkomst;
     if (d.aabning) document.getElementById('cb_aabning').value = d.aabning;
@@ -3410,16 +3437,21 @@ async function scanTilChatbot() {
 
     const prod = resultat.produkter_fundet || 0;
     const sider = (resultat.sider_skannet || []).length;
-    status.innerHTML = `✅ Scannede <strong>${sider} sider</strong>${prod > 0 ? ` · <strong>${prod} produkter</strong> med links` : ''} — felter udfyldt. Tjek og gem.`;
+    const pdfNote = sider_skannet_inkl_pdf(resultat.sider_skannet || []);
+    status.innerHTML = `✅ <strong>${urls.length} hjemmeside${urls.length>1?'r':''}</strong> skannet · ${sider} sider${prod > 0 ? ` · <strong>${prod} produkter</strong>` : ''}${pdfNote} — felter udfyldt`;
     status.style.color = 'var(--green)';
   } catch(e) {
     status.textContent = '❌ ' + e.message;
     status.style.color = 'var(--red)';
   } finally {
-    clearInterval(iv);
     btn.disabled = false;
-    btn.textContent = '🔍 Scan side';
+    btn.textContent = '🔍 Scan alle sider';
   }
+}
+
+function sider_skannet_inkl_pdf(sider) {
+  const pdfSide = sider.find(s => typeof s === 'string' && s.includes('PDF'));
+  return pdfSide ? ` · <strong>${pdfSide}</strong>` : '';
 }
 
 // ── PLAN VALGT → auto-sæt produkter ──────────────────
