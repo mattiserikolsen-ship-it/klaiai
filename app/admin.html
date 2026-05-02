@@ -1046,7 +1046,20 @@
           <!-- PDF Upload sektion -->
           <div class="generator-section" style="margin-top:1rem">
             <div class="generator-section-title">Dokumenter & filer</div>
-            <div style="font-size:.8rem; color:var(--muted); margin-bottom:.75rem">Upload PDF'er, prislister eller andet materiale — teksten udtrækkes automatisk og chatbotten bruger det som viden.</div>
+            <div style="font-size:.8rem; color:var(--muted); margin-bottom:.75rem">Upload PDF'er, prislister eller manualer — teksten udtrækkes automatisk. Du kan også indsætte direkte links til PDF'er på hjemmesiden.</div>
+
+            <!-- PDF URL-links -->
+            <div style="margin-bottom:1rem">
+              <div style="font-size:.78rem;font-weight:600;margin-bottom:.4rem">PDF-links fra hjemmeside</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem">Kopiér URL direkte fra klientens hjemmeside (højreklik → Kopiér link)</div>
+              <div id="pdfLinkListe" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.4rem"></div>
+              <div style="display:flex;gap:.5rem">
+                <input class="form-input" id="pdfLinkInput" placeholder="https://saniklar.dk/vejledning.pdf" style="flex:1;font-size:.8rem"/>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="tilfoejPdfLink()">+ Tilføj</button>
+                <button type="button" class="btn btn-generate btn-sm" id="hentPdfBtn" onclick="hentPdfLinks()" style="white-space:nowrap">📥 Hent tekst</button>
+              </div>
+              <div id="pdfLinkStatus" style="font-size:.72rem;color:var(--muted);margin-top:.4rem;min-height:1rem"></div>
+            </div>
             <div id="pdfDropZone" style="border:2px dashed #d1d5db; border-radius:12px; padding:1.5rem; text-align:center; cursor:pointer; transition:border-color .2s; background:#fafafa" onclick="document.getElementById('pdfInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='#d1d5db'" ondrop="handlePdfDrop(event)">
               <div style="font-size:1.5rem; margin-bottom:.4rem">📄</div>
               <div style="font-size:.85rem; font-weight:600; color:var(--text)">Klik eller træk filer hertil</div>
@@ -3114,6 +3127,75 @@ function handlePdfDrop(e) {
   e.preventDefault();
   document.getElementById('pdfDropZone').style.borderColor = '#d1d5db';
   handlePdfFiles(e.dataTransfer.files);
+}
+
+// ── PDF LINKS ─────────────────────────────────────────
+const _pdfLinks = [];
+
+function tilfoejPdfLink() {
+  const input = document.getElementById('pdfLinkInput');
+  let url = input.value.trim();
+  if (!url) return;
+  if (!url.startsWith('http')) url = 'https://' + url;
+  if (_pdfLinks.includes(url)) { input.value = ''; return; }
+  _pdfLinks.push(url);
+  input.value = '';
+  renderPdfLinks();
+}
+
+function renderPdfLinks() {
+  const liste = document.getElementById('pdfLinkListe');
+  liste.innerHTML = _pdfLinks.map((url, i) => `
+    <div style="display:flex;align-items:center;gap:.5rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.4rem .75rem">
+      <span style="font-size:.85rem">📄</span>
+      <span style="font-size:.75rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url}</span>
+      <button onclick="_pdfLinks.splice(${i},1);renderPdfLinks()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.8rem">✕</button>
+    </div>`).join('');
+}
+
+// Tillad Enter i PDF-link feltet
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('pdfLinkInput');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tilfoejPdfLink(); }});
+});
+
+async function hentPdfLinks() {
+  // Tilføj evt. URL der er i feltet
+  const inp = document.getElementById('pdfLinkInput');
+  if (inp.value.trim()) tilfoejPdfLink();
+
+  if (_pdfLinks.length === 0) { alert('Tilføj mindst ét PDF-link'); return; }
+
+  const btn = document.getElementById('hentPdfBtn');
+  const status = document.getElementById('pdfLinkStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Henter...';
+  status.textContent = `Henter ${_pdfLinks.length} PDF${_pdfLinks.length>1?'er':''}...`;
+  status.style.color = 'var(--muted)';
+
+  try {
+    const res = await fetch(AGENT_URL + '/hent-pdf-links', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ urls: _pdfLinks })
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Fejl');
+
+    // Tilføj til ekstra_viden
+    const ev = document.getElementById('cb_ekstra_viden');
+    const eksisterende = ev.value.trim();
+    ev.value = (eksisterende ? eksisterende + '\n\n' : '') + json.tekst;
+    document.getElementById('pdfExtractedWrap').classList.remove('hidden');
+
+    status.textContent = `✅ Udtrukket tekst fra ${json.antal} PDF${json.antal>1?'er':''}`;
+    status.style.color = 'var(--green)';
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+    status.style.color = 'var(--red)';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📥 Hent tekst';
+  }
 }
 
 async function handlePdfFiles(files) {

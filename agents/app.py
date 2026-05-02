@@ -2203,6 +2203,38 @@ def _kør_multi_scanning(job_id, urls):
     scan_jobs[job_id] = kombineret
 
 
+@app.route('/hent-pdf-links', methods=['POST'])
+def hent_pdf_links_endpoint():
+    """Henter og udtrækker tekst fra en liste af PDF-URLs"""
+    data = request.json
+    urls = data.get('urls', [])
+    urls = [u.strip() for u in urls if u and u.strip()]
+    if not urls:
+        return jsonify({'error': 'Ingen URLs angivet'}), 400
+
+    samlet = []
+    antal_ok = 0
+    for url in urls[:10]:
+        if not url.startswith('http'):
+            url = 'https://' + url
+        tekst = udtræk_pdf_tekst(url, max_tegn=4000)
+        if tekst:
+            filnavn = url.rstrip('/').split('/')[-1]
+            samlet.append(f"--- PDF: {filnavn} ---\n{tekst}")
+            antal_ok += 1
+        else:
+            # Prøv også som webside (nogle PDF-links er HTML-sider der indeholder PDF)
+            side_tekst, _ = hent_side_tekst(url, max_tegn=3000)
+            if side_tekst:
+                samlet.append(f"--- Side: {url.rstrip('/').split('/')[-1]} ---\n{side_tekst}")
+                antal_ok += 1
+
+    if not samlet:
+        return jsonify({'error': 'Kunne ikke hente indhold fra nogen af linkene'}), 400
+
+    return jsonify({'success': True, 'tekst': '\n\n'.join(samlet), 'antal': antal_ok})
+
+
 @app.route('/scan-multi', methods=['POST'])
 def scan_multi():
     """Scanner flere URLs og kombinerer data — returnerer job_id"""
