@@ -1650,18 +1650,34 @@ HEADERS_LISTE = [
 
 
 def hent_raa_soup(url, timeout=10):
-    """Henter en side og returnerer BeautifulSoup objekt — prøver flere user-agents"""
+    """Henter en side — prøver direkte, derefter Google Cache som fallback"""
+    # Forsøg 1-4: direkte med forskellige user-agents
     for headers in HEADERS_LISTE:
         try:
             resp = http_requests.get(
                 url, timeout=timeout, headers=headers,
-                allow_redirects=True, verify=False  # ignorer SSL-fejl
+                allow_redirects=True, verify=False
             )
             if resp.status_code < 400:
                 resp.encoding = resp.apparent_encoding or 'utf-8'
-                return BeautifulSoup(resp.text, 'html.parser')
+                soup = BeautifulSoup(resp.text, 'html.parser')
+                # Tjek at vi fik reel indhold (ikke en bot-blokeringsside)
+                tekst = soup.get_text()
+                if len(tekst) > 200:
+                    return soup
         except Exception:
             continue
+
+    # Forsøg 5: Google Cache
+    try:
+        cache_url = f"https://webcache.googleusercontent.com/search?q=cache:{url}"
+        resp = http_requests.get(cache_url, timeout=12, headers=HEADERS_LISTE[0], verify=False)
+        if resp.status_code < 400 and len(resp.text) > 500:
+            resp.encoding = resp.apparent_encoding or 'utf-8'
+            return BeautifulSoup(resp.text, 'html.parser')
+    except Exception:
+        pass
+
     return None
 
 
