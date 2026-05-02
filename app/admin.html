@@ -1000,7 +1000,14 @@
 
           <div class="generator-section">
             <div class="generator-section-title">Klientens information — det chatbotten ved</div>
-            <div style="font-size:.78rem; color:var(--muted); margin-bottom:.75rem">Jo mere du udfylder, jo bedre svar giver chatbotten. Den bruger kun info herfra.</div>
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap">
+              <div style="font-size:.78rem;color:var(--muted);flex:1">Jo mere du udfylder, jo bedre svar giver chatbotten.</div>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <input class="form-input" id="cb_scan_url" placeholder="https://klientensside.dk" style="width:220px;font-size:.8rem;padding:.45rem .75rem"/>
+                <button type="button" class="btn btn-generate btn-sm" id="cbScanBtn" onclick="scanTilChatbot()" style="white-space:nowrap">🔍 Scan side</button>
+              </div>
+            </div>
+            <div id="cbScanStatus" style="font-size:.75rem;color:var(--muted);margin-bottom:.6rem;min-height:1rem"></div>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Åbningstider</label>
@@ -3333,6 +3340,83 @@ async function scanHjemmeside() {
     status.style.color = 'var(--red)';
   } finally {
     clearInterval(fremgangsInterval);
+    btn.disabled = false;
+    btn.textContent = '🔍 Scan side';
+  }
+}
+
+// ── SCAN TIL CHATBOT GENERATOR ───────────────────────
+async function scanTilChatbot() {
+  const urlEl = document.getElementById('cb_scan_url');
+  // Prøv først det indtastede felt, derefter klientens hjemmeside
+  let url = urlEl.value.trim();
+  if (!url) {
+    const sel = document.getElementById('chatbotClientSel');
+    const klientId = sel.value;
+    if (klientId) {
+      const klient = clients.find(c => c.id === klientId);
+      if (klient?.website) {
+        url = klient.website;
+        urlEl.value = url;
+      }
+    }
+  }
+  if (!url) { alert('Skriv klientens hjemmeside-URL i feltet'); return; }
+
+  const btn = document.getElementById('cbScanBtn');
+  const status = document.getElementById('cbScanStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanner...';
+  status.style.color = 'var(--muted)';
+
+  const fremgangsTekster = [
+    'Henter forsiden...', 'Scanner undersider...', 'Leder efter produkter...',
+    'Analyserer indhold med AI...', 'Næsten klar...'
+  ];
+  let fi = 0;
+  status.textContent = fremgangsTekster[0];
+  const iv = setInterval(() => { fi = Math.min(fi+1, fremgangsTekster.length-1); status.textContent = fremgangsTekster[fi]; }, 8000);
+
+  try {
+    const startRes = await fetch(AGENT_URL + '/scan-hjemmeside', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url })
+    });
+    const startJson = await startRes.json();
+    if (!startJson.job_id) throw new Error(startJson.error || 'Kunne ikke starte scanning');
+
+    let resultat = null;
+    for (let i = 0; i < 50; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const poll = await (await fetch(AGENT_URL + '/scan-status/' + startJson.job_id)).json();
+      if (poll.fremgang) status.textContent = poll.fremgang;
+      if (poll.status === 'done') { resultat = poll; break; }
+      if (poll.status === 'error') throw new Error(poll.error || 'Scanning fejlede');
+    }
+    if (!resultat) throw new Error('Scanning tog for lang tid');
+
+    const d = resultat.data;
+    // Udfyld chatbot-felterne
+    if (d.chatbot_navn) document.getElementById('chatbotName').value = d.chatbot_navn;
+    if (d.velkomst) document.getElementById('chatbotGreeting').value = d.velkomst;
+    if (d.aabning) document.getElementById('cb_aabning').value = d.aabning;
+    if (d.kontakt) document.getElementById('cb_kontakt').value = d.kontakt;
+    if (d.ydelser) document.getElementById('cb_ydelser').value = d.ydelser;
+    if (d.priser) document.getElementById('cb_priser').value = d.priser;
+    if (d.ekstra_viden) {
+      document.getElementById('cb_ekstra_viden').value = d.ekstra_viden;
+      document.getElementById('pdfExtractedWrap').classList.remove('hidden');
+    }
+
+    const prod = resultat.produkter_fundet || 0;
+    const sider = (resultat.sider_skannet || []).length;
+    status.innerHTML = `✅ Scannede <strong>${sider} sider</strong>${prod > 0 ? ` · <strong>${prod} produkter</strong> med links` : ''} — felter udfyldt. Tjek og gem.`;
+    status.style.color = 'var(--green)';
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+    status.style.color = 'var(--red)';
+  } finally {
+    clearInterval(iv);
     btn.disabled = false;
     btn.textContent = '🔍 Scan side';
   }
