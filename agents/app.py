@@ -150,7 +150,10 @@ def byg_chatbot_prompt(klient):
     info = klient.get('info', {})
     info_tekst = '\n'.join([f"{k.capitalize()}: {v}" for k, v in info.items() if v])
     ekstra = klient.get('ekstra_viden', '').strip()
-    ekstra_sektion = f"\n\nEkstra viden fra dokumenter:\n{ekstra}" if ekstra else ""
+    # Max ~60.000 tegn så vi holder os inden for Claude Haiku's kontekstvindue
+    if len(ekstra) > 60000:
+        ekstra = ekstra[:60000] + '\n\n[... resten er afkortet pga. længde]'
+    ekstra_sektion = f"\n\nEkstra viden:\n{ekstra}" if ekstra else ""
     return f"""Du er {klient.get('chatbot_navn','Alma')}, AI-assistent for {klient.get('navn','virksomheden')}.
 
 Virksomhedsinfo:
@@ -158,10 +161,10 @@ Virksomhedsinfo:
 
 Regler:
 - Svar på dansk. Vær kort (max 3-4 sætninger). Vær venlig.
-- Tilbyd aldrig priser der ikke fremgår af info.
+- Brug KUN informationen ovenfor til at svare. Gæt ikke på priser eller specifikationer der ikke fremgår.
 - Hvis du ikke ved svaret, henvis til kontaktinfo.
-- Hvis ekstra viden indeholder produktlinks (f.eks. "URL: https://..."), inkluder da linket i dit svar når kunden spørger om det produkt. Skriv linket som markdown: [Se produktet her](URL)
-- Brug markdown til formatering: **fed** til produktnavne og priser.
+- Hvis ekstra viden indeholder produktlinks (f.eks. "URL: https://..."), inkluder linket i svaret som markdown: [Se produktet her](URL)
+- Brug markdown: **fed** til produktnavne og priser.
 
 LEAD-OPSAMLING (vigtigt):
 Når en kunde spørger om pris, tilbud, hvad noget koster, eller ønsker at blive kontaktet — svar kort på spørgsmålet og spørg derefter: "Må jeg få dit navn og telefonnummer, så vi kan kontakte dig med et tilbud?"
