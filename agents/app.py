@@ -20,6 +20,8 @@ import requests as http_requests
 from bs4 import BeautifulSoup
 import threading
 import io
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 try:
     import pdfplumber
     HAR_PDFPLUMBER = True
@@ -1635,16 +1637,32 @@ UØNSKEDE_EXTENSIONS = {'.pdf','.jpg','.jpeg','.png','.gif','.zip','.docx','.xls
 UØNSKEDE_PATH_DELE = {'login','logout','konto','account','kurv','cart','checkout','betaling','wishlist','favoritter','sign-in','register','wp-admin','wp-login','sitemap','robots'}
 
 
-def hent_raa_soup(url, timeout=8):
-    """Henter en side og returnerer BeautifulSoup objekt"""
-    try:
-        resp = http_requests.get(url, timeout=timeout, headers=HEADERS, allow_redirects=True)
-        if resp.status_code >= 400:
-            return None
-        resp.encoding = resp.apparent_encoding or 'utf-8'
-        return BeautifulSoup(resp.text, 'html.parser')
-    except:
-        return None
+HEADERS_LISTE = [
+    # Standard browser
+    {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', 'Accept-Language': 'da,en;q=0.9'},
+    # Mac Safari
+    {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'},
+    # Googlebot
+    {'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'},
+    # Original
+    HEADERS,
+]
+
+
+def hent_raa_soup(url, timeout=10):
+    """Henter en side og returnerer BeautifulSoup objekt — prøver flere user-agents"""
+    for headers in HEADERS_LISTE:
+        try:
+            resp = http_requests.get(
+                url, timeout=timeout, headers=headers,
+                allow_redirects=True, verify=False  # ignorer SSL-fejl
+            )
+            if resp.status_code < 400:
+                resp.encoding = resp.apparent_encoding or 'utf-8'
+                return BeautifulSoup(resp.text, 'html.parser')
+        except Exception:
+            continue
+    return None
 
 
 def hent_side_tekst(url, max_tegn=3000):
