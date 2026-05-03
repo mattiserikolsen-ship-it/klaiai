@@ -2189,11 +2189,20 @@ function renderProductTab() {
 function goGenerate(prod) {
   const map = {chatbot:'gen-chatbot', lead:'gen-lead', mail:'gen-mail', booking:'gen-booking', rapport:'gen-rapport'};
   showView(map[prod]);
-  // Pre-select client
+  // Pre-select client og trigger onchange så config loades automatisk
   setTimeout(() => {
-    const sel = document.querySelector(`#${prod}ClientSel, #${map[prod].replace('gen-','')}ClientSel`);
-    if (sel) sel.value = currentClient.id;
-  }, 50);
+    const selId = prod === 'chatbot' ? 'chatbotClientSel'
+                : prod === 'lead'    ? 'leadClientSel'
+                : prod === 'mail'    ? 'mailClientSel'
+                : prod === 'booking' ? 'bookingClientSel'
+                : prod === 'rapport' ? 'rapportClientSel'
+                : null;
+    const sel = selId ? document.getElementById(selId) : null;
+    if (sel && currentClient) {
+      sel.value = currentClient.id;
+      sel.dispatchEvent(new Event('change'));
+    }
+  }, 100);
 }
 
 function addProduct(key) {
