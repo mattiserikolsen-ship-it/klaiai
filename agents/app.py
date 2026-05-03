@@ -2774,13 +2774,137 @@ def kør_billing_agent():
         print(f"Billing agent fejl: {e}")
 
 
+def kør_mail_flow_agent():
+    """Sender automatiske mail-flow emails til nye leads baseret på gemte flows."""
+    if not db:
+        return
+    try:
+        # Hent alle aktive mail flows
+        flows_res = db.table('mail_flows').select('*').eq('aktiv', True).execute()
+        if not flows_res.data:
+            return
+
+        nu = datetime.utcnow()
+
+        for flow in flows_res.data:
+            klient_id = flow['klient_id']
+            steps = flow.get('steps', [])
+            if not steps:
+                continue
+
+            # Hent klientens leads (med email)
+            leads_res = db.table('leads').select('*').eq('klient_id', klient_id).neq('email', '').execute()
+            if not leads_res.data:
+                continue
+
+            # Hent klientens navn til afsender
+            try:
+                k_res = db.table('klienter').select('navn').eq('id', klient_id).single().execute()
+                klient_navn = k_res.data.get('navn', 'NexOlsen') if k_res.data else 'NexOlsen'
+            except:
+                klient_navn = 'NexOlsen'
+
+            for lead in leads_res.data:
+                if not lead.get('email'):
+                    continue
+                lead_id = lead['id']
+                # Tidspunkt for lead-oprettelse
+                oprettet_str = lead.get('created_at') or lead.get('oprettet_at')
+                if not oprettet_str:
+                    continue
+                try:
+                    oprettet = datetime.fromisoformat(oprettet_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                except:
+                    continue
+
+                for i, step in enumerate(steps):
+                    delay_timer = step.get('delay_timer', 0)
+                    send_tidspunkt = oprettet + timedelta(hours=delay_timer)
+
+                    # Endnu ikke tid til denne mail
+                    if nu < send_tidspunkt:
+                        continue
+
+                    agent_key = f"mail_flow_{flow['id']}_step_{i}"
+                    ref_key = f"{lead_id}"
+
+                    if _allerede_sendt(agent_key, ref_key):
+                        continue
+
+                    # Erstat {navn} i emne og tekst
+                    lead_navn = lead.get('navn', 'dig')
+                    emne = step.get('emne', '').replace('{navn}', lead_navn)
+                    tekst = step.get('tekst', '').replace('{navn}', lead_navn)
+
+                    sendt = send_mail(lead['email'], emne, tekst, klient_navn)
+                    if sendt:
+                        _log_agent(agent_key, klient_id, ref_key, f"Mail sendt til {lead['email']}: {emne}")
+                        print(f"📧 Mail flow: {emne} → {lead['email']}")
+
+        print(f"📧 Mail flow agent færdig: {nu.strftime('%H:%M')}")
+    except Exception as e:
+        print(f"Mail flow agent fejl: {e}")
+
+
+# ── MAIL FLOW ENDPOINTS ────────────────────────────────
+@app.route('/mail-flow/<klient_id>', methods=['POST'])
+@require_auth
+def gem_mail_flow(klient_id):
+    """Gemmer et mail flow for en klient"""
+    data = request.json
+    steps = data.get('steps', [])
+    flow_type = data.get('flow_type', 'custom')
+    if not steps:
+        return jsonify({'error': 'Ingen steps'}), 400
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        # Slet evt. eksisterende flow for denne klient
+        db.table('mail_flows').delete().eq('klient_id', klient_id).execute()
+        # Gem nyt flow
+        res = db.table('mail_flows').insert({
+            'klient_id': klient_id,
+            'flow_type': flow_type,
+            'steps': steps,
+            'aktiv': True
+        }).execute()
+        return jsonify({'success': True, 'id': res.data[0]['id'] if res.data else None})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/mail-flow/<klient_id>', methods=['GET'])
+@require_auth
+def hent_mail_flow(klient_id):
+    """Henter aktivt mail flow for en klient"""
+    if not db:
+        return jsonify({}), 200
+    try:
+        res = db.table('mail_flows').select('*').eq('klient_id', klient_id).eq('aktiv', True).maybe_single().execute()
+        return jsonify(res.data or {})
+    except Exception as e:
+        return jsonify({}), 200
+
+@app.route('/mail-flow/<klient_id>', methods=['DELETE'])
+@require_auth
+def slet_mail_flow(klient_id):
+    """Deaktiverer mail flow for en klient"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        db.table('mail_flows').delete().eq('klient_id', klient_id).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder')
 scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
 scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
 scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerapport', day_of_week='mon')
 scheduler.add_job(kør_billing_agent,    'cron', hour=8,  minute=0, id='billing')
+scheduler.add_job(kør_mail_flow_agent,  'interval', hours=1, id='mail_flow')
 scheduler.start()
-print("⏰ APScheduler startet med 5 agenter")
+print("⏰ APScheduler startet med 6 agenter")
 
 # ── Agent endpoints ────────────────────────────────────────────
 

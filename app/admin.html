@@ -1176,6 +1176,9 @@
           <div id="mailResult" class="hidden" style="margin-top:1.25rem">
             <div class="generator-section-title">Genereret flow</div>
             <div id="mailFlowSteps" class="flow-steps"></div>
+            <div id="mailFlowStatus" style="margin-top:.75rem; font-size:.82rem; color:var(--muted)"></div>
+            <button id="mailFlowGemBtn" class="btn btn-generate" style="width:100%; justify-content:center; padding:.9rem; font-size:.92rem; margin-top:.75rem" onclick="gemMailFlow()">🚀 Gem & aktivér automatisk mail flow</button>
+            <button id="mailFlowStopBtn" class="btn btn-secondary hidden" style="width:100%; justify-content:center; padding:.75rem; font-size:.85rem; margin-top:.5rem; color:var(--red); border-color:var(--red)" onclick="stopMailFlow()">⏹ Stop mail flow</button>
           </div>
         </div>
       </div>
@@ -2500,46 +2503,162 @@ function selectFlow(el) {
   selectedFlow = el.dataset.flow;
 }
 
+// Mail flow steps med delay i timer og reel mail-tekst
+const MAIL_FLOW_DEFS = {
+  welcome: [
+    {
+      num:1, title:'Velkomstmail',
+      emne: 'Velkommen, {navn}! 👋',
+      tekst: `Hej {navn},\n\nTak fordi du henvendte dig til os. Vi glæder os til at hjælpe dig!\n\nHer er hvad vi tilbyder:\n{product}\n\nHar du spørgsmål, er du altid velkommen til at svare på denne mail.\n\nMed venlig hilsen`,
+      delay: 'Straks', delay_timer: 0
+    },
+    {
+      num:2, title:'Opfølgning efter 2 dage',
+      emne: 'Har du fået svar på dine spørgsmål, {navn}?',
+      tekst: `Hej {navn},\n\nVi ville lige høre om du fik svar på det du søgte?\n\nVi er klar til at hjælpe dig videre — tag endelig fat i os.\n\nMed venlig hilsen`,
+      delay: '2 dage efter', delay_timer: 48
+    },
+    {
+      num:3, title:'Tjek-in efter 1 uge',
+      emne: 'Stadig interesseret, {navn}?',
+      tekst: `Hej {navn},\n\nDet er en uge siden du henvendte dig. Vi vil gerne sikre at du fik den hjælp du søgte.\n\nHvis du stadig overvejer os, tilbyder vi gerne en uforpligtende samtale.\n\nMed venlig hilsen`,
+      delay: '7 dage efter', delay_timer: 168
+    },
+  ],
+  reactivation: [
+    {
+      num:1, title:'Vi savner dig',
+      emne: 'Hej {navn} — vi har noget til dig 👋',
+      tekst: `Hej {navn},\n\nDet er et stykke tid siden vi hørte fra dig. Vi ville høre om du stadig har brug for vores hjælp med:\n\n{product}\n\nKom endelig tilbage til os — vi er her.\n\nMed venlig hilsen`,
+      delay: 'Dag 1', delay_timer: 24
+    },
+    {
+      num:2, title:'Særligt tilbud',
+      emne: 'Et særligt tilbud til dig, {navn} 🎁',
+      tekst: `Hej {navn},\n\nVi sætter pris på alle vores kunder, og som en del af vores faste kreds vil vi give dig et særligt tilbud.\n\nKontakt os i dag for at høre mere.\n\nMed venlig hilsen`,
+      delay: 'Dag 4', delay_timer: 96
+    },
+    {
+      num:3, title:'Sidste opfølgning',
+      emne: 'Sidst vi skriver, {navn}',
+      tekst: `Hej {navn},\n\nDette er vores sidste besked. Hvis du på et tidspunkt får brug for os, ved du hvor vi er.\n\nVi ønsker dig alt godt.\n\nMed venlig hilsen`,
+      delay: 'Dag 10', delay_timer: 240
+    },
+  ],
+  upsell: [
+    {
+      num:1, title:'Vidste du dette?',
+      emne: 'Du kender os allerede — men vidste du dette, {navn}?',
+      tekst: `Hej {navn},\n\nTak fordi du valgte os. Vi vil gerne fortælle dig om noget du måske ikke kender til:\n\n{product}\n\nKontakt os hvis du vil høre mere.\n\nMed venlig hilsen`,
+      delay: 'Dag 1', delay_timer: 24
+    },
+    {
+      num:2, title:'Hvad andre kunder siger',
+      emne: 'Se hvad andre kunder får ud af os, {navn}',
+      tekst: `Hej {navn},\n\nMange af vores kunder starter med ét produkt og opdager hurtigt at vi kan hjælpe dem endnu mere.\n\nVil du vide mere om hvad vi kan tilbyde dig?\n\nMed venlig hilsen`,
+      delay: 'Dag 5', delay_timer: 120
+    },
+    {
+      num:3, title:'Personligt tilbud',
+      emne: 'Et tilbud kun til dig, {navn} ✨',
+      tekst: `Hej {navn},\n\nVi har et skræddersyet tilbud til dig baseret på dit brug af vores ydelser.\n\nKontakt os i dag for at høre hvad vi kan gøre for dig.\n\nMed venlig hilsen`,
+      delay: 'Dag 10', delay_timer: 240
+    },
+  ],
+};
+
+let _currentMailFlowSteps = [];
+
 function generateMailFlow() {
   if (!selectedFlow) { alert('Vælg venligst en flow-type'); return; }
   const client = clients.find(c => c.id === document.getElementById('mailClientSel').value);
-  const product = document.getElementById('mailProduct').value || 'jeres ydelser';
+  if (!client) { alert('Vælg venligst en klient'); return; }
+  const product = document.getElementById('mailProduct').value || 'vores ydelser';
 
-  const flows = {
-    welcome: [
-      { num:1, title:'Velkomstmail', desc:`Velkommen som kunde! Her er alt hvad du skal vide om ${product}.`, delay:'Straks ved tilmelding' },
-      { num:2, title:'Onboarding guide', desc:'Her er en guide til at komme godt i gang.', delay:'2 dage efter' },
-      { num:3, title:'Tjek-in mail', desc:'Hvordan går det? Har du spørgsmål?', delay:'7 dage efter' },
-    ],
-    reactivation: [
-      { num:1, title:'Vi savner dig', desc:`Det er et stykke tid siden vi sidst hørte fra dig. Vi har noget nyt om ${product}.`, delay:'Dag 1' },
-      { num:2, title:'Særligt tilbud', desc:'Som en af vores kunder tilbyder vi dig en eksklusiv rabat.', delay:'Dag 4' },
-      { num:3, title:'Sidste chance', desc:'Tilbuddet udløber snart — kom tilbage og se hvad der er nyt.', delay:'Dag 10' },
-    ],
-    upsell: [
-      { num:1, title:'Du mangler kun ét', desc:`Du bruger allerede ${product} — vidste du at vi også tilbyder disse ekstra ydelser?`, delay:'Dag 1' },
-      { num:2, title:'Case study', desc:'Se hvordan andre kunder har fået endnu mere ud af os.', delay:'Dag 5' },
-      { num:3, title:'Personligt tilbud', desc:'Baseret på dit brug har vi et skræddersyet tilbud til dig.', delay:'Dag 10' },
-    ],
-  };
+  const flowDef = MAIL_FLOW_DEFS[selectedFlow] || [];
+  // Indsæt klientens produkt i tekst
+  _currentMailFlowSteps = flowDef.map(s => ({
+    ...s,
+    tekst: s.tekst.replace(/{product}/g, product),
+    emne: s.emne,
+    delay_timer: s.delay_timer
+  }));
 
-  const steps = flows[selectedFlow] || [];
   const container = document.getElementById('mailFlowSteps');
-  container.innerHTML = steps.map((s, i) => `
+  container.innerHTML = _currentMailFlowSteps.map((s, i) => `
     <div class="flow-step">
       <div class="flow-step-line">
         <div class="flow-step-dot">${s.num}</div>
-        ${i < steps.length-1 ? '<div class="flow-step-connector"></div>' : ''}
+        ${i < _currentMailFlowSteps.length-1 ? '<div class="flow-step-connector"></div>' : ''}
       </div>
       <div class="flow-step-body" style="margin-top:.15rem">
         <div class="flow-step-title">${s.title}</div>
-        <div class="flow-step-desc">${s.desc}</div>
+        <div style="font-size:.78rem; color:var(--accent2); font-weight:600; margin:.2rem 0">Emne: ${s.emne.replace('{navn}','[kundens navn]')}</div>
+        <div class="flow-step-desc" style="white-space:pre-line; font-size:.78rem">${s.tekst.replace(/{navn}/g,'[kundens navn]').substring(0,120)}...</div>
         <div class="flow-delay">📅 ${s.delay}</div>
       </div>
     </div>`).join('');
 
   document.getElementById('mailResult').classList.remove('hidden');
+  document.getElementById('mailFlowStatus').textContent = '';
+  document.getElementById('mailFlowGemBtn').classList.remove('hidden');
+  document.getElementById('mailFlowStopBtn').classList.add('hidden');
+
+  // Tjek om der allerede er et aktivt flow
+  loadMailFlowStatus(client.id);
   if (client) markProductGenerated(client.id, 'mail');
+}
+
+async function loadMailFlowStatus(klientId) {
+  if (!klientId) return;
+  try {
+    const res = await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    const data = await res.json();
+    const status = document.getElementById('mailFlowStatus');
+    const stopBtn = document.getElementById('mailFlowStopBtn');
+    if (data && data.aktiv) {
+      status.innerHTML = `<span style="color:var(--green)">✅ Aktivt flow: ${data.flow_type} — ${data.steps?.length || 0} mails kørende</span>`;
+      stopBtn.classList.remove('hidden');
+    }
+  } catch(e) {}
+}
+
+async function gemMailFlow() {
+  const klientId = document.getElementById('mailClientSel').value;
+  if (!klientId) { alert('Vælg en klient'); return; }
+  if (!_currentMailFlowSteps.length) { alert('Generér et flow først'); return; }
+
+  const btn = document.getElementById('mailFlowGemBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gemmer...';
+
+  try {
+    const res = await fetch(`${AGENT_URL}/mail-flow/${klientId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      body: JSON.stringify({ steps: _currentMailFlowSteps, flow_type: selectedFlow })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Fejl');
+    document.getElementById('mailFlowStatus').innerHTML = `<span style="color:var(--green)">✅ Flow aktiveret! Mails sendes automatisk til nye leads.</span>`;
+    document.getElementById('mailFlowStopBtn').classList.remove('hidden');
+  } catch(e) {
+    document.getElementById('mailFlowStatus').innerHTML = `<span style="color:var(--red)">❌ ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Gem & aktivér automatisk mail flow';
+  }
+}
+
+async function stopMailFlow() {
+  const klientId = document.getElementById('mailClientSel').value;
+  if (!klientId) return;
+  if (!confirm('Stop det automatiske mail flow for denne klient?')) return;
+  try {
+    await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    document.getElementById('mailFlowStatus').innerHTML = `<span style="color:var(--muted)">Flow stoppet.</span>`;
+    document.getElementById('mailFlowStopBtn').classList.add('hidden');
+  } catch(e) {}
 }
 
 // BOOKING
