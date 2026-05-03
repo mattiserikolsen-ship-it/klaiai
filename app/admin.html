@@ -2188,21 +2188,17 @@ function renderProductTab() {
 
 function goGenerate(prod) {
   const map = {chatbot:'gen-chatbot', lead:'gen-lead', mail:'gen-mail', booking:'gen-booking', rapport:'gen-rapport'};
+  const selMap = {chatbot:'chatbotClientSel', lead:'leadClientSel', mail:'mailClientSel', booking:'bookingClientSel', rapport:'rapportClientSel'};
+  // Gem klient-id så populateClientSelects kan bruge det
+  window._goGenerateKlientId = currentClient?.id;
+  window._goGenerateSelId = selMap[prod];
   showView(map[prod]);
-  // Pre-select client og trigger onchange så config loades automatisk
-  setTimeout(() => {
-    const selId = prod === 'chatbot' ? 'chatbotClientSel'
-                : prod === 'lead'    ? 'leadClientSel'
-                : prod === 'mail'    ? 'mailClientSel'
-                : prod === 'booking' ? 'bookingClientSel'
-                : prod === 'rapport' ? 'rapportClientSel'
-                : null;
-    const sel = selId ? document.getElementById(selId) : null;
-    if (sel && currentClient) {
-      sel.value = currentClient.id;
-      sel.dispatchEvent(new Event('change'));
-    }
-  }, 100);
+  // populateClientSelects er nu kørt — sæt og trigger
+  const sel = document.getElementById(selMap[prod]);
+  if (sel && currentClient) {
+    sel.value = currentClient.id;
+    sel.dispatchEvent(new Event('change'));
+  }
 }
 
 function addProduct(key) {
