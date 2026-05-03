@@ -1068,8 +1068,14 @@
             </div>
             <div id="pdfFileList" style="margin-top:.75rem; display:flex; flex-direction:column; gap:.5rem"></div>
             <div id="pdfExtractedWrap" class="hidden" style="margin-top:.75rem">
-              <label class="form-label">Udtrukket tekst (kan redigeres)</label>
-              <textarea class="form-input" id="cb_ekstra_viden" rows="6" placeholder="Tekst fra uploadede dokumenter vises her..."></textarea>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.35rem">
+                <label class="form-label" style="margin:0">Udtrukket tekst (kan redigeres)</label>
+                <span id="ekstraVidentaeller" style="font-size:.75rem; font-weight:600; color:var(--muted)">0 tegn</span>
+              </div>
+              <textarea class="form-input" id="cb_ekstra_viden" rows="6" placeholder="Tekst fra uploadede dokumenter vises her..." oninput="opdaterTegnTaeller()"></textarea>
+              <div id="ekstraVidenAdvarsel" class="hidden" style="margin-top:.4rem; padding:.5rem .75rem; border-radius:6px; font-size:.75rem; font-weight:500; background:var(--orange-bg); color:var(--orange)">
+                ⚠️ Chatbotten kan kun bruge de første 60.000 tegn. Overskydende tekst afkortes automatisk. Flyt vigtige specifikationer op i toppen.
+              </div>
             </div>
           </div>
 
@@ -2314,6 +2320,7 @@ async function loadChatbotConfig(klientId) {
     if (cfg.ekstra_viden) {
       document.getElementById('cb_ekstra_viden').value = cfg.ekstra_viden;
       document.getElementById('pdfExtractedWrap').classList.remove('hidden');
+      opdaterTegnTaeller();
     }
   } catch(e) { console.warn('Kunne ikke loade chatbot config:', e); }
 }
@@ -3186,6 +3193,7 @@ async function hentPdfLinks() {
     const eksisterende = ev.value.trim();
     ev.value = (eksisterende ? eksisterende + '\n\n' : '') + json.tekst;
     document.getElementById('pdfExtractedWrap').classList.remove('hidden');
+    opdaterTegnTaeller();
 
     status.textContent = `✅ Udtrukket tekst fra ${json.antal} PDF${json.antal>1?'er':''}`;
     status.style.color = 'var(--green)';
@@ -3250,6 +3258,28 @@ function removeDoc(i) {
   updateEkstraViden();
 }
 
+function opdaterTegnTaeller() {
+  const textarea = document.getElementById('cb_ekstra_viden');
+  const taeller = document.getElementById('ekstraVidentaeller');
+  const advarsel = document.getElementById('ekstraVidenAdvarsel');
+  if (!textarea || !taeller) return;
+  const n = textarea.value.length;
+  const MAX = 60000;
+  // Formatér med tusindtalsseparator
+  const formateret = n.toLocaleString('da-DK');
+  if (n < MAX * 0.8) {
+    taeller.textContent = `${formateret} tegn`;
+    taeller.style.color = 'var(--muted)';
+  } else if (n < MAX) {
+    taeller.textContent = `${formateret} / 60.000 tegn`;
+    taeller.style.color = 'var(--orange)';
+  } else {
+    taeller.textContent = `${formateret} tegn — ${(n - MAX).toLocaleString('da-DK')} afkortes!`;
+    taeller.style.color = 'var(--red)';
+  }
+  advarsel && (n >= MAX ? advarsel.classList.remove('hidden') : advarsel.classList.add('hidden'));
+}
+
 function updateEkstraViden() {
   const wrap = document.getElementById('pdfExtractedWrap');
   const textarea = document.getElementById('cb_ekstra_viden');
@@ -3257,6 +3287,7 @@ function updateEkstraViden() {
   if (ferdigeDocs.length === 0) { wrap.classList.add('hidden'); return; }
   wrap.classList.remove('hidden');
   textarea.value = ferdigeDocs.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n');
+  opdaterTegnTaeller();
 }
 
 // ── STATISTIK ─────────────────────────────────────────
@@ -3515,6 +3546,7 @@ async function scanTilChatbot() {
     if (d.ekstra_viden) {
       document.getElementById('cb_ekstra_viden').value = d.ekstra_viden;
       document.getElementById('pdfExtractedWrap').classList.remove('hidden');
+      opdaterTegnTaeller();
     }
 
     const prod = resultat.produkter_fundet || 0;
