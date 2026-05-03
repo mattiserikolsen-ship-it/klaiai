@@ -1074,7 +1074,7 @@
               </div>
               <textarea class="form-input" id="cb_ekstra_viden" rows="6" placeholder="Tekst fra uploadede dokumenter vises her..." oninput="opdaterTegnTaeller()"></textarea>
               <div id="ekstraVidenAdvarsel" class="hidden" style="margin-top:.4rem; padding:.5rem .75rem; border-radius:6px; font-size:.75rem; font-weight:500; background:var(--orange-bg); color:var(--orange)">
-                ⚠️ Chatbotten kan kun bruge de første 60.000 tegn. Overskydende tekst afkortes automatisk. Flyt vigtige specifikationer op i toppen.
+                ⚠️ Chatbotten kan kun bruge de første 150.000 tegn. Overskydende tekst afkortes automatisk. Flyt vigtige specifikationer op i toppen.
               </div>
             </div>
           </div>
@@ -3264,14 +3264,14 @@ function opdaterTegnTaeller() {
   const advarsel = document.getElementById('ekstraVidenAdvarsel');
   if (!textarea || !taeller) return;
   const n = textarea.value.length;
-  const MAX = 60000;
+  const MAX = 150000;
   // Formatér med tusindtalsseparator
   const formateret = n.toLocaleString('da-DK');
   if (n < MAX * 0.8) {
     taeller.textContent = `${formateret} tegn`;
     taeller.style.color = 'var(--muted)';
   } else if (n < MAX) {
-    taeller.textContent = `${formateret} / 60.000 tegn`;
+    taeller.textContent = `${formateret} / 150.000 tegn`;
     taeller.style.color = 'var(--orange)';
   } else {
     taeller.textContent = `${formateret} tegn — ${(n - MAX).toLocaleString('da-DK')} afkortes!`;

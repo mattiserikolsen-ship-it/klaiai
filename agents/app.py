@@ -150,9 +150,9 @@ def byg_chatbot_prompt(klient):
     info = klient.get('info', {})
     info_tekst = '\n'.join([f"{k.capitalize()}: {v}" for k, v in info.items() if v])
     ekstra = klient.get('ekstra_viden', '').strip()
-    # Max ~60.000 tegn så vi holder os inden for Claude Haiku's kontekstvindue
-    if len(ekstra) > 60000:
-        ekstra = ekstra[:60000] + '\n\n[... resten er afkortet pga. længde]'
+    # Max ~150.000 tegn (Claude Sonnet har stort kontekstvindue)
+    if len(ekstra) > 150000:
+        ekstra = ekstra[:150000] + '\n\n[... resten er afkortet pga. længde]'
     ekstra_sektion = f"\n\nEkstra viden:\n{ekstra}" if ekstra else ""
     return f"""Du er {klient.get('chatbot_navn','Alma')}, AI-assistent for {klient.get('navn','virksomheden')}.
 
@@ -253,7 +253,7 @@ def chat():
 
     try:
         response = ai.messages.create(
-            model='claude-haiku-4-5-20251001',
+            model='claude-sonnet-4-6',
             max_tokens=600,
             system=byg_chatbot_prompt(klient),
             tools=LEAD_TOOL,
@@ -275,7 +275,7 @@ def chat():
             messages.append({'role': 'assistant', 'content': response.content})
             messages.append({'role': 'user', 'content': '[system: lead er gemt, skriv en kort bekræftelse til kunden]'})
             followup = ai.messages.create(
-                model='claude-haiku-4-5-20251001',
+                model='claude-sonnet-4-6',
                 max_tokens=200,
                 system=byg_chatbot_prompt(klient),
                 tools=LEAD_TOOL,
@@ -2220,7 +2220,7 @@ def hent_pdf_links_endpoint():
     for url in urls[:10]:
         if not url.startswith('http'):
             url = 'https://' + url
-        tekst = udtræk_pdf_tekst(url, max_tegn=4000)
+        tekst = udtræk_pdf_tekst(url, max_tegn=10000)
         if tekst:
             filnavn = url.rstrip('/').split('/')[-1]
             samlet.append(f"--- PDF: {filnavn} ---\n{tekst}")
