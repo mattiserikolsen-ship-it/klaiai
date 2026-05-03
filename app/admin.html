@@ -1149,7 +1149,7 @@
         <div class="card">
           <div class="generator-section">
             <div class="generator-section-title">Vælg klient</div>
-            <select class="form-input form-select" id="mailClientSel" style="width:100%"><option value="">— Vælg klient —</option></select>
+            <select class="form-input form-select" id="mailClientSel" style="width:100%" onchange="loadMailConfig(this.value)"><option value="">— Vælg klient —</option></select>
           </div>
           <div class="generator-section">
             <div class="generator-section-title">Flow type</div>
@@ -2327,24 +2327,63 @@ async function loadChatbotConfig(klientId) {
 
 async function loadLeadConfig(klientId) {
   if (!klientId) return;
-  const client = clients.find(c => c.id === klientId);
-  if (!client) return;
-  if (client.name) document.getElementById('leadProduct').value = client.desc || '';
+  try {
+    const res = await fetch(`${AGENT_URL}/widget/${klientId}`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    // Auto-udfyld "Hvad sælger klienten?" fra ydelser + priser
+    const ydelser = cfg.info?.ydelser || '';
+    const priser = cfg.info?.priser || '';
+    const adresse = cfg.info?.adresse || '';
+    let produkt = ydelser;
+    if (priser) produkt += (produkt ? '\n' : '') + priser;
+    if (adresse) produkt += (produkt ? '\n' : '') + adresse;
+    if (produkt) document.getElementById('leadProduct').value = produkt;
+  } catch(e) { console.warn('Kunne ikke loade lead config:', e); }
+}
+
+async function loadMailConfig(klientId) {
+  if (!klientId) return;
+  try {
+    const res = await fetch(`${AGENT_URL}/widget/${klientId}`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    const ydelser = cfg.info?.ydelser || '';
+    const priser = cfg.info?.priser || '';
+    let produkt = ydelser;
+    if (priser) produkt += (produkt ? '\n' : '') + priser;
+    if (produkt) document.getElementById('mailProduct').value = produkt;
+  } catch(e) { console.warn('Kunne ikke loade mail config:', e); }
 }
 
 async function loadBookingConfig(klientId) {
   if (!klientId) return;
   try {
+    // Hent booking-config
     const res = await fetch(`${AGENT_URL}/booking-config/${klientId}`);
-    if (!res.ok) return;
-    const cfg = await res.json();
-    if (cfg.titel) document.getElementById('bk_titel').value = cfg.titel;
-    if (cfg.farve) document.getElementById('bk_farve').value = cfg.farve;
-    if (cfg.ydelser) document.getElementById('bk_ydelser').value = Array.isArray(cfg.ydelser) ? cfg.ydelser.join('\n') : cfg.ydelser;
-    if (cfg.start_tid) document.getElementById('bk_start').value = cfg.start_tid;
-    if (cfg.slut_tid) document.getElementById('bk_slut').value = cfg.slut_tid;
-    if (cfg.varighed) document.getElementById('bk_varighed').value = cfg.varighed;
-    if (cfg.buffer !== undefined) document.getElementById('bk_buffer').value = cfg.buffer;
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg.titel) document.getElementById('bk_titel').value = cfg.titel;
+      if (cfg.farve) document.getElementById('bk_farve').value = cfg.farve;
+      if (cfg.ydelser) document.getElementById('bk_ydelser').value = Array.isArray(cfg.ydelser) ? cfg.ydelser.join('\n') : cfg.ydelser;
+      if (cfg.start_tid) document.getElementById('bk_start').value = cfg.start_tid;
+      if (cfg.slut_tid) document.getElementById('bk_slut').value = cfg.slut_tid;
+      if (cfg.varighed) document.getElementById('bk_varighed').value = cfg.varighed;
+      if (cfg.buffer !== undefined) document.getElementById('bk_buffer').value = cfg.buffer;
+    }
+    // Fald tilbage på chatbot-config for ydelser hvis de stadig er tomme
+    const bkYdelser = document.getElementById('bk_ydelser');
+    if (!bkYdelser.value.trim()) {
+      const res2 = await fetch(`${AGENT_URL}/widget/${klientId}`);
+      if (res2.ok) {
+        const chatCfg = await res2.json();
+        const ydelser = chatCfg.info?.ydelser || '';
+        if (ydelser) {
+          // Konvertér komma/semikolon til linjeskift
+          bkYdelser.value = ydelser.split(/[,;]\s*|\n/).map(y => y.trim()).filter(Boolean).join('\n');
+        }
+      }
+    }
   } catch(e) { console.warn('Kunne ikke loade booking config:', e); }
 }
 
