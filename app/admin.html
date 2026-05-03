@@ -2189,15 +2189,16 @@ function renderProductTab() {
 function goGenerate(prod) {
   const map = {chatbot:'gen-chatbot', lead:'gen-lead', mail:'gen-mail', booking:'gen-booking', rapport:'gen-rapport'};
   const selMap = {chatbot:'chatbotClientSel', lead:'leadClientSel', mail:'mailClientSel', booking:'bookingClientSel', rapport:'rapportClientSel'};
-  // Gem klient-id så populateClientSelects kan bruge det
-  window._goGenerateKlientId = currentClient?.id;
-  window._goGenerateSelId = selMap[prod];
+  // Gem ID før showView nulstiller currentClient
+  const klientId = currentClient?.id;
   showView(map[prod]);
-  // populateClientSelects er nu kørt — sæt og trigger
-  const sel = document.getElementById(selMap[prod]);
-  if (sel && currentClient) {
-    sel.value = currentClient.id;
-    sel.dispatchEvent(new Event('change'));
+  // populateClientSelects er kørt — sæt værdi og trigger onchange
+  if (klientId) {
+    const sel = document.getElementById(selMap[prod]);
+    if (sel) {
+      sel.value = klientId;
+      sel.dispatchEvent(new Event('change'));
+    }
   }
 }
 
