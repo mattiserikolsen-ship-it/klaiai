@@ -667,6 +667,7 @@
         <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
         <div class="tab" data-tab="leadmails" onclick="switchTab('leadmails')">📧 Leadmails <span id="mailBadge" class="hidden" style="background:var(--red);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
         <div class="tab" data-tab="insights" onclick="switchTab('insights')" style="color:var(--purple)">🧠 AI Insights</div>
+        <div class="tab" data-tab="live" onclick="switchTab('live')" style="color:#059669">📡 Live</div>
       </div>
 
       <!-- Tab: Overblik -->
@@ -869,6 +870,63 @@
           <div style="text-align:center;padding:2rem;color:var(--muted);font-size:.85rem">
             Tryk <strong>Analysér nu</strong> for at lade Claude gennemgå klientens opsætning
           </div>
+        </div>
+      </div>
+
+      <!-- Tab: Live Cockpit -->
+      <div id="tab-live" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div style="font-size:.75rem;color:var(--muted)" id="cockpitHentet"></div>
+          <button class="btn btn-secondary btn-sm" onclick="loadCockpit()">↻ Opdater</button>
+        </div>
+
+        <!-- KPI kort -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem" id="cockpitKpi">
+          <div class="stat-card" style="text-align:center">
+            <div style="font-size:1.8rem;font-weight:800;color:var(--accent2)" id="ck_leads_uge">—</div>
+            <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Leads denne uge</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div style="font-size:1.8rem;font-weight:800;color:var(--accent2)" id="ck_leads_total">—</div>
+            <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Leads i alt</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div style="font-size:1.8rem;font-weight:800;color:var(--green)" id="ck_book_idag">—</div>
+            <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Bookinger i dag</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div style="font-size:1.8rem;font-weight:800;color:var(--purple)" id="ck_mail_aktiv">—</div>
+            <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Mail flow</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <!-- Søjlediagram: leads per dag -->
+          <div class="card" style="padding:1.1rem">
+            <div style="font-size:.82rem;font-weight:700;margin-bottom:1rem">📈 Leads — sidste 7 dage</div>
+            <div id="cockpitChart" style="display:flex;align-items:flex-end;gap:6px;height:80px">
+              <div style="color:var(--muted);font-size:.75rem">Indlæser...</div>
+            </div>
+            <div id="cockpitChartLabels" style="display:flex;gap:6px;margin-top:4px"></div>
+          </div>
+
+          <!-- Chatbot setup -->
+          <div class="card" style="padding:1.1rem">
+            <div style="font-size:.82rem;font-weight:700;margin-bottom:.85rem">🤖 Chatbot setup</div>
+            <div id="cockpitChatbot" style="font-size:.8rem;color:var(--muted)">Indlæser...</div>
+          </div>
+        </div>
+
+        <!-- Mail flow pipeline -->
+        <div class="card" style="padding:1.1rem;margin-bottom:1rem" id="cockpitMailFlowWrap">
+          <div style="font-size:.82rem;font-weight:700;margin-bottom:.85rem">📧 Mail flow pipeline</div>
+          <div id="cockpitMailFlow" style="font-size:.8rem;color:var(--muted)">Indlæser...</div>
+        </div>
+
+        <!-- Agent aktivitetslog -->
+        <div class="card" style="padding:1.1rem">
+          <div style="font-size:.82rem;font-weight:700;margin-bottom:.85rem">⚡ Agent aktivitet</div>
+          <div id="cockpitLog" style="font-size:.78rem;color:var(--muted)">Indlæser...</div>
         </div>
       </div>
 
@@ -1557,7 +1615,7 @@ function showView(v) {
 }
 
 function switchTab(t) {
-  ['overview','products','agents','tasks','chatbot-test','chat','leadmails','insights'].forEach(id => {
+  ['overview','products','agents','tasks','chatbot-test','chat','leadmails','insights','live'].forEach(id => {
     document.getElementById('tab-'+id)?.classList.add('hidden');
   });
   document.getElementById('tab-'+t)?.classList.remove('hidden');
@@ -1571,6 +1629,7 @@ function switchTab(t) {
   if (t === 'chatbot-test' && currentClient) initTestChat();
   if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
+  if (t === 'live' && currentClient) loadCockpit();
 }
 
 // ── LEAD MAILS ────────────────────────────────────────
@@ -1706,6 +1765,163 @@ async function afvisMails(leadId) {
     gruppe.style.opacity = '0';
     setTimeout(() => { gruppe.remove(); hentLeadMails(); }, 300);
   } catch(e) {}
+}
+
+// ── LIVE COCKPIT ──────────────────────────────────────
+async function loadCockpit() {
+  if (!currentClient) return;
+  try {
+    const res = await fetch(`${AGENT_URL}/klient-cockpit/${currentClient.id}`, {
+      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') }
+    });
+    if (!res.ok) throw new Error('Kunne ikke hente cockpit data');
+    const d = await res.json();
+
+    // Tidsstempel
+    const nu = new Date(d.hentet);
+    document.getElementById('cockpitHentet').textContent = 'Opdateret ' + nu.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' });
+
+    // KPI kort
+    document.getElementById('ck_leads_uge').textContent = d.leads.denne_uge;
+    document.getElementById('ck_leads_total').textContent = d.leads.total;
+    document.getElementById('ck_book_idag').textContent = d.bookinger.i_dag;
+    document.getElementById('ck_mail_aktiv').textContent = d.mail_flow.aktiv ? 'Aktiv' : 'Inaktiv';
+    document.getElementById('ck_mail_aktiv').style.color = d.mail_flow.aktiv ? 'var(--green)' : 'var(--muted)';
+
+    // Søjlediagram
+    renderCockpitChart(d.leads.per_dag);
+
+    // Chatbot setup
+    const cb = d.chatbot;
+    document.getElementById('cockpitChatbot').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <div style="width:20px;height:20px;border-radius:4px;background:${cb.farve}"></div>
+          <span style="font-weight:600;color:var(--text)">${cb.navn}</span>
+        </div>
+        ${cb.ydelser ? `<div><span style="color:var(--muted)">Ydelser:</span> ${cb.ydelser.substring(0,80)}${cb.ydelser.length>80?'...':''}</div>` : ''}
+        <div><span style="color:var(--muted)">Videnbase:</span> <span style="color:${cb.ekstra_viden_tegn > 100000 ? 'var(--orange)' : 'var(--green)'}">${cb.ekstra_viden_tegn.toLocaleString('da-DK')} tegn</span></div>
+      </div>`;
+
+    // Mail flow pipeline
+    renderMailFlowPipeline(d.mail_flow);
+
+    // Agent log
+    renderCockpitLog(d.agent_log);
+
+  } catch(e) {
+    document.getElementById('cockpitLog').textContent = '❌ ' + e.message;
+  }
+}
+
+function renderCockpitChart(perDag) {
+  const container = document.getElementById('cockpitChart');
+  const labels = document.getElementById('cockpitChartLabels');
+  const entries = Object.entries(perDag);
+  const max = Math.max(...entries.map(([,v]) => v), 1);
+  const dagNavne = ['Søn','Man','Tir','Ons','Tor','Fre','Lør'];
+
+  container.innerHTML = entries.map(([dato, antal]) => {
+    const pct = Math.round((antal / max) * 100);
+    const dag = dagNavne[new Date(dato).getDay()];
+    const farve = antal > 0 ? 'var(--accent2)' : 'var(--bg2)';
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative" title="${dato}: ${antal} leads">
+        ${antal > 0 ? `<div style="font-size:.65rem;font-weight:700;color:var(--accent2)">${antal}</div>` : '<div style="font-size:.65rem"> </div>'}
+        <div style="width:100%;background:${farve};border-radius:4px 4px 0 0;height:${Math.max(pct,4)}%;min-height:4px;transition:height .4s"></div>
+      </div>`;
+  }).join('');
+
+  labels.innerHTML = entries.map(([dato]) => {
+    const dag = dagNavne[new Date(dato).getDay()];
+    return `<div style="flex:1;text-align:center;font-size:.62rem;color:var(--muted)">${dag}</div>`;
+  }).join('');
+}
+
+function renderMailFlowPipeline(mf) {
+  const el = document.getElementById('cockpitMailFlow');
+  if (!mf.aktiv) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:.5rem 0">Intet aktivt mail flow — gå til Mail Flow Generator for at aktivere</div>';
+    return;
+  }
+  if (!mf.lead_status.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:.8rem">Flow aktivt (${mf.flow_type}) · Venter på leads med email</div>`;
+    return;
+  }
+
+  const stepLabels = ['Mail 1', 'Mail 2', 'Mail 3'];
+  el.innerHTML = `
+    <div style="margin-bottom:.75rem;font-size:.75rem;color:var(--muted)">
+      ${mf.flow_type} flow · ${mf.antal_steps} mails
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      ${mf.lead_status.map(l => {
+        const dots = l.steps_sendt.map((sendt, i) => `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="width:22px;height:22px;border-radius:50%;background:${sendt ? 'var(--green)' : 'var(--bg2)'};border:2px solid ${sendt ? 'var(--green)' : 'var(--border)'};display:flex;align-items:center;justify-content:center;font-size:.6rem;color:${sendt ? '#fff' : 'var(--muted)'}">
+              ${sendt ? '✓' : (i+1)}
+            </div>
+            <div style="font-size:.58rem;color:var(--muted)">${stepLabels[i]||''}</div>
+          </div>
+          ${i < l.steps_sendt.length-1 ? `<div style="flex:1;height:2px;background:${l.steps_sendt[i] ? 'var(--green)' : 'var(--bg2)'};align-self:center;margin-top:-12px"></div>` : ''}
+        `).join('');
+
+        const alleSendt = l.steps_sendt.every(Boolean);
+        return `
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;background:var(--bg);border-radius:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">
+              ${l.navn.charAt(0).toUpperCase()}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.navn}</div>
+              <div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.email}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">${dots}</div>
+            ${alleSendt ? '<span style="font-size:.65rem;background:var(--green-bg);color:var(--green);padding:.1rem .4rem;border-radius:4px;font-weight:600">Komplet</span>' : ''}
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderCockpitLog(log) {
+  const el = document.getElementById('cockpitLog');
+  if (!log.length) {
+    el.innerHTML = '<div style="color:var(--muted);padding:.5rem 0">Ingen agent-aktivitet endnu</div>';
+    return;
+  }
+
+  const agentFarve = {
+    'mail_flow': 'var(--purple)',
+    'reminder': 'var(--orange)',
+    'review': 'var(--blue-bg)',
+    'genopvarmning': 'var(--accent2)',
+    'ugerapport': 'var(--green)',
+    'billing': 'var(--red)',
+  };
+
+  const agentIkon = {
+    'mail_flow': '📧',
+    'reminder': '🔔',
+    'review': '⭐',
+    'genopvarmning': '🔄',
+    'ugerapport': '📊',
+    'billing': '💳',
+  };
+
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:.35rem">` +
+    log.map(entry => {
+      const ts = entry.oprettet ? new Date(entry.oprettet).toLocaleString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+      const agentBase = (entry.agent||'').split('_step_')[0].replace('mail_flow_','mail_flow');
+      const ikon = agentIkon[agentBase] || '⚡';
+      return `
+        <div style="display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:.85rem;flex-shrink:0;margin-top:.05rem">${ikon}</span>
+          <div style="flex:1;min-width:0">
+            <span style="font-size:.72rem;font-weight:600;color:var(--text)">${(entry.besked||'').substring(0,80)}${(entry.besked||'').length>80?'...':''}</span>
+          </div>
+          <span style="font-size:.65rem;color:var(--muted);flex-shrink:0;white-space:nowrap">${ts}</span>
+        </div>`;
+    }).join('') + '</div>';
 }
 
 // ── CHATBOT GAPS ──────────────────────────────────────

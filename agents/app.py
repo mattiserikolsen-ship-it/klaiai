@@ -2908,6 +2908,99 @@ def slet_mail_flow(klient_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/klient-cockpit/<klient_id>', methods=['GET'])
+@require_auth
+def klient_cockpit(klient_id):
+    """Samler al data om én klient til cockpit-visningen."""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        nu = datetime.utcnow()
+        syv_dage_siden = nu - timedelta(days=7)
+
+        # ── Leads ──
+        leads_res = db.table('leads').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
+        leads = leads_res.data or []
+
+        # Leads per dag (sidste 7 dage)
+        leads_per_dag = {}
+        for i in range(7):
+            dag = (nu - timedelta(days=6-i)).strftime('%Y-%m-%d')
+            leads_per_dag[dag] = 0
+        for lead in leads:
+            ts = lead.get('created_at') or lead.get('oprettet') or ''
+            if ts:
+                dag = ts[:10]
+                if dag in leads_per_dag:
+                    leads_per_dag[dag] += 1
+
+        # ── Bookinger ──
+        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).limit(20).execute()
+        bookinger = book_res.data or []
+        book_i_dag = sum(1 for b in bookinger if b.get('dato') == nu.strftime('%Y-%m-%d'))
+
+        # ── Mail flow ──
+        flow_res = db.table('mail_flows').select('*').eq('klient_id', klient_id).eq('aktiv', True).maybe_single().execute()
+        mail_flow = flow_res.data if flow_res else None
+
+        # Mail flow status per lead (hvilke steps er sendt)
+        lead_flow_status = []
+        if mail_flow and leads:
+            steps = mail_flow.get('steps', [])
+            for lead in leads[:10]:  # top 10 leads
+                if not lead.get('email'):
+                    continue
+                sendt = []
+                for i, step in enumerate(steps):
+                    agent_key = f"mail_flow_{mail_flow['id']}_step_{i}"
+                    log_res = db.table('agent_log').select('id').eq('agent', agent_key).eq('reference_id', str(lead['id'])).execute()
+                    sendt.append(len(log_res.data or []) > 0)
+                lead_flow_status.append({
+                    'navn': lead.get('navn', 'Ukendt'),
+                    'email': lead.get('email', ''),
+                    'steps_sendt': sendt,
+                    'total_steps': len(steps)
+                })
+
+        # ── Agent log ──
+        log_res = db.table('agent_log').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).limit(25).execute()
+        agent_log = log_res.data or []
+
+        # ── Chatbot config ──
+        chatbot = get_klient(klient_id)
+        chatbot_info = {
+            'navn': chatbot.get('chatbot_navn', 'Alma'),
+            'farve': chatbot.get('farve', '#0a2463'),
+            'ydelser': chatbot.get('info', {}).get('ydelser', ''),
+            'ekstra_viden_tegn': len(chatbot.get('ekstra_viden', '')),
+        }
+
+        return jsonify({
+            'leads': {
+                'total': len(leads),
+                'denne_uge': sum(1 for l in leads if (l.get('created_at') or '') >= syv_dage_siden.isoformat()),
+                'per_dag': leads_per_dag,
+                'seneste': leads[:5]
+            },
+            'bookinger': {
+                'total': len(bookinger),
+                'i_dag': book_i_dag,
+                'seneste': bookinger[:5]
+            },
+            'mail_flow': {
+                'aktiv': bool(mail_flow),
+                'flow_type': mail_flow.get('flow_type', '') if mail_flow else '',
+                'antal_steps': len(mail_flow.get('steps', [])) if mail_flow else 0,
+                'lead_status': lead_flow_status
+            },
+            'agent_log': agent_log,
+            'chatbot': chatbot_info,
+            'hentet': nu.isoformat()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder')
 scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
 scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
