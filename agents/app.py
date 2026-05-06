@@ -212,7 +212,12 @@ Email: {lead_data.get('email', '')}
 Interesse: {lead_data.get('besked', '')}
 
 Log ind på din NexOlsen portal for at se alle leads."""
-        send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'NexOlsen'))
+        sendt = send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'NexOlsen'))
+        if sendt:
+            _log_agent('lead_notif', klient_id, lead_data.get('navn', ''), f"Lead notifikation sendt: {lead_data.get('navn', 'Ukendt')} ({lead_data.get('telefon', '')})")
+    else:
+        # Log lead selvom ingen notifikationsmail er sat op
+        _log_agent('lead_notif', klient_id, lead_data.get('navn', ''), f"Nyt lead opsamlet: {lead_data.get('navn', 'Ukendt')} — {lead_data.get('besked', '')[:60]}")
 
 
 # ── GAP DETEKTION ──────────────────────────────────────
@@ -388,7 +393,7 @@ def modtag_lead():
             if cfg.data:
                 auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
             # Hent lead id
-            lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('oprettet', desc=True).limit(1).execute()
+            lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('created_at', desc=True).limit(1).execute()
             if lead_res.data:
                 lead_db_id = str(lead_res.data[0]['id'])
         except:
@@ -634,7 +639,7 @@ def get_leads(klient_id):
     if not db:
         return jsonify({'leads': []})
     try:
-        res = db.table('leads').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        res = db.table('leads').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
         return jsonify({'leads': res.data or []})
     except Exception as e:
         return jsonify({'leads': [], 'error': str(e)})
@@ -646,7 +651,7 @@ def get_bookinger(klient_id):
     if not db:
         return jsonify({'bookinger': []})
     try:
-        res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
         return jsonify({'bookinger': res.data or []})
     except Exception as e:
         return jsonify({'bookinger': [], 'error': str(e)})
@@ -660,7 +665,7 @@ def get_lead_mails(klient_id):
     if not db:
         return jsonify({'mails': []})
     try:
-        res = db.table('lead_mails').select('*').eq('klient_id', klient_id).eq('status', 'afventer').order('oprettet', desc=True).execute()
+        res = db.table('lead_mails').select('*').eq('klient_id', klient_id).eq('status', 'afventer').order('created_at', desc=True).execute()
         # Gruppér per lead_id
         from collections import defaultdict
         grupper = defaultdict(list)
@@ -746,7 +751,7 @@ def get_gaps(klient_id):
     if not db:
         return jsonify({'gaps': []})
     try:
-        res = db.table('chatbot_gaps').select('*').eq('klient_id', klient_id).eq('status', 'åben').order('oprettet', desc=True).limit(20).execute()
+        res = db.table('chatbot_gaps').select('*').eq('klient_id', klient_id).eq('status', 'åben').order('created_at', desc=True).limit(20).execute()
         return jsonify({'gaps': res.data or []})
     except Exception as e:
         return jsonify({'gaps': [], 'error': str(e)})
@@ -2922,20 +2927,22 @@ def klient_cockpit(klient_id):
         leads_res = db.table('leads').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
         leads = leads_res.data or []
 
-        # Leads per dag (sidste 7 dage)
+        # Leads per dag (sidste 7 dage) — sammenlign kun dato-delen (YYYY-MM-DD)
         leads_per_dag = {}
         for i in range(7):
             dag = (nu - timedelta(days=6-i)).strftime('%Y-%m-%d')
             leads_per_dag[dag] = 0
+        denne_uge_count = 0
         for lead in leads:
             ts = lead.get('created_at') or lead.get('oprettet') or ''
             if ts:
-                dag = ts[:10]
+                dag = ts[:10]  # tag kun dato-delen, ignorer tidszone
                 if dag in leads_per_dag:
                     leads_per_dag[dag] += 1
+                    denne_uge_count += 1
 
         # ── Bookinger ──
-        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).limit(20).execute()
+        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('created_at', desc=True).limit(20).execute()
         bookinger = book_res.data or []
         book_i_dag = sum(1 for b in bookinger if b.get('dato') == nu.strftime('%Y-%m-%d'))
 
@@ -2963,7 +2970,7 @@ def klient_cockpit(klient_id):
                 })
 
         # ── Agent log ──
-        log_res = db.table('agent_log').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).limit(25).execute()
+        log_res = db.table('agent_log').select('*').eq('klient_id', klient_id).order('created_at', desc=True).limit(25).execute()
         agent_log = log_res.data or []
 
         # ── Chatbot config ──
@@ -2978,7 +2985,7 @@ def klient_cockpit(klient_id):
         return jsonify({
             'leads': {
                 'total': len(leads),
-                'denne_uge': sum(1 for l in leads if (l.get('created_at') or '') >= syv_dage_siden.isoformat()),
+                'denne_uge': denne_uge_count,
                 'per_dag': leads_per_dag,
                 'seneste': leads[:5]
             },
@@ -3038,7 +3045,7 @@ def hent_agent_log():
     if not db:
         return jsonify([])
     try:
-        q = db.table('agent_log').select('*').order('oprettet', desc=True).limit(limit)
+        q = db.table('agent_log').select('*').order('created_at', desc=True).limit(limit)
         if klient_id:
             q = q.eq('klient_id', klient_id)
         res = q.execute()

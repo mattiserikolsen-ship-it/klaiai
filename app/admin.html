@@ -1910,7 +1910,7 @@ function renderCockpitLog(log) {
 
   el.innerHTML = `<div style="display:flex;flex-direction:column;gap:.35rem">` +
     log.map(entry => {
-      const ts = entry.oprettet ? new Date(entry.oprettet).toLocaleString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+      const ts = entry.created_at ? new Date(entry.created_at).toLocaleString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
       const agentBase = (entry.agent||'').split('_step_')[0].replace('mail_flow_','mail_flow');
       const ikon = agentIkon[agentBase] || '⚡';
       return `
@@ -3006,8 +3006,9 @@ function renderAgentCard(key, client, showClientName = false, logData = []) {
   // Filtrer log-entries der er relevante for denne agent/produkt
   const relevantLog = logData.filter(e => {
     const a = (e.agent || '').toLowerCase();
-    if (key === 'mail') return a.includes('mail_flow');
-    if (key === 'lead') return a.includes('lead') || a.includes('gem_lead');
+    if (key === 'chatbot') return a.includes('chatbot') || a.includes('chat');
+    if (key === 'mail') return a.includes('mail_flow') || a.includes('mail');
+    if (key === 'lead') return a.includes('lead') || a.includes('notif');
     if (key === 'booking') return a.includes('reminder') || a.includes('booking');
     if (key === 'rapport') return a.includes('ugerapport') || a.includes('rapport');
     return false;
@@ -3015,7 +3016,7 @@ function renderAgentCard(key, client, showClientName = false, logData = []) {
 
   const harAktivitet = relevantLog.length > 0;
   const sidstAktiv = harAktivitet
-    ? new Date(relevantLog[0].oprettet).toLocaleString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    ? new Date(relevantLog[0].created_at).toLocaleString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
     : 'Ingen aktivitet endnu';
 
   return `
@@ -3043,7 +3044,7 @@ function renderAgentCard(key, client, showClientName = false, logData = []) {
       <div class="agent-log">
         ${harAktivitet
           ? relevantLog.map(e => {
-              const ts = e.oprettet ? new Date(e.oprettet).toLocaleString('da-DK', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+              const ts = e.created_at ? new Date(e.created_at).toLocaleString('da-DK', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
               return `<div class="agent-log-entry success" style="display:flex;justify-content:space-between;gap:.5rem">
                 <span>✅ ${(e.besked||'').substring(0,60)}${(e.besked||'').length>60?'...':''}</span>
                 <span style="color:var(--muted);font-size:.68rem;flex-shrink:0">${ts}</span>
