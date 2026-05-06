@@ -1611,6 +1611,12 @@
 <script>
 // ── AUTH GUARD ────────────────────────────────────────
 (function() {
+  // Åbnet direkte som fil på computeren — sæt admin-session automatisk
+  if (window.location.protocol === 'file:') {
+    sessionStorage.setItem('klaiai_token', 'local-admin');
+    sessionStorage.setItem('klaiai_role', 'admin');
+    return;
+  }
   const token = sessionStorage.getItem('klaiai_token');
   const role = sessionStorage.getItem('klaiai_role');
   if (!token || role !== 'admin') {
