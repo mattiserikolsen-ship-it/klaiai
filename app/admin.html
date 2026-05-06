@@ -522,53 +522,127 @@
       </div>
     </div>
 
-    <!-- ── NY KLIENT ── -->
+    <!-- ── NY KLIENT WIZARD ── -->
     <div id="view-new-client" class="hidden">
       <div style="max-width:680px">
-        <div class="card">
-          <div style="font-size:1rem; font-weight:700; margin-bottom:1.5rem">Opret ny klient</div>
 
-          <div style="margin-bottom:1.5rem">
-            <div class="generator-section-title">Virksomhedsoplysninger</div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label class="form-label">Virksomhedsnavn *</label>
-                <input class="form-input" id="nc_name" placeholder="Firma A/S"/>
+        <!-- Step-indikator -->
+        <div style="display:flex;align-items:center;margin-bottom:1.75rem">
+          <div style="display:flex;align-items:center;gap:.45rem">
+            <div id="wz-n1" style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;transition:all .2s">1</div>
+            <span id="wz-l1" style="font-size:.78rem;font-weight:700;color:var(--accent);white-space:nowrap;transition:color .2s">Virksomhed</span>
+          </div>
+          <div id="wz-line-12" style="flex:1;height:2px;background:var(--border);margin:0 .6rem;transition:background .3s"></div>
+          <div style="display:flex;align-items:center;gap:.45rem">
+            <div id="wz-n2" style="width:30px;height:30px;border-radius:50%;background:var(--bg2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;transition:all .2s">2</div>
+            <span id="wz-l2" style="font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap;transition:color .2s">Chatbot</span>
+          </div>
+          <div id="wz-line-23" style="flex:1;height:2px;background:var(--border);margin:0 .6rem;transition:background .3s"></div>
+          <div style="display:flex;align-items:center;gap:.45rem">
+            <div id="wz-n3" style="width:30px;height:30px;border-radius:50%;background:var(--bg2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;transition:all .2s">3</div>
+            <span id="wz-l3" style="font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap;transition:color .2s">Produkter</span>
+          </div>
+          <div id="wz-line-34" style="flex:1;height:2px;background:var(--border);margin:0 .6rem;transition:background .3s"></div>
+          <div style="display:flex;align-items:center;gap:.45rem">
+            <div id="wz-n4" style="width:30px;height:30px;border-radius:50%;background:var(--bg2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;transition:all .2s">4</div>
+            <span id="wz-l4" style="font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap;transition:color .2s">Klar!</span>
+          </div>
+        </div>
+
+        <!-- Trin 1: Virksomhedsoplysninger -->
+        <div class="card" id="wz-panel-1">
+          <div style="font-size:1rem;font-weight:700;margin-bottom:1.25rem">Virksomhedsoplysninger</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Virksomhedsnavn *</label>
+              <input class="form-input" id="nc_name" placeholder="Firma A/S"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kontaktperson *</label>
+              <input class="form-input" id="nc_contact" placeholder="Navn Navnesen"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">E-mail *</label>
+              <input class="form-input" type="email" id="nc_email" placeholder="kontakt@firma.dk"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefon</label>
+              <input class="form-input" id="nc_phone" placeholder="+45 12 34 56 78"/>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Hjemmeside</label>
+              <div style="display:flex;gap:.5rem">
+                <input class="form-input" id="nc_website" placeholder="https://firma.dk" style="flex:1"/>
+                <button type="button" class="btn btn-generate btn-sm" id="scanBtn" onclick="scanHjemmeside()" style="white-space:nowrap;flex-shrink:0">🔍 Scan side</button>
               </div>
-              <div class="form-group">
-                <label class="form-label">Kontaktperson *</label>
-                <input class="form-input" id="nc_contact" placeholder="Navn Navnesen"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">E-mail *</label>
-                <input class="form-input" type="email" id="nc_email" placeholder="kontakt@firma.dk"/>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Telefon</label>
-                <input class="form-input" id="nc_phone" placeholder="+45 12 34 56 78"/>
-              </div>
-              <div class="form-group full">
-                <label class="form-label">Hjemmeside</label>
-                <div style="display:flex;gap:.5rem">
-                  <input class="form-input" id="nc_website" placeholder="https://firma.dk" style="flex:1"/>
-                  <button type="button" class="btn btn-generate btn-sm" id="scanBtn" onclick="scanHjemmeside()" style="white-space:nowrap;flex-shrink:0">
-                    🔍 Scan side
-                  </button>
-                </div>
-                <div id="scanStatus" style="font-size:.75rem;margin-top:.4rem;color:var(--muted);min-height:1rem"></div>
-              </div>
-              <div class="form-group full">
-                <label class="form-label">Kort beskrivelse af virksomheden</label>
-                <textarea class="form-input" id="nc_desc" placeholder="Udfyldes automatisk ved scanning..."></textarea>
-              </div>
+              <div id="scanStatus" style="font-size:.75rem;margin-top:.4rem;color:var(--muted);min-height:1rem"></div>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Kort beskrivelse af virksomheden</label>
+              <textarea class="form-input" id="nc_desc" placeholder="Udfyldes automatisk ved scanning..."></textarea>
             </div>
           </div>
+          <div style="display:flex;gap:.75rem;justify-content:space-between;margin-top:1.5rem">
+            <button class="btn btn-secondary" onclick="showView('clients')">Annuller</button>
+            <button class="btn btn-primary" onclick="wzGo(2)">Næste →</button>
+          </div>
+        </div>
 
+        <!-- Trin 2: Chatbot opsætning -->
+        <div class="card hidden" id="wz-panel-2">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+            <div style="font-size:1rem;font-weight:700">Chatbot opsætning</div>
+            <span id="wz2ScanHint" class="badge badge-green hidden">✓ Auto-udfyldt fra scanning</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:1.25rem">Felterne er forudfyldt fra trin 1 og eventuel scanning. Ret det der er nødvendigt.</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Chatbot-navn</label>
+              <input class="form-input" id="nc_bot_navn" placeholder="Alma" value="Alma"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Accentfarve</label>
+              <input class="form-input" type="color" id="nc_bot_farve" value="#0a2463" style="height:42px;padding:.4rem"/>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Velkomstbesked</label>
+              <input class="form-input" id="nc_bot_velkomst" placeholder="Hej! Hvordan kan jeg hjælpe dig?"/>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Ydelser / produkter</label>
+              <textarea class="form-input" id="nc_bot_ydelser" placeholder="Fra scanning..." style="min-height:70px"></textarea>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Priser</label>
+              <textarea class="form-input" id="nc_bot_priser" placeholder="Fra scanning..." style="min-height:55px"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Kontakt (tlf | email)</label>
+              <input class="form-input" id="nc_bot_kontakt" placeholder="+45 12 34 56 78 | info@firma.dk"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Åbningstider</label>
+              <input class="form-input" id="nc_bot_aabning" placeholder="Man-fre 09-17"/>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Adresse</label>
+              <input class="form-input" id="nc_bot_adresse" placeholder="Vejnavn 1, 1234 By"/>
+            </div>
+          </div>
+          <div style="display:flex;gap:.75rem;justify-content:space-between;margin-top:1.5rem">
+            <button class="btn btn-secondary" onclick="wzGo(1)">← Tilbage</button>
+            <button class="btn btn-primary" onclick="wzGo(3)">Næste →</button>
+          </div>
+        </div>
+
+        <!-- Trin 3: Produkter & pakke -->
+        <div class="card hidden" id="wz-panel-3">
+          <div style="font-size:1rem;font-weight:700;margin-bottom:1.5rem">Produkter & pakke</div>
           <div style="margin-bottom:1.5rem">
             <div class="generator-section-title">Vælg produkter til klienten</div>
             <div class="product-grid">
-              <label class="product-opt" data-prod="chatbot">
-                <input type="checkbox" value="chatbot"/>
+              <label class="product-opt selected" data-prod="chatbot">
+                <input type="checkbox" value="chatbot" checked/>
                 <div class="po-icon">💬</div>
                 <div><div class="po-name">Chatbot</div><div class="po-desc">AI-chat på hjemmesiden</div></div>
               </label>
@@ -594,7 +668,6 @@
               </label>
             </div>
           </div>
-
           <div style="margin-bottom:1.5rem">
             <div class="generator-section-title">Pakke & pris</div>
             <div class="form-grid">
@@ -613,12 +686,11 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Månedlig pris (kr. ex. moms)</label>
-                <input class="form-input" id="nc_mdpris" type="number" placeholder="1499"/>
+                <input class="form-input" id="nc_mdpris" type="number" placeholder="1499" value="1499"/>
               </div>
             </div>
           </div>
-
-          <div class="generator-section">
+          <div style="margin-bottom:.5rem">
             <div class="generator-section-title">Portal login</div>
             <div class="form-grid">
               <div class="form-group">
@@ -627,16 +699,41 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Adgangskode til portal</label>
-                <input class="form-input" type="text" id="nc_login_password" placeholder="F.eks. Firma2024"/>
+                <input class="form-input" type="text" id="nc_login_password" placeholder="Genereres automatisk"/>
               </div>
             </div>
           </div>
-
-          <div style="display:flex; gap:.75rem; justify-content:flex-end">
-            <button class="btn btn-secondary" onclick="showView('clients')">Annuller</button>
-            <button class="btn btn-generate" onclick="createClient()">✨ Opret klient & generer portal</button>
+          <div style="display:flex;gap:.75rem;justify-content:space-between;margin-top:1.5rem">
+            <button class="btn btn-secondary" onclick="wzGo(2)">← Tilbage</button>
+            <button class="btn btn-generate" onclick="createClient()">✨ Opret klient</button>
           </div>
         </div>
+
+        <!-- Trin 4: Klar! -->
+        <div class="card hidden" id="wz-panel-4">
+          <div style="text-align:center;padding:.75rem 0 1.5rem">
+            <div style="font-size:3rem;margin-bottom:.75rem">🎉</div>
+            <div style="font-size:1.2rem;font-weight:800;color:var(--accent)" id="wz4_navn">Klient oprettet!</div>
+            <div style="font-size:.82rem;color:var(--muted);margin-top:.25rem">Alt er sat op og klar til brug</div>
+          </div>
+          <div style="background:var(--bg);border-radius:12px;padding:1.1rem;margin-bottom:1rem">
+            <div class="generator-section-title">Login til klientportal</div>
+            <div style="font-size:.85rem;margin-bottom:.3rem">📧 <strong>Email:</strong> <span id="wz4_email"></span></div>
+            <div style="font-size:.85rem;margin-bottom:.8rem">🔑 <strong>Adgangskode:</strong> <span id="wz4_pw"></span></div>
+            <a id="wz4_portal" href="#" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none;display:inline-flex">Åbn klientportal →</a>
+          </div>
+          <div style="background:#f0f4ff;border-radius:12px;padding:1.1rem;margin-bottom:1.25rem">
+            <div class="generator-section-title">Widget-kode til hjemmesiden</div>
+            <div style="font-size:.75rem;font-family:monospace;background:#e8ecf8;padding:.75rem;border-radius:8px;word-break:break-all;margin-bottom:.6rem" id="wz4_widget"></div>
+            <button class="btn btn-secondary btn-sm" onclick="kopierWizardWidget()">📋 Kopier kode</button>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Indsæt koden lige før &lt;/body&gt; på klientens hjemmeside</div>
+          </div>
+          <div style="display:flex;gap:.75rem;justify-content:flex-end">
+            <button class="btn btn-secondary" onclick="showView('clients')">Gå til klientliste</button>
+            <button class="btn btn-primary" onclick="wzNyKlient()">+ Opret endnu en klient</button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1612,6 +1709,7 @@ function showView(v) {
   if (v === 'agents') renderAllAgents();
   if (v === 'fakturaer') initFaktura();
   if (v.startsWith('gen-')) populateClientSelects();
+  if (v === 'new-client') { _wzStep = 1; wzGo(1); }
 }
 
 function switchTab(t) {
@@ -2222,14 +2320,127 @@ function renderClientTable() {
   }).join('');
 }
 
+// ── WIZARD NAVIGATION ────────────────────────────────
+let _wzStep = 1;
+
+function wzGo(toStep) {
+  const fromStep = _wzStep;
+
+  // Valider trin 1
+  if (fromStep === 1 && toStep > 1) {
+    const name = document.getElementById('nc_name').value.trim();
+    const email = document.getElementById('nc_email').value.trim();
+    if (!name) { alert('Udfyld venligst virksomhedsnavnet'); return; }
+    if (!email) { alert('Udfyld venligst e-mail'); return; }
+    wzFill2();
+  }
+
+  // Skjul alle panels, vis kun det ønskede
+  [1,2,3,4].forEach(i => document.getElementById(`wz-panel-${i}`)?.classList.add('hidden'));
+  document.getElementById(`wz-panel-${toStep}`)?.classList.remove('hidden');
+  _wzStep = toStep;
+
+  // Opdater step-indikatorer
+  for (let i = 1; i <= 4; i++) {
+    const num = document.getElementById(`wz-n${i}`);
+    const lbl = document.getElementById(`wz-l${i}`);
+    if (i < toStep) {
+      // Gennemført
+      num.style.background = 'var(--green)'; num.style.color = '#fff'; num.textContent = '✓';
+      lbl.style.color = 'var(--green)';
+    } else if (i === toStep) {
+      // Aktiv
+      num.style.background = 'var(--accent)'; num.style.color = '#fff'; num.textContent = i;
+      lbl.style.color = 'var(--accent)';
+    } else {
+      // Fremtidig
+      num.style.background = 'var(--bg2)'; num.style.color = 'var(--muted)'; num.textContent = i;
+      lbl.style.color = 'var(--muted)';
+    }
+  }
+  // Opdater linjer
+  ['12','23','34'].forEach((pair, idx) => {
+    const line = document.getElementById(`wz-line-${pair}`);
+    if (line) line.style.background = (idx + 2 <= toStep) ? 'var(--green)' : 'var(--border)';
+  });
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function wzFill2() {
+  const sd = window._scanData || {};
+  const name = document.getElementById('nc_name').value.trim();
+  const email = document.getElementById('nc_email').value.trim();
+  const phone = document.getElementById('nc_phone').value.trim();
+
+  // Bot-navn og velkomst
+  if (!document.getElementById('nc_bot_velkomst').value) {
+    document.getElementById('nc_bot_velkomst').value =
+      sd.velkomst || `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`;
+  }
+  // Ydelser, priser, kontakt, åbningstider, adresse
+  if (sd.ydelser) document.getElementById('nc_bot_ydelser').value = sd.ydelser;
+  if (sd.priser)  document.getElementById('nc_bot_priser').value = sd.priser;
+  if (sd.aabning) document.getElementById('nc_bot_aabning').value = sd.aabning;
+  if (sd.adresse) document.getElementById('nc_bot_adresse').value = sd.adresse;
+
+  // Kontakt: byg fra scan eller fra form
+  if (!document.getElementById('nc_bot_kontakt').value) {
+    const scanKontakt = sd.kontakt || '';
+    const formKontakt = [phone, email].filter(Boolean).join(' | ');
+    document.getElementById('nc_bot_kontakt').value = scanKontakt || formKontakt;
+  }
+
+  // Login email forudfyldes med klientens email
+  if (!document.getElementById('nc_login_email').value) {
+    document.getElementById('nc_login_email').value = email;
+  }
+
+  // Vis scan-badge hvis vi har scan-data
+  const hint = document.getElementById('wz2ScanHint');
+  if (hint) hint.classList.toggle('hidden', !window._scanData);
+}
+
+function wzNyKlient() {
+  // Reset alt og gå til trin 1
+  ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc',
+   'nc_bot_velkomst','nc_bot_ydelser','nc_bot_priser','nc_bot_kontakt',
+   'nc_bot_aabning','nc_bot_adresse','nc_startpris','nc_mdpris',
+   'nc_login_email','nc_login_password'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('nc_bot_navn').value = 'Alma';
+  document.getElementById('nc_bot_farve').value = '#0a2463';
+  document.querySelectorAll('#wz-panel-3 .product-opt').forEach(el => {
+    el.classList.remove('selected');
+    el.querySelector('input').checked = false;
+  });
+  // Chatbot checked by default
+  const chatbotOpt = document.querySelector('#wz-panel-3 .product-opt[data-prod="chatbot"]');
+  if (chatbotOpt) { chatbotOpt.classList.add('selected'); chatbotOpt.querySelector('input').checked = true; }
+  window._scanData = null;
+  document.getElementById('scanStatus').textContent = '';
+  _wzStep = 1;
+  wzGo(1);
+}
+
+function kopierWizardWidget() {
+  const kode = document.getElementById('wz4_widget').textContent;
+  navigator.clipboard.writeText(kode).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ Kopieret!';
+    setTimeout(() => btn.textContent = '📋 Kopier kode', 2000);
+  });
+}
+
 // ── OPRET KLIENT ─────────────────────────────────────
 function createClient() {
   const name = document.getElementById('nc_name').value.trim();
   const email = document.getElementById('nc_email').value.trim();
-  if (!name) { alert('Udfyld venligst virksomhedsnavnet'); return; }
-  if (!email) { alert('Udfyld venligst e-mail'); return; }
+  if (!name || !email) { alert('Navn og e-mail mangler'); return; }
 
-  const prods = [...document.querySelectorAll('.product-opt input:checked')].map(i => i.value);
+  const prods = [...document.querySelectorAll('#wz-panel-3 .product-opt input:checked')].map(i => i.value);
   const plan = document.getElementById('nc_plan')?.value || 'pro';
 
   const loginEmail = document.getElementById('nc_login_email').value.trim() || email;
@@ -2243,7 +2454,7 @@ function createClient() {
     website: document.getElementById('nc_website').value.trim(),
     desc: document.getElementById('nc_desc').value.trim(),
     startpris: document.getElementById('nc_startpris').value,
-    mdpris: document.getElementById('nc_mdpris').value,
+    mdpris: document.getElementById('nc_mdpris').value || '1499',
     login_email: loginEmail,
     login_password: loginPassword,
     products: prods,
@@ -2259,27 +2470,30 @@ function createClient() {
   clients.push(client);
   saveClients();
   syncKlientToDB(client);
-  // Opret chatbot config — brug scan-data hvis tilgængeligt
-  const sd = window._scanData || {};
+
+  // Chatbot config fra trin 2
   syncChatbotConfigToDB(client.id, {
-    chatbot_navn: sd.chatbot_navn || 'Alma',
-    velkomst: sd.velkomst || `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`,
-    farve: '#0a2463',
-    ydelser: sd.ydelser || client.desc || '',
-    priser: sd.priser || '',
-    kontakt: sd.kontakt || email,
-    aabning: sd.aabning || '',
+    chatbot_navn: document.getElementById('nc_bot_navn').value || 'Alma',
+    velkomst: document.getElementById('nc_bot_velkomst').value || `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`,
+    farve: document.getElementById('nc_bot_farve').value || '#0a2463',
+    ydelser: document.getElementById('nc_bot_ydelser').value || '',
+    priser: document.getElementById('nc_bot_priser').value || '',
+    kontakt: document.getElementById('nc_bot_kontakt').value || email,
+    aabning: document.getElementById('nc_bot_aabning').value || '',
+    adresse: document.getElementById('nc_bot_adresse').value || '',
     andet: '',
-    ekstra_viden: sd.ekstra_viden || ''
+    ekstra_viden: (window._scanData || {}).ekstra_viden || ''
   });
   window._scanData = null;
 
-  // Reset form
-  ['nc_name','nc_contact','nc_email','nc_phone','nc_website','nc_desc','nc_startpris','nc_mdpris','nc_login_email','nc_login_password'].forEach(id => document.getElementById(id).value = '');
-  document.querySelectorAll('.product-opt').forEach(el => el.classList.remove('selected'));
-  document.querySelectorAll('.product-opt input').forEach(el => el.checked = false);
-
-  visOpretSucces(client.id, client.name, loginEmail, loginPassword, plan);
+  // Vis trin 4 med resultater
+  const AGENT_URL = window.__AGENT_URL__ || (window.location.hostname === 'localhost' ? 'http://localhost:5001' : 'https://klaiai.onrender.com');
+  document.getElementById('wz4_navn').textContent = `${name} er oprettet!`;
+  document.getElementById('wz4_email').textContent = loginEmail;
+  document.getElementById('wz4_pw').textContent = loginPassword;
+  document.getElementById('wz4_portal').href = `${AGENT_URL}/app/client.html`;
+  document.getElementById('wz4_widget').textContent = `<script src="${AGENT_URL}/chatbot.js" data-client="${client.id}"><\/script>`;
+  wzGo(4);
 }
 
 function defaultTasks(prod) {

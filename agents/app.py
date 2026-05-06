@@ -78,6 +78,7 @@ def er_klient_aktiv(klient_id):
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
@@ -200,24 +201,47 @@ def gem_lead_i_db(klient_id, lead_data):
             print(f"Lead DB fejl: {e}")
 
     klient_info = get_klient(klient_id)
+    klient_navn = klient_info.get('navn', 'Virksomheden')
     kontakt = klient_info.get('info', {}).get('kontakt', '')
     notif_mail = kontakt.split('|')[-1].strip() if '|' in kontakt else kontakt.strip()
-    if SENDGRID_API_KEY and notif_mail and '@' in notif_mail:
-        emne = f"Nyt lead via chatbot — {lead_data.get('navn', 'Ukendt')}"
-        tekst = f"""Nyt lead opsamlet via chatbotten!
 
-Navn: {lead_data.get('navn', '')}
-Telefon: {lead_data.get('telefon', '')}
-Email: {lead_data.get('email', '')}
-Interesse: {lead_data.get('besked', '')}
+    lead_navn = lead_data.get('navn', 'Ukendt')
+    lead_tlf = lead_data.get('telefon', '')
+    lead_email = lead_data.get('email', '')
+    lead_besked = lead_data.get('besked', '')
+
+    emne_klient = f"Nyt lead via chatbot — {lead_navn}"
+    tekst_klient = f"""Nyt lead opsamlet via chatbotten!
+
+Navn: {lead_navn}
+Telefon: {lead_tlf}
+Email: {lead_email}
+Interesse: {lead_besked}
 
 Log ind på din NexOlsen portal for at se alle leads."""
-        sendt = send_mail(notif_mail, emne, tekst, klient_info.get('navn', 'NexOlsen'))
+
+    # Send notifikation til klient
+    if SENDGRID_API_KEY and notif_mail and '@' in notif_mail:
+        sendt = send_mail(notif_mail, emne_klient, tekst_klient, klient_navn)
         if sendt:
-            _log_agent('lead_notif', klient_id, lead_data.get('navn', ''), f"Lead notifikation sendt: {lead_data.get('navn', 'Ukendt')} ({lead_data.get('telefon', '')})")
+            _log_agent('lead_notif', klient_id, lead_navn, f"Lead notifikation sendt til klient: {lead_navn} ({lead_tlf})")
     else:
-        # Log lead selvom ingen notifikationsmail er sat op
-        _log_agent('lead_notif', klient_id, lead_data.get('navn', ''), f"Nyt lead opsamlet: {lead_data.get('navn', 'Ukendt')} — {lead_data.get('besked', '')[:60]}")
+        _log_agent('lead_notif', klient_id, lead_navn, f"Nyt lead opsamlet: {lead_navn} — {lead_besked[:60]}")
+
+    # Send notifikation til admin (NexOlsen)
+    if SENDGRID_API_KEY and ADMIN_EMAIL and '@' in ADMIN_EMAIL:
+        emne_admin = f"[NexOlsen] Nyt lead hos {klient_navn} — {lead_navn}"
+        tekst_admin = f"""Nyt lead opsamlet via chatbot!
+
+Klient: {klient_navn} ({klient_id})
+Lead: {lead_navn}
+Telefon: {lead_tlf}
+Email: {lead_email}
+Interesse: {lead_besked}
+
+Log ind på admin-panelet for at se detaljer:
+https://klaiai.onrender.com/app/admin.html"""
+        send_mail(ADMIN_EMAIL, emne_admin, tekst_admin, 'NexOlsen')
 
 
 # ── GAP DETEKTION ──────────────────────────────────────
