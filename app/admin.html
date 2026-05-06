@@ -2967,122 +2967,108 @@ const AGENT_DEFS = {
   chatbot: {
     name: 'Chatbot-agent', icon: '💬',
     schedule: 'Kører kontinuerligt 24/7',
-    actions: ['Besvarer kundespørgsmål', 'Logger ubesvarede spørgsmål', 'Opdaterer FAQ automatisk'],
-    logs: [
-      { text: '✅ Besvarede 12 spørgsmål i dag', type: 'success' },
-      { text: 'ℹ️ 2 spørgsmål logget til gennemgang', type: 'info' },
-      { text: '✅ FAQ opdateret med 1 nyt svar', type: 'success' },
-    ]
+    beskrivelse: 'Besvarer kundespørgsmål, opsamler leads og anbefaler produkter automatisk',
+    næste: 'Altid aktiv',
   },
   lead: {
     name: 'Lead-agent', icon: '🎯',
-    schedule: 'Tjekker nye leads hvert 15 min',
-    actions: ['Sender øjeblikkeligt auto-svar', 'Kører opfølgningssekvens', 'Notificerer dig ved varme leads'],
-    logs: [
-      { text: '✅ Sendte opfølgning til 3 leads', type: 'success' },
-      { text: 'ℹ️ 1 varmt lead — klar til din opfølgning', type: 'info' },
-      { text: '✅ Sekvens afsluttet for 2 leads', type: 'success' },
-    ]
+    schedule: 'Sender notifikation ved nyt lead',
+    beskrivelse: 'Sender øjeblikkelig notifikation til klienten når et nyt lead opsamles via chatbot',
+    næste: 'Ved næste lead',
   },
   mail: {
-    name: 'Mail-agent', icon: '📧',
-    schedule: 'Kører dagligt kl. 09:00',
-    actions: ['Sender planlagte mails', 'Tilpasser indhold dynamisk', 'Stopper sekvens ved svar'],
-    logs: [
-      { text: '✅ 8 mails afsendt denne morgen', type: 'success' },
-      { text: '✅ 1 sekvens stoppet — kunden svarede', type: 'success' },
-      { text: 'ℹ️ Næste batch: i morgen kl. 09:00', type: 'info' },
-    ]
+    name: 'Mail flow-agent', icon: '📧',
+    schedule: 'Kører hver time',
+    beskrivelse: 'Sender automatiske opfølgningsmails til leads baseret på aktivt mail flow',
+    næste: 'Om max 60 min',
   },
   booking: {
     name: 'Booking-agent', icon: '📅',
-    schedule: 'Kører ved ny booking + 24t før',
-    actions: ['Sender bookingbekræftelse', 'Sender påmindelser 24t før', 'Håndterer aflysninger'],
-    logs: [
-      { text: '✅ Bekræftelse sendt til ny booking', type: 'success' },
-      { text: '✅ 3 påmindelser afsendt i dag', type: 'success' },
-      { text: 'ℹ️ 1 aflysning håndteret automatisk', type: 'info' },
-    ]
+    schedule: 'Kører kl. 09:00 dagligt',
+    beskrivelse: 'Sender bookingbekræftelser og påmindelser 24 timer før aftaler',
+    næste: 'I morgen kl. 09:00',
   },
   rapport: {
     name: 'Rapport-agent', icon: '📈',
     schedule: 'Kører mandag kl. 07:00',
-    actions: ['Henter data fra klientens systemer', 'Genererer PDF-rapport', 'Sender til klient automatisk'],
-    logs: [
-      { text: '✅ Ugentlig rapport sendt mandag', type: 'success' },
-      { text: 'ℹ️ Næste rapport: mandag kl. 07:00', type: 'info' },
-      { text: '✅ Alle datasystemer tilgængelige', type: 'success' },
-    ]
+    beskrivelse: 'Genererer og sender ugentlig aktivitetsrapport til klienten',
+    næste: 'Mandag kl. 07:00',
   }
 };
 
-function getClientAgents(client) {
-  if (!client.agents) client.agents = {};
-  return client.agents;
-}
+// Cache til agent-log data per klient
+const _agentLogCache = {};
 
-function renderAgentCard(key, client, showClientName = false) {
+function renderAgentCard(key, client, showClientName = false, logData = []) {
   const def = AGENT_DEFS[key];
   if (!def) return '';
-  const agents = getClientAgents(client);
-  const running = agents[key] === true;
-  const actionsToday = running ? Math.floor(Math.random() * 20) + 5 : 0;
-  const lastRun = running ? 'For ' + Math.floor(Math.random()*55+1) + ' min siden' : 'Ikke aktiv';
+
+  // Filtrer log-entries der er relevante for denne agent/produkt
+  const relevantLog = logData.filter(e => {
+    const a = (e.agent || '').toLowerCase();
+    if (key === 'mail') return a.includes('mail_flow');
+    if (key === 'lead') return a.includes('lead') || a.includes('gem_lead');
+    if (key === 'booking') return a.includes('reminder') || a.includes('booking');
+    if (key === 'rapport') return a.includes('ugerapport') || a.includes('rapport');
+    return false;
+  }).slice(0, 3);
+
+  const harAktivitet = relevantLog.length > 0;
+  const sidstAktiv = harAktivitet
+    ? new Date(relevantLog[0].oprettet).toLocaleString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })
+    : 'Ingen aktivitet endnu';
 
   return `
-    <div class="agent-card ${running?'running':''}" id="agentCard_${client.id}_${key}">
+    <div class="agent-card running" id="agentCard_${client.id}_${key}">
       <div class="agent-header">
         <div style="display:flex;align-items:center;gap:.65rem">
-          <div class="agent-icon-wrap ${running?'agent-icon-running':'agent-icon-paused'}">${def.icon}</div>
+          <div class="agent-icon-wrap agent-icon-running">${def.icon}</div>
           <div>
             <div class="agent-name">${def.name}</div>
             <div class="agent-client">${showClientName ? client.name : def.schedule}</div>
           </div>
         </div>
-        <label class="agent-toggle">
-          <input type="checkbox" ${running?'checked':''} onchange="toggleAgent('${client.id}','${key}',this.checked)"/>
-          <span class="agent-toggle-slider"></span>
-        </label>
+        <div style="display:flex;align-items:center;gap:.4rem;background:var(--green-bg);border-radius:20px;padding:.25rem .7rem">
+          <span class="agent-pulse"></span>
+          <span style="font-size:.7rem;font-weight:700;color:var(--green)">Aktiv</span>
+        </div>
       </div>
       <div class="agent-stats">
-        <div class="agent-stat">
-          <div class="agent-stat-val">${running?'<span class="agent-pulse"></span>Kørende':'Pauseret'}</div>
-          <div class="agent-stat-label">Status</div>
-        </div>
-        <div class="agent-stat">
-          <div class="agent-stat-val">${actionsToday}</div>
-          <div class="agent-stat-label">Handlinger i dag</div>
-        </div>
-        <div class="agent-stat">
-          <div class="agent-stat-val" style="font-size:.75rem">${lastRun}</div>
-          <div class="agent-stat-label">Sidst aktiv</div>
+        <div class="agent-stat" style="flex:2">
+          <div class="agent-stat-val" style="font-size:.72rem;color:var(--muted);font-weight:500">${def.beskrivelse}</div>
+          <div class="agent-stat-label" style="margin-top:.3rem">Sidst aktiv: ${sidstAktiv}</div>
         </div>
       </div>
-      <div class="agent-schedule">⏱ ${def.schedule}</div>
+      <div class="agent-schedule">⏱ Næste kørsel: ${def.næste}</div>
       <div class="agent-log">
-        ${running
-          ? def.logs.map(l => `<div class="agent-log-entry ${l.type}">${l.text}</div>`).join('')
-          : '<div class="agent-log-entry">Agent er pauseret — aktiver for at starte</div>'
+        ${harAktivitet
+          ? relevantLog.map(e => {
+              const ts = e.oprettet ? new Date(e.oprettet).toLocaleString('da-DK', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+              return `<div class="agent-log-entry success" style="display:flex;justify-content:space-between;gap:.5rem">
+                <span>✅ ${(e.besked||'').substring(0,60)}${(e.besked||'').length>60?'...':''}</span>
+                <span style="color:var(--muted);font-size:.68rem;flex-shrink:0">${ts}</span>
+              </div>`;
+            }).join('')
+          : `<div class="agent-log-entry info">ℹ️ Ingen handlinger endnu — agenten venter på aktivitet</div>`
         }
       </div>
     </div>`;
 }
 
-function toggleAgent(clientId, prod, on) {
-  const c = clients.find(x => x.id === clientId);
-  if (!c) return;
-  if (!c.agents) c.agents = {};
-  c.agents[prod] = on;
-  saveClients();
-  // Re-render kort
-  const card = document.getElementById(`agentCard_${clientId}_${prod}`);
-  if (card) {
-    const showClientName = card.closest('#allAgentsGrid') !== null;
-    card.outerHTML = renderAgentCard(prod, c, showClientName);
-  }
+async function hentAgentLogForKlient(klientId) {
+  if (_agentLogCache[klientId]) return _agentLogCache[klientId];
+  try {
+    const res = await fetch(`${AGENT_URL}/klient-cockpit/${klientId}`, {
+      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') }
+    });
+    if (!res.ok) return [];
+    const d = await res.json();
+    _agentLogCache[klientId] = d.agent_log || [];
+    return _agentLogCache[klientId];
+  } catch(e) { return []; }
 }
 
-function renderClientAgents() {
+async function renderClientAgents() {
   const c = currentClient;
   const grid = document.getElementById('clientAgentGrid');
   const prods = c.products || [];
@@ -3090,14 +3076,12 @@ function renderClientAgents() {
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🤖</div><h3>Ingen produkter</h3><p>Tilføj produkter til klienten for at aktivere agenter</p></div>';
     return;
   }
-  grid.innerHTML = prods.map(p => renderAgentCard(p, c, false)).join('');
+  grid.innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:.82rem;padding:.5rem 0">Henter aktivitet...</div>`;
+  const logData = await hentAgentLogForKlient(c.id);
+  grid.innerHTML = prods.map(p => renderAgentCard(p, c, false, logData)).join('');
 }
 
 function activateAllAgents() {
-  if (!currentClient) return;
-  if (!currentClient.agents) currentClient.agents = {};
-  (currentClient.products||[]).forEach(p => currentClient.agents[p] = true);
-  saveClients();
   renderClientAgents();
 }
 
@@ -3159,12 +3143,20 @@ async function hentAgentLog() {
   }
 }
 
-function renderAllAgents() {
+async function renderAllAgents() {
   const grid = document.getElementById('allAgentsGrid');
+  grid.innerHTML = `<div style="grid-column:1/-1;color:var(--muted);font-size:.82rem;padding:.5rem 0">Henter aktivitet...</div>`;
+
+  // Hent log for alle klienter parallelt
+  const logMap = {};
+  await Promise.all(clients.map(async c => {
+    logMap[c.id] = await hentAgentLogForKlient(c.id);
+  }));
+
   const allAgentCards = [];
   clients.forEach(c => {
     (c.products||[]).forEach(p => {
-      allAgentCards.push(renderAgentCard(p, c, true));
+      allAgentCards.push(renderAgentCard(p, c, true, logMap[c.id] || []));
     });
   });
 
@@ -3174,27 +3166,16 @@ function renderAllAgents() {
     grid.innerHTML = allAgentCards.join('');
   }
 
-  // Stats
-  let running = 0, paused = 0, actions = 0;
-  clients.forEach(c => {
-    (c.products||[]).forEach(p => {
-      if (c.agents?.[p]) { running++; actions += Math.floor(Math.random()*15+3); }
-      else paused++;
-    });
-  });
-  const clientsWithAgents = clients.filter(c => Object.values(c.agents||{}).some(v=>v)).length;
-  document.getElementById('agentStatRunning').textContent = running;
-  document.getElementById('agentStatPaused').textContent = paused;
-  document.getElementById('agentStatActions').textContent = actions;
-  document.getElementById('agentStatClients').textContent = clientsWithAgents;
+  // Stats — alle agenter kører altid
+  const totalAgenter = clients.reduce((sum, c) => sum + (c.products||[]).length, 0);
+  const totalKlienter = clients.filter(c => (c.products||[]).length > 0).length;
+  document.getElementById('agentStatRunning').textContent = totalAgenter;
+  document.getElementById('agentStatPaused').textContent = 0;
+  document.getElementById('agentStatActions').textContent = Object.values(logMap).reduce((s, l) => s + l.length, 0);
+  document.getElementById('agentStatClients').textContent = totalKlienter;
 }
 
 function activateAllAgentsGlobal() {
-  clients.forEach(c => {
-    if (!c.agents) c.agents = {};
-    (c.products||[]).forEach(p => c.agents[p] = true);
-  });
-  saveClients();
   renderAllAgents();
 }
 
