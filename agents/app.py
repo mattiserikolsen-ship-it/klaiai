@@ -47,6 +47,23 @@ app = Flask(__name__, static_folder='../app', static_url_path='/app')
 CORS(app)
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'klaiai2024')
+# Sæt ADMIN_LOCAL_ONLY=true på Render for at blokere admin-adgang fra internettet
+ADMIN_LOCAL_ONLY = os.environ.get('ADMIN_LOCAL_ONLY', 'false').lower() == 'true'
+
+def _er_localhost():
+    return request.remote_addr in ('127.0.0.1', '::1', 'localhost')
+
+@app.before_request
+def bloker_admin_fra_net():
+    """Blokerer /app/admin.html og /app/login.html fra ikke-localhost når ADMIN_LOCAL_ONLY=true"""
+    if ADMIN_LOCAL_ONLY and not _er_localhost():
+        path = request.path.lower()
+        if path in ('/app/admin.html', '/app/login.html'):
+            return Response(
+                '<h1>403 – Admin er kun tilgængeligt lokalt</h1>'
+                '<p>Tilgå admin-panelet via din lokale Mac i stedet.</p>',
+                403, {'Content-Type': 'text/html'}
+            )
 
 def require_auth(f):
     @functools.wraps(f)
