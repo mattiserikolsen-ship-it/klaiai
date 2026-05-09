@@ -97,19 +97,6 @@ SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
-TWILIO_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
-TWILIO_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
-TWILIO_FROM = os.environ.get('TWILIO_FROM', '')  # +45XXXXXXXX format
-
-def send_sms(til, tekst):
-    if not TWILIO_SID or not TWILIO_TOKEN or not TWILIO_FROM:
-        return False
-    try:
-        url = f'https://api.twilio.com/2010-04-01/Accounts/{TWILIO_SID}/Messages.json'
-        r = http_requests.post(url, auth=(TWILIO_SID, TWILIO_TOKEN), data={'From': TWILIO_FROM, 'To': til, 'Body': tekst})
-        return r.status_code == 201
-    except:
-        return False
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
@@ -274,18 +261,48 @@ Log ind på admin-panelet for at se detaljer:
 https://klaiai.onrender.com/app/admin.html"""
         send_mail(ADMIN_EMAIL, emne_admin, tekst_admin, 'NexOlsen')
 
-    # Send SMS til lead hvis klienten har sms_aktiv=True
-    if lead_tlf and db:
+    # Send automatisk bekræftelses-email til leaden
+    if SENDGRID_API_KEY and lead_email and '@' in lead_email:
         try:
-            k_res = db.table('klienter').select('sms_aktiv, navn').eq('id', klient_id).single().execute()
-            if k_res.data and k_res.data.get('sms_aktiv'):
-                sms_klient_navn = k_res.data.get('navn', klient_navn)
-                sms_tekst = f"Hej {lead_navn}, tak for din henvendelse til {sms_klient_navn}. Vi vender tilbage til dig hurtigst muligt. 📞"
-                sms_sendt = send_sms(lead_tlf, sms_tekst)
-                if sms_sendt:
-                    _log_agent('sms_notif', klient_id, lead_navn, f"SMS sendt til lead: {lead_navn} ({lead_tlf})")
+            fornavn = lead_navn.split()[0] if lead_navn and lead_navn != 'Ukendt' else 'der'
+            emne_lead = f"Tak for din henvendelse til {klient_navn} 👋"
+            html_lead = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f8f7f4;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px">
+  <tr><td style="background:#0a2463;border-radius:14px 14px 0 0;padding:24px 32px">
+    <div style="color:#fff;font-size:20px;font-weight:800">{klient_navn}</div>
+  </td></tr>
+  <tr><td style="background:#fff;padding:28px 32px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
+    <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:12px">Hej {fornavn}! 👋</div>
+    <div style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">
+      Tak for din henvendelse. Vi har modtaget din besked og vender tilbage til dig hurtigst muligt.
+    </div>
+    <div style="background:#f0f4ff;border-left:3px solid #0a2463;border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#0a2463;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Din besked</div>
+      <div style="font-size:13px;color:#333;line-height:1.6">{lead_besked or '(Ingen besked)'}</div>
+    </div>
+    <div style="font-size:13px;color:#888">Med venlig hilsen,<br><strong>{klient_navn}</strong></div>
+  </td></tr>
+  <tr><td style="background:#f8f7f4;padding:16px 32px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
+    <div style="font-size:11px;color:#bbb">Drevet af NexOlsen</div>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
+            from sendgrid.helpers.mail import Mail as SGMail
+            msg = SGMail(
+                from_email=(SENDGRID_FROM, klient_navn),
+                to_emails=lead_email,
+                subject=emne_lead,
+                html_content=html_lead
+            )
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(msg)
+            _log_agent('lead_bekræftelse', klient_id, lead_navn, f"Bekræftelses-email sendt til lead: {lead_email}")
         except Exception as e:
-            print(f"SMS fejl: {e}")
+            print(f"Lead bekræftelses-email fejl: {e}")
 
 
 # ── GAP DETEKTION ──────────────────────────────────────
