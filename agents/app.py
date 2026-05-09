@@ -3107,6 +3107,61 @@ def klient_cockpit(klient_id):
         return jsonify({'error': str(e)}), 500
 
 
+def kør_ubesvarede_leads_reminder():
+    """Send reminder til Mattis hvis leads har ligget i 'ny' i 24+ timer"""
+    if not db or not ADMIN_EMAIL or '@' not in ADMIN_EMAIL:
+        return
+    try:
+        from datetime import datetime, timezone, timedelta
+        grænse = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+
+        # Hent leads der er 'ny' og over 24 timer gamle
+        res = db.table('leads').select('id, navn, email, klient_id, oprettet').eq('status', 'ny').lt('oprettet', grænse).order('oprettet').execute()
+        leads = res.data or []
+
+        if not leads:
+            return
+
+        # Gruppér per klient
+        klient_res = db.table('klienter').select('id, navn').execute()
+        klient_map = {k['id']: k['navn'] for k in (klient_res.data or [])}
+
+        from collections import defaultdict
+        per_klient = defaultdict(list)
+        for l in leads:
+            per_klient[l['klient_id']].append(l)
+
+        linjer = []
+        for kid, kl in per_klient.items():
+            kl_navn = klient_map.get(kid, kid)
+            ældst = kl[0]['oprettet']
+            try:
+                ts = datetime.fromisoformat(ældst.replace('Z', '+00:00'))
+                timer = int((datetime.now(timezone.utc) - ts).total_seconds() / 3600)
+            except Exception:
+                timer = '?'
+            linjer.append(f"• {kl_navn}: {len(kl)} ubesvarede lead{'s' if len(kl)>1 else ''} (ældste: {timer} timer)")
+
+        emne = f"[NexOlsen] ⚠️ {len(leads)} ubesvarede leads afventer svar"
+        tekst = f"""Hej Mattis,
+
+Du har leads der har ligget i 'Ny' i over 24 timer uden at blive kontaktet:
+
+{chr(10).join(linjer)}
+
+Gå ind i CRM-panelet og følg op:
+https://klaiai.onrender.com/app/admin.html
+
+Mvh NexOlsen
+"""
+        send_mail(ADMIN_EMAIL, emne, tekst, 'NexOlsen')
+        print(f"✅ Ubesvarede leads reminder sendt: {len(leads)} leads")
+    except Exception as e:
+        print(f"❌ Fejl i ubesvarede_leads_reminder: {e}")
+
+
+scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=9, minute=30, id='ubesvarede_leads')
+scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=17, minute=0, id='ubesvarede_leads_aften')
 scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder')
 scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
 scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
@@ -3127,6 +3182,7 @@ def kør_agent_manuelt(navn):
         'genopvarmning': kør_genopvarmning_agent,
         'ugerapport': kør_ugerapport_agent,
         'billing': kør_billing_agent,
+        'ubesvarede_leads': kør_ubesvarede_leads_reminder,
     }
     if navn not in agenter:
         return jsonify({'error': f'Ukendt agent: {navn}'}), 400
