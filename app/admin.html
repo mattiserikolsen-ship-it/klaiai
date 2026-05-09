@@ -6,6 +6,7 @@
   <title>NexOlsen – Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -380,6 +381,9 @@
     <div class="nav-item" data-view="crm" onclick="showView('crm')">
       <span class="ni">🎯</span> CRM – Leads
     </div>
+    <div class="nav-item" data-view="indsigter" onclick="showView('indsigter')">
+      <span class="ni">📈</span> Indsigter
+    </div>
     <div class="nav-divider"></div>
     <div class="nav-label">Agenter</div>
     <div class="nav-item" data-view="agents" onclick="showView('agents')">
@@ -570,6 +574,24 @@
           <div class="crm-cards" id="cards-lukket"></div>
         </div>
       </div>
+    </div>
+
+    <!-- ── INDSIGTER ── -->
+    <div id="view-indsigter" class="hidden">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:.75rem">
+        <div>
+          <div style="font-size:1rem; font-weight:800">Indsigter & Rapporter</div>
+          <div style="font-size:.78rem; color:var(--muted); margin-top:.15rem">Grafer og månedlig rapport til klienter</div>
+        </div>
+        <div style="display:flex; gap:.6rem; align-items:center">
+          <select class="form-input form-select" id="indsigterKlient" onchange="loadIndsigter()" style="padding:.45rem .8rem; font-size:.82rem; width:auto">
+            <option value="">Vælg klient...</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadIndsigter()">↻ Opdater</button>
+        </div>
+      </div>
+
+      <div id="indsigterContent" style="color:var(--muted); text-align:center; padding:3rem">Vælg en klient for at se data</div>
     </div>
 
     <!-- CRM LEAD MODAL -->
@@ -1745,7 +1767,7 @@ async function syncChatbotConfigToDB(clientId, cfg) {
 }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm'];
+const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
@@ -1759,6 +1781,7 @@ const topbarInfo = {
   'gen-booking':   ['Booking Generator', 'Generer bookingsystem til en klient'],
   'gen-rapport':   ['Rapport Generator', 'Generer automatiske rapporter'],
   'crm':           ['CRM – Lead Pipeline', 'Håndter og følg op på alle dine leads'],
+  'indsigter':     ['Indsigter & Rapporter', 'Grafer, statistik og månedlige rapporter til klienter'],
 };
 
 function showView(v) {
@@ -1776,6 +1799,7 @@ function showView(v) {
   if (v.startsWith('gen-')) populateClientSelects();
   if (v === 'new-client') { _wzStep = 1; wzGo(1); }
   if (v === 'crm') { populateCRMFilter(); loadCRM(); }
+  if (v === 'indsigter') { populateIndsigterFilter(); }
 }
 
 function switchTab(t) {
@@ -4188,6 +4212,132 @@ function closeCRMModal() {
 document.getElementById('crmLeadModal').addEventListener('click', function(e) {
   if (e.target === this) closeCRMModal();
 });
+
+// ── INDSIGTER ──────────────────────────────────────────
+let _chartLeads = null, _chartMdr = null;
+
+function populateIndsigterFilter() {
+  const sel = document.getElementById('indsigterKlient');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Vælg klient...</option>';
+  clients.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (c.id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadIndsigter() {
+  const klientId = document.getElementById('indsigterKlient').value;
+  const content = document.getElementById('indsigterContent');
+  if (!klientId) {
+    content.innerHTML = '<div style="color:var(--muted);text-align:center;padding:3rem">Vælg en klient for at se data</div>';
+    return;
+  }
+  const klient = clients.find(c => c.id === klientId);
+  content.innerHTML = '<div style="color:var(--muted);text-align:center;padding:3rem">Henter data...</div>';
+
+  try {
+    const res = await fetch(`${AGENT_URL}/rapport/${klientId}`, { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    if (!res.ok) throw new Error();
+    const d = await res.json();
+
+    content.innerHTML = `
+      <!-- Stats -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${d.total_leads}</div><div class="stat-label">Leads i alt</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--green)">${d.total_bookinger}</div><div class="stat-label">Bookinger</div></div>
+        <div class="stat-card"><div class="stat-num">${d.kilde?.chatbot ?? 0}</div><div class="stat-label">Via chatbot</div></div>
+        <div class="stat-card"><div class="stat-num">${d.kilde?.formular ?? 0}</div><div class="stat-label">Via formular</div></div>
+      </div>
+
+      <!-- Grafer -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem">
+        <div class="card" style="padding:1.25rem">
+          <div style="font-size:.88rem;font-weight:700;margin-bottom:1rem">Leads seneste 8 uger</div>
+          <canvas id="chartUger" height="180"></canvas>
+        </div>
+        <div class="card" style="padding:1.25rem">
+          <div style="font-size:.88rem;font-weight:700;margin-bottom:1rem">Leads seneste 6 måneder</div>
+          <canvas id="chartMdr" height="180"></canvas>
+        </div>
+      </div>
+
+      <!-- Rapport handlinger -->
+      <div class="card" style="padding:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+          <div>
+            <div style="font-size:.9rem;font-weight:700">Månedlig rapport</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">Send eller forhåndsvis denne måneds rapport til klienten</div>
+          </div>
+          <div style="display:flex;gap:.6rem">
+            <a href="${AGENT_URL}/preview-rapport/${klientId}" target="_blank" class="btn btn-secondary btn-sm">👁 Forhåndsvis</a>
+            <button class="btn btn-primary btn-sm" onclick="sendRapport('${klientId}','${klient?.email||''}')">📧 Send rapport</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Tegn grafer
+    if (_chartLeads) _chartLeads.destroy();
+    if (_chartMdr) _chartMdr.destroy();
+
+    const farve = '#0a2463';
+    const farveLys = 'rgba(10,36,99,0.08)';
+
+    _chartLeads = new Chart(document.getElementById('chartUger'), {
+      type: 'bar',
+      data: {
+        labels: d.uger.labels,
+        datasets: [{
+          label: 'Leads',
+          data: d.uger.leads,
+          backgroundColor: farve,
+          borderRadius: 6,
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    _chartMdr = new Chart(document.getElementById('chartMdr'), {
+      type: 'line',
+      data: {
+        labels: d.maaneder.labels,
+        datasets: [{
+          label: 'Leads',
+          data: d.maaneder.leads,
+          borderColor: farve,
+          backgroundColor: farveLys,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: farve,
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+  } catch(e) {
+    content.innerHTML = '<div style="color:var(--red);text-align:center;padding:2rem">Kunne ikke hente data</div>';
+  }
+}
+
+async function sendRapport(klientId, email) {
+  const mailinput = prompt('Send rapport til email:', email);
+  if (!mailinput) return;
+  try {
+    const res = await fetch(`${AGENT_URL}/send-rapport/${klientId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      body: JSON.stringify({ email: mailinput })
+    });
+    const data = await res.json();
+    if (data.success) alert('✅ Rapport sendt til ' + mailinput);
+    else alert('Fejl: ' + (data.error || 'Ukendt fejl'));
+  } catch(e) { alert('Fejl ved afsendelse'); }
+}
 
 function populateCRMFilter() {
   const sel = document.getElementById('crmKlientFilter');

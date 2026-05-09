@@ -1093,102 +1093,186 @@ def _hent_rapport_data(klient_id):
     leads, bookinger = [], []
     if db:
         try:
-            leads = db.table('leads').select('*').eq('klient_id', klient_id).execute().data or []
+            leads = db.table('leads').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute().data or []
             bookinger = db.table('bookinger').select('*').eq('klient_id', klient_id).eq('status', 'bekræftet').execute().data or []
         except:
             pass
     return leads, bookinger
 
 
-def _byg_rapport_html(klient_id, klient_navn, leads, bookinger):
-    """Bygger rapport HTML-streng."""
-    from datetime import datetime
-    chatbot  = sum(1 for l in leads if l.get('kilde') == 'chatbot')
+def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, maaned=None):
+    """Bygger rapport HTML-streng med måned-over-måned og CRM-tragt."""
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+
+    # Afgræns til denne måned og sidste måned
+    if maaned:
+        mdr_start = maaned
+    else:
+        mdr_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    forrige_mdr_start = (mdr_start - timedelta(days=1)).replace(day=1)
+
+    def i_maaned(l, start, slut):
+        ts = l.get('oprettet', '')
+        if not ts: return False
+        try:
+            t = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+            return start <= t < slut
+        except: return False
+
+    leads_denne = [l for l in leads if i_maaned(l, mdr_start, now)]
+    leads_forrige = [l for l in leads if i_maaned(l, forrige_mdr_start, mdr_start)]
+
+    # CRM konvertering
+    crm_ny = sum(1 for l in leads_denne if (l.get('status') or 'ny') == 'ny')
+    crm_kontaktet = sum(1 for l in leads_denne if l.get('status') == 'kontaktet')
+    crm_møde = sum(1 for l in leads_denne if l.get('status') == 'møde')
+    crm_lukket = sum(1 for l in leads_denne if l.get('status') == 'lukket')
+
+    total_denne = len(leads_denne)
+    total_forrige = len(leads_forrige)
+    vækst = total_denne - total_forrige
+    vækst_pct = round((vækst / total_forrige * 100)) if total_forrige > 0 else 0
+    vækst_farve = '#16a34a' if vækst >= 0 else '#dc2626'
+    vækst_tegn = '+' if vækst >= 0 else ''
+
+    chatbot = sum(1 for l in leads if l.get('kilde') == 'chatbot')
     formular = len(leads) - chatbot
-    dato_str = datetime.now().strftime('%-d. %B %Y')
+    dato_str = now.strftime('%-d. %B %Y')
+    mdr_navn = mdr_start.strftime('%B %Y')
+
+    # AI-anbefaling baseret på data
+    if crm_lukket > 0 and total_denne > 0:
+        konv = round(crm_lukket / total_denne * 100)
+        anbefaling = f"Din konverteringsrate er {konv}% denne måned — {crm_lukket} ud af {total_denne} leads er lukket. {'Flot arbejde!' if konv >= 20 else 'Der er potentiale i de ' + str(crm_ny) + ' leads der stadig afventer svar.'}"
+    elif crm_ny > 2:
+        anbefaling = f"Du har {crm_ny} leads der stadig er markeret som 'Ny' og afventer opfølgning. Kontakt dem hurtigt — leads konverterer 80% bedre inden for 24 timer."
+    elif total_denne > total_forrige:
+        anbefaling = f"Godt momentum! Leads er steget med {vækst_tegn}{vækst} denne måned. Overvej at følge op på alle åbne leads i CRM-panelet."
+    else:
+        anbefaling = "Hold chatbotten aktiv og sørg for at følge op på alle nye leads inden for 24 timer for at maksimere konvertering."
+
+    # Konverteringstragt HTML
+    tragt_max = max(total_denne, 1)
+    def bar(n): return f'<div style="height:6px;background:#0a2463;border-radius:3px;width:{min(100,round(n/tragt_max*100))}%;margin-top:4px"></div>'
 
     nye_leads_html = ''
-    for l in leads[:5]:
+    for l in leads_denne[:5]:
         dato = l.get('oprettet', '')[:10] if l.get('oprettet') else '—'
-        kilde_farve = '#4a6741' if l.get('kilde') == 'chatbot' else '#9a9590'
-        kilde_tekst = 'Chatbot' if l.get('kilde') == 'chatbot' else 'Formular'
+        status = l.get('status') or 'ny'
+        status_farver = {'ny':'#dbeafe','kontaktet':'#fef3c7','møde':'#ede9fe','lukket':'#dcfce7'}
+        status_tekst = {'ny':'Ny','kontaktet':'Kontaktet','møde':'Møde','lukket':'Lukket ✓'}
+        sf = status_farver.get(status,'#f3f4f6')
+        st = status_tekst.get(status, status)
         nye_leads_html += f"""
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #f0efec;font-size:13px;color:#1a1918;font-weight:600">{l.get('navn','—')}</td>
-          <td style="padding:10px 0;border-bottom:1px solid #f0efec;font-size:12px;color:#9a9590">{l.get('telefon') or l.get('email','—')}</td>
-          <td style="padding:10px 0;border-bottom:1px solid #f0efec;font-size:11px;color:{kilde_farve};font-weight:700">{kilde_tekst}</td>
+          <td style="padding:10px 0;border-bottom:1px solid #f0efec;font-size:12px;color:#9a9590">{l.get('email') or l.get('telefon','—')}</td>
+          <td style="padding:10px 0;border-bottom:1px solid #f0efec"><span style="background:{sf};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">{st}</span></td>
           <td style="padding:10px 0;border-bottom:1px solid #f0efec;font-size:11px;color:#9a9590;text-align:right">{dato}</td>
         </tr>"""
 
     if not nye_leads_html:
-        nye_leads_html = '<tr><td colspan="4" style="padding:16px 0;font-size:13px;color:#9a9590;text-align:center">Ingen leads endnu</td></tr>'
+        nye_leads_html = '<tr><td colspan="4" style="padding:16px 0;font-size:13px;color:#9a9590;text-align:center">Ingen leads denne måned</td></tr>'
 
     fornavn = klient_navn.split()[0] if klient_navn else 'der'
     return f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/><title>NexOlsen Rapport — {dato_str}</title></head>
+<html><head><meta charset="UTF-8"/><title>NexOlsen Rapport — {mdr_navn}</title></head>
 <body style="margin:0;padding:0;background:#f8f7f4;font-family:'Helvetica Neue',Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px">
-  <tr><td style="background:#1a1918;border-radius:14px 14px 0 0;padding:28px 36px">
+
+  <!-- HEADER -->
+  <tr><td style="background:#0a2463;border-radius:14px 14px 0 0;padding:28px 36px">
     <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">NexOlsen</div>
-    <div style="color:rgba(255,255,255,.4);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px">Klientrapport</div>
+    <div style="color:rgba(255,255,255,.4);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px">Månedlig klientrapport · {mdr_navn}</div>
   </td></tr>
+
+  <!-- INTRO -->
   <tr><td style="background:#fff;padding:28px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:6px">Hej, {fornavn}!</div>
-    <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din statusrapport fra NexOlsen. Alt nedenfor er hvad dine AI-agenter har lavet for dig.</div>
-    <div style="font-size:11px;color:#c5c2bc;margin-top:8px">{dato_str}</div>
+    <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din månedlige rapport fra NexOlsen for <strong>{mdr_navn}</strong>. Her er hvad dine AI-agenter har lavet for dig.</div>
   </td></tr>
+
+  <!-- TOP STATS -->
   <tr><td style="background:#f8f7f4;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td width="33%" style="padding:4px">
         <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
-          <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(leads)}</div>
-          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Leads i alt</div>
+          <div style="font-size:36px;font-weight:800;color:#0a2463;letter-spacing:-2px">{total_denne}</div>
+          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Leads denne måned</div>
+          <div style="font-size:11px;color:{vækst_farve};font-weight:700;margin-top:4px">{vækst_tegn}{vækst} vs. sidste måned</div>
+        </div>
+      </td>
+      <td width="33%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:36px;font-weight:800;color:#16a34a;letter-spacing:-2px">{crm_lukket}</div>
+          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Lukkede leads</div>
+          <div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:4px">{round(crm_lukket/max(total_denne,1)*100)}% konvertering</div>
         </div>
       </td>
       <td width="33%" style="padding:4px">
         <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
           <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(bookinger)}</div>
-          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Bookinger</div>
-        </div>
-      </td>
-      <td width="33%" style="padding:4px">
-        <div style="background:#eef2ec;border:1px solid #c5d6c2;border-radius:12px;padding:20px;text-align:center">
-          <div style="font-size:36px;font-weight:800;color:#4a6741;letter-spacing:-2px">{chatbot}</div>
-          <div style="font-size:11px;color:#4a6741;margin-top:4px;font-weight:500">Via chatbot</div>
+          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Bookinger i alt</div>
+          <div style="font-size:11px;color:#9a9590;font-weight:500;margin-top:4px">{chatbot} via chatbot</div>
         </div>
       </td>
     </tr></table>
   </td></tr>
-  <tr><td style="background:#fff;padding:28px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
-    <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:16px">Seneste leads</div>
+
+  <!-- KONVERTERINGSTRAGT -->
+  <tr><td style="background:#fff;padding:24px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
+    <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:16px">Konverteringstragt — {mdr_navn}</div>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="padding:6px 0"><div style="font-size:12px;color:#9a9590;font-weight:600">Nye leads</div>{bar(total_denne)}<div style="font-size:11px;color:#0a2463;font-weight:800;margin-top:2px">{total_denne}</div></td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0"><div style="font-size:12px;color:#9a9590;font-weight:600">Kontaktet</div>{bar(crm_kontaktet)}<div style="font-size:11px;color:#0a2463;font-weight:800;margin-top:2px">{crm_kontaktet}</div></td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0"><div style="font-size:12px;color:#9a9590;font-weight:600">Møde aftalt</div>{bar(crm_møde)}<div style="font-size:11px;color:#0a2463;font-weight:800;margin-top:2px">{crm_møde}</div></td>
+      </tr>
+      <tr>
+        <td style="padding:6px 0"><div style="font-size:12px;color:#9a9590;font-weight:600">Lukket ✓</div>{bar(crm_lukket)}<div style="font-size:11px;color:#16a34a;font-weight:800;margin-top:2px">{crm_lukket}</div></td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- SENESTE LEADS -->
+  <tr><td style="background:#f8f7f4;padding:24px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
+    <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:16px">Leads denne måned</div>
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <th style="font-size:10px;color:#9a9590;text-align:left;padding-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Navn</th>
-        <th style="font-size:10px;color:#9a9590;text-align:left;padding-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Kontakt</th>
-        <th style="font-size:10px;color:#9a9590;text-align:left;padding-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Kilde</th>
+        <th style="font-size:10px;color:#9a9590;text-align:left;padding-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Email/Tlf</th>
+        <th style="font-size:10px;color:#9a9590;text-align:left;padding-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Status</th>
         <th style="font-size:10px;color:#9a9590;text-align:right;padding-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Dato</th>
       </tr>
       {nye_leads_html}
     </table>
   </td></tr>
-  <tr><td style="background:#f8f7f4;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
-    <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:12px">Leadkilde</div>
-    <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="50%" style="padding:4px">
-        <div style="background:#eef2ec;border-radius:10px;padding:14px 18px">
-          <div style="font-size:11px;color:#4a6741;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Chatbot</div>
-          <div style="font-size:26px;font-weight:800;color:#4a6741;margin-top:4px">{chatbot}</div>
-        </div>
-      </td>
-      <td width="50%" style="padding:4px">
-        <div style="background:#fff;border:1px solid #e5e3de;border-radius:10px;padding:14px 18px">
-          <div style="font-size:11px;color:#9a9590;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Formular</div>
-          <div style="font-size:26px;font-weight:800;color:#1a1918;margin-top:4px">{formular}</div>
-        </div>
-      </td>
-    </tr></table>
+
+  <!-- AI ANBEFALING -->
+  <tr><td style="background:#fff;padding:24px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
+    <div style="background:#f0f4ff;border-left:3px solid #0a2463;border-radius:0 10px 10px 0;padding:16px 20px">
+      <div style="font-size:11px;font-weight:700;color:#0a2463;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💡 NexOlsen anbefaler</div>
+      <div style="font-size:13px;color:#1a1918;line-height:1.7">{anbefaling}</div>
+    </div>
   </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#fff;padding:24px 36px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
+    <a href="https://klaiai.onrender.com/portal/{klient_id}" style="display:inline-block;background:#0a2463;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:9px">
+      Se din portal →
+    </a>
+    <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af NexOlsen · Rapport for {mdr_navn}</div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>"""
   <tr><td style="background:#fff;padding:24px 36px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
     <a href="https://klaiai.dk/app/client.html?id={klient_id}" style="display:inline-block;background:#1a1918;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:9px">
       Se fuld portal →
@@ -3160,6 +3244,52 @@ Mvh NexOlsen
         print(f"❌ Fejl i ubesvarede_leads_reminder: {e}")
 
 
+def kør_månedlig_rapport():
+    """Send månedlig rapport til alle aktive klienter den 1. i måneden"""
+    if not db:
+        return
+    try:
+        from datetime import datetime, timezone, timedelta
+        from sendgrid import SendGridAPIClient
+        from sendgrid.helpers.mail import Mail
+
+        if not SENDGRID_API_KEY or not SENDGRID_FROM:
+            print("⚠️ månedlig_rapport: SendGrid ikke konfigureret")
+            return
+
+        klienter_res = db.table('klienter').select('*').eq('aktiv', True).execute()
+        klienter = klienter_res.data or []
+
+        now = datetime.now(timezone.utc)
+        mdr_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        sendt = 0
+        for k in klienter:
+            email = k.get('email', '')
+            if not email or '@' not in email:
+                continue
+            try:
+                leads, bookinger = _hent_rapport_data(k['id'])
+                html = _byg_rapport_html(k['id'], k.get('navn',''), leads, bookinger, maaned=mdr_start)
+                mdr_navn = mdr_start.strftime('%B %Y')
+                message = Mail(
+                    from_email=(SENDGRID_FROM, 'NexOlsen'),
+                    to_emails=email,
+                    subject=f"Din NexOlsen rapport — {mdr_navn}",
+                    html_content=html
+                )
+                sg = SendGridAPIClient(SENDGRID_API_KEY)
+                sg.send(message)
+                sendt += 1
+            except Exception as e:
+                print(f"❌ rapport fejl for {k.get('navn')}: {e}")
+
+        print(f"✅ Månedlig rapport sendt til {sendt} klienter")
+    except Exception as e:
+        print(f"❌ Fejl i månedlig_rapport: {e}")
+
+
+scheduler.add_job(kør_månedlig_rapport, 'cron', day=1, hour=8, minute=0, id='månedlig_rapport')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=9, minute=30, id='ubesvarede_leads')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=17, minute=0, id='ubesvarede_leads_aften')
 scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder')
@@ -3183,6 +3313,7 @@ def kør_agent_manuelt(navn):
         'ugerapport': kør_ugerapport_agent,
         'billing': kør_billing_agent,
         'ubesvarede_leads': kør_ubesvarede_leads_reminder,
+        'månedlig_rapport': kør_månedlig_rapport,
     }
     if navn not in agenter:
         return jsonify({'error': f'Ukendt agent: {navn}'}), 400
