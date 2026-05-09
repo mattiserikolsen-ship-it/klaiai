@@ -97,6 +97,20 @@ SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
+TWILIO_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
+TWILIO_FROM = os.environ.get('TWILIO_FROM', '')  # +45XXXXXXXX format
+
+def send_sms(til, tekst):
+    if not TWILIO_SID or not TWILIO_TOKEN or not TWILIO_FROM:
+        return False
+    try:
+        url = f'https://api.twilio.com/2010-04-01/Accounts/{TWILIO_SID}/Messages.json'
+        r = http_requests.post(url, auth=(TWILIO_SID, TWILIO_TOKEN), data={'From': TWILIO_FROM, 'To': til, 'Body': tekst})
+        return r.status_code == 201
+    except:
+        return False
+
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 db = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
@@ -260,6 +274,19 @@ Log ind på admin-panelet for at se detaljer:
 https://klaiai.onrender.com/app/admin.html"""
         send_mail(ADMIN_EMAIL, emne_admin, tekst_admin, 'NexOlsen')
 
+    # Send SMS til lead hvis klienten har sms_aktiv=True
+    if lead_tlf and db:
+        try:
+            k_res = db.table('klienter').select('sms_aktiv, navn').eq('id', klient_id).single().execute()
+            if k_res.data and k_res.data.get('sms_aktiv'):
+                sms_klient_navn = k_res.data.get('navn', klient_navn)
+                sms_tekst = f"Hej {lead_navn}, tak for din henvendelse til {sms_klient_navn}. Vi vender tilbage til dig hurtigst muligt. 📞"
+                sms_sendt = send_sms(lead_tlf, sms_tekst)
+                if sms_sendt:
+                    _log_agent('sms_notif', klient_id, lead_navn, f"SMS sendt til lead: {lead_navn} ({lead_tlf})")
+        except Exception as e:
+            print(f"SMS fejl: {e}")
+
 
 # ── GAP DETEKTION ──────────────────────────────────────
 
@@ -343,6 +370,17 @@ def chat():
                     reply += block.text
 
         reply_final = reply.strip()
+
+        # Tilføj booking URL hvis spørgsmålet handler om møde/booking og klienten har en booking_url
+        booking_ord = ['møde', 'book', 'tid', 'konsultation', 'aftale']
+        if any(ord in besked.lower() for ord in booking_ord) and db and klient_id != 'demo':
+            try:
+                k_res = db.table('klienter').select('booking_url').eq('id', klient_id).single().execute()
+                booking_url = k_res.data.get('booking_url', '') if k_res.data else ''
+                if booking_url:
+                    reply_final += f'\n\n📅 Book et møde direkte her: {booking_url}'
+            except:
+                pass
 
         # Log gap hvis botten ikke kunne svare
         if reply_final and er_deflection(reply_final):
@@ -540,6 +578,19 @@ def send_mail(til, emne, tekst, fra_navn):
 
 
 # ── BOOKING ENDPOINTS ──────────────────────────────────
+
+@app.route('/booking-link/<klient_id>', methods=['GET'])
+def get_booking_link(klient_id):
+    """Returnerer klientens booking URL"""
+    if not db:
+        return jsonify({'booking_url': ''}), 200
+    try:
+        res = db.table('klienter').select('booking_url').eq('id', klient_id).single().execute()
+        booking_url = res.data.get('booking_url', '') if res.data else ''
+        return jsonify({'booking_url': booking_url or ''})
+    except Exception as e:
+        return jsonify({'booking_url': '', 'error': str(e)}), 200
+
 
 @app.route('/booking-config/<klient_id>', methods=['GET'])
 def get_booking_config(klient_id):
@@ -1492,7 +1543,10 @@ def opret_klient():
             'mdpris': int(data.get('mdpris', 0) or 0),
             'status': data.get('status', 'opsætning'),
             'produkter': data.get('produkter', []),
-            'password': data.get('password', '') or ''
+            'password': data.get('password', '') or '',
+            'google_place_id': data.get('google_place_id', '') or '',
+            'sms_aktiv': bool(data.get('sms_aktiv', False)),
+            'booking_url': data.get('booking_url', '') or ''
         }
         res = db.table('klienter').upsert(klient_data).execute()
         return jsonify({'success': True, 'klient': res.data[0] if res.data else {}})
@@ -3289,6 +3343,72 @@ def kør_månedlig_rapport():
         print(f"❌ Fejl i månedlig_rapport: {e}")
 
 
+def kør_anmeldelse_agent():
+    """Send anmeldelses-email til lukkede leads de seneste 3 dage for klienter med google_place_id"""
+    if not db or not SENDGRID_API_KEY:
+        return
+    try:
+        from datetime import datetime, timezone, timedelta
+        grænse = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+
+        # Hent klienter med google_place_id
+        klienter_res = db.table('klienter').select('id, navn, google_place_id').neq('google_place_id', '').execute()
+        klienter = [k for k in (klienter_res.data or []) if k.get('google_place_id')]
+
+        if not klienter:
+            return
+
+        sendt = 0
+        for k in klienter:
+            kid = k['id']
+            klient_navn = k.get('navn', 'Virksomheden')
+            place_id = k.get('google_place_id', '')
+
+            try:
+                leads_res = db.table('leads').select('id, navn, email, noter, lukket_dato').eq('klient_id', kid).eq('status', 'lukket').gt('oprettet', grænse).execute()
+                leads = leads_res.data or []
+            except Exception as e:
+                print(f"❌ anmeldelse_agent leads fejl for {klient_navn}: {e}")
+                continue
+
+            for l in leads:
+                noter = l.get('noter') or ''
+                if '[anmeldelse_sendt]' in noter:
+                    continue
+                lead_email = l.get('email', '')
+                if not lead_email or '@' not in lead_email:
+                    continue
+                lead_navn = l.get('navn', 'kunde')
+                review_link = f'https://search.google.com/local/writereview?placeid={place_id}'
+                emne = f"Var du tilfreds med {klient_navn}? 🌟"
+                tekst = f"""Hej {lead_navn},
+
+Tak fordi du valgte {klient_navn}!
+
+Vi håber, at du var tilfreds med vores service. Har du et øjeblik til at dele din oplevelse?
+
+Det ville betyde enormt meget for os, hvis du ville skrive en kort anmeldelse her:
+{review_link}
+
+Det tager kun 1-2 minutter og hjælper andre med at finde os.
+
+Mange tak!
+Mvh {klient_navn}"""
+                try:
+                    sendt_ok = send_mail(lead_email, emne, tekst, klient_navn)
+                    if sendt_ok:
+                        # Marker lead med [anmeldelse_sendt] i noter
+                        ny_noter = noter + ' [anmeldelse_sendt]'
+                        db.table('leads').update({'noter': ny_noter}).eq('id', l['id']).execute()
+                        sendt += 1
+                except Exception as e:
+                    print(f"❌ anmeldelse mail fejl for {lead_navn}: {e}")
+
+        print(f"✅ Anmeldelse-emails sendt: {sendt}")
+    except Exception as e:
+        print(f"❌ Fejl i anmeldelse_agent: {e}")
+
+
 scheduler.add_job(kør_månedlig_rapport, 'cron', day=1, hour=8, minute=0, id='månedlig_rapport')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=9, minute=30, id='ubesvarede_leads')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=17, minute=0, id='ubesvarede_leads_aften')
@@ -3298,6 +3418,7 @@ scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genop
 scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerapport', day_of_week='mon')
 scheduler.add_job(kør_billing_agent,    'cron', hour=8,  minute=0, id='billing')
 scheduler.add_job(kør_mail_flow_agent,  'interval', hours=1, id='mail_flow')
+scheduler.add_job(kør_anmeldelse_agent, 'cron', hour=10, minute=30, id='anmeldelse')
 scheduler.start()
 print("⏰ APScheduler startet med 6 agenter")
 
