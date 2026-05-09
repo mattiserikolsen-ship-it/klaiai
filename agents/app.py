@@ -1253,8 +1253,15 @@ def stats():
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
     try:
-        # Leads per klient
-        leads_res = db.table('leads').select('klient_id, oprettet').execute()
+        from collections import defaultdict
+        from datetime import datetime, timezone, timedelta
+
+        now = datetime.now(timezone.utc)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today_start - timedelta(days=7)
+
+        # Leads (alle) med navn og email for aktivitetsfeed
+        leads_res = db.table('leads').select('klient_id, oprettet, navn, email').order('oprettet', desc=True).execute()
         leads = leads_res.data or []
 
         # Bookinger per klient
@@ -1266,30 +1273,81 @@ def stats():
         klienter = {k['id']: k['navn'] for k in (klient_res.data or [])}
 
         # Aggreger per klient
-        from collections import defaultdict
         lead_count = defaultdict(int)
+        leads_today = defaultdict(int)
+        leads_week = defaultdict(int)
         book_count = defaultdict(int)
+        seneste_lead = {}  # klient_id -> ISO string
 
         for l in leads:
             lead_count[l['klient_id']] += 1
+            oprettet_str = l.get('oprettet') or ''
+            if oprettet_str:
+                try:
+                    ts = datetime.fromisoformat(oprettet_str.replace('Z', '+00:00'))
+                    if ts >= today_start:
+                        leads_today[l['klient_id']] += 1
+                    if ts >= week_start:
+                        leads_week[l['klient_id']] += 1
+                    if l['klient_id'] not in seneste_lead:
+                        seneste_lead[l['klient_id']] = oprettet_str
+                except Exception:
+                    pass
+
         for b in bookinger:
             book_count[b['klient_id']] += 1
 
         result = []
         for kid, navn in klienter.items():
+            sl = seneste_lead.get(kid)
+            # Health: grøn < 7 dage, gul 7-14 dage, rød > 14 dage eller ingen leads
+            if sl:
+                try:
+                    ts = datetime.fromisoformat(sl.replace('Z', '+00:00'))
+                    dage = (now - ts).days
+                    health = 'green' if dage < 7 else ('yellow' if dage < 14 else 'red')
+                except Exception:
+                    health = 'gray'
+            else:
+                health = 'gray'
+
             result.append({
                 'klient_id': kid,
                 'navn': navn,
                 'leads': lead_count.get(kid, 0),
-                'bookinger': book_count.get(kid, 0)
+                'leads_i_dag': leads_today.get(kid, 0),
+                'leads_uge': leads_week.get(kid, 0),
+                'bookinger': book_count.get(kid, 0),
+                'seneste_lead': sl,
+                'health': health,
             })
 
-        # Totaler
+        # Sorter efter seneste aktivitet
+        result.sort(key=lambda x: x['seneste_lead'] or '', reverse=True)
+
+        # Aktivitetsfeed: seneste 20 leads på tværs
+        feed = []
+        for l in leads[:20]:
+            kid = l.get('klient_id')
+            feed.append({
+                'klient': klienter.get(kid, kid),
+                'navn': l.get('navn', 'Ukendt'),
+                'email': l.get('email', ''),
+                'oprettet': l.get('oprettet', ''),
+                'type': 'lead'
+            })
+
+        total_leads_i_dag = sum(leads_today.values())
+        total_leads_uge = sum(leads_week.values())
+
         return jsonify({
             'klienter': result,
             'total_leads': len(leads),
+            'total_leads_i_dag': total_leads_i_dag,
+            'total_leads_uge': total_leads_uge,
             'total_bookinger': len(bookinger),
-            'total_klienter': len(klienter)
+            'total_klienter': len(klienter),
+            'feed': feed,
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
