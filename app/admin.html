@@ -339,6 +339,20 @@
     .flow-step-desc { font-size: .78rem; color: var(--muted); }
     .flow-delay { font-size: .72rem; color: var(--accent2); font-weight: 600; margin-top: .35rem; background: var(--blue-bg); display: inline-block; padding: .15rem .5rem; border-radius: 5px; }
 
+    /* ── CRM ── */
+    .crm-col { background: var(--bg); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+    .crm-col-header { padding: .65rem 1rem; font-size: .8rem; font-weight: 800; display: flex; align-items: center; justify-content: space-between; }
+    .crm-col-count { background: rgba(0,0,0,0.1); border-radius: 99px; padding: .1rem .45rem; font-size: .7rem; }
+    .crm-cards { padding: .6rem; display: flex; flex-direction: column; gap: .5rem; min-height: 80px; }
+    .crm-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: .85rem 1rem; cursor: pointer; transition: box-shadow .15s, transform .1s; }
+    .crm-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .crm-card-name { font-size: .875rem; font-weight: 700; margin-bottom: .2rem; }
+    .crm-card-meta { font-size: .72rem; color: var(--muted); margin-bottom: .5rem; line-height: 1.5; }
+    .crm-card-klient { font-size: .68rem; background: var(--blue-bg); color: var(--accent2); padding: .15rem .5rem; border-radius: 99px; font-weight: 700; display: inline-block; margin-bottom: .4rem; }
+    .crm-card-tid { font-size: .68rem; color: var(--muted); }
+    .crm-status-btn { font-size: .72rem; font-weight: 700; padding: .3rem .7rem; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-family: inherit; transition: all .15s; }
+    .crm-status-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 1100px) {
       .stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -362,6 +376,9 @@
     </div>
     <div class="nav-item" data-view="new-client" onclick="showView('new-client')">
       <span class="ni">➕</span> Ny klient
+    </div>
+    <div class="nav-item" data-view="crm" onclick="showView('crm')">
+      <span class="ni">🎯</span> CRM – Leads
     </div>
     <div class="nav-divider"></div>
     <div class="nav-label">Agenter</div>
@@ -516,6 +533,50 @@
             <tbody id="clientTableBody"></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- ── CRM ── -->
+    <div id="view-crm" class="hidden">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:.75rem">
+        <div>
+          <div style="font-size:1rem; font-weight:800">CRM – Lead Pipeline</div>
+          <div style="font-size:.78rem; color:var(--muted); margin-top:.15rem" id="crmSubtitle">Alle klienter</div>
+        </div>
+        <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap">
+          <select class="form-input form-select" id="crmKlientFilter" onchange="loadCRM()" style="padding:.45rem .8rem; font-size:.82rem; width:auto">
+            <option value="">Alle klienter</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadCRM()">↻ Opdater</button>
+        </div>
+      </div>
+
+      <!-- KANBAN BOARD -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; align-items:start" id="crmBoard">
+        <div class="crm-col" id="col-ny">
+          <div class="crm-col-header" style="background:#dbeafe; color:#1e40af">Ny <span class="crm-col-count" id="cnt-ny">0</span></div>
+          <div class="crm-cards" id="cards-ny"></div>
+        </div>
+        <div class="crm-col" id="col-kontaktet">
+          <div class="crm-col-header" style="background:#fef3c7; color:#92400e">Kontaktet <span class="crm-col-count" id="cnt-kontaktet">0</span></div>
+          <div class="crm-cards" id="cards-kontaktet"></div>
+        </div>
+        <div class="crm-col" id="col-møde">
+          <div class="crm-col-header" style="background:#ede9fe; color:#5b21b6">Møde aftalt <span class="crm-col-count" id="cnt-møde">0</span></div>
+          <div class="crm-cards" id="cards-møde"></div>
+        </div>
+        <div class="crm-col" id="col-lukket">
+          <div class="crm-col-header" style="background:#dcfce7; color:#166534">Lukket ✓ <span class="crm-col-count" id="cnt-lukket">0</span></div>
+          <div class="crm-cards" id="cards-lukket"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRM LEAD MODAL -->
+    <div id="crmLeadModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center">
+      <div style="background:#fff; border-radius:18px; padding:1.75rem; width:100%; max-width:480px; box-shadow:0 24px 64px rgba(0,0,0,0.18); position:relative">
+        <button onclick="closeCRMModal()" style="position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--muted)">✕</button>
+        <div id="crmModalContent"></div>
       </div>
     </div>
 
@@ -1684,7 +1745,7 @@ async function syncChatbotConfigToDB(clientId, cfg) {
 }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport'];
+const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
@@ -1697,6 +1758,7 @@ const topbarInfo = {
   'gen-mail':      ['Mail Flow Generator', 'Generer automatiseret mail-flow'],
   'gen-booking':   ['Booking Generator', 'Generer bookingsystem til en klient'],
   'gen-rapport':   ['Rapport Generator', 'Generer automatiske rapporter'],
+  'crm':           ['CRM – Lead Pipeline', 'Håndter og følg op på alle dine leads'],
 };
 
 function showView(v) {
@@ -1713,6 +1775,7 @@ function showView(v) {
   if (v === 'fakturaer') initFaktura();
   if (v.startsWith('gen-')) populateClientSelects();
   if (v === 'new-client') { _wzStep = 1; wzGo(1); }
+  if (v === 'crm') { populateCRMFilter(); loadCRM(); }
 }
 
 function switchTab(t) {
@@ -3995,6 +4058,149 @@ async function initAdmin() {
 }
 
 initAdmin();
+
+// ── CRM ────────────────────────────────────────────────
+let crmLeads = [];
+
+async function loadCRM() {
+  const klientId = document.getElementById('crmKlientFilter').value;
+
+  // Nulstil kolonner
+  ['ny','kontaktet','møde','lukket'].forEach(s => {
+    document.getElementById('cards-' + s).innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.75rem;padding:.75rem">Henter...</div>';
+    document.getElementById('cnt-' + s).textContent = '0';
+  });
+
+  try {
+    const url = klientId ? `${AGENT_URL}/crm/leads?klient_id=${klientId}` : `${AGENT_URL}/crm/leads`;
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    if (!res.ok) throw new Error();
+    crmLeads = await res.json();
+
+    const statusser = { ny: [], kontaktet: [], 'møde': [], lukket: [] };
+    for (const l of crmLeads) {
+      const s = l.status || 'ny';
+      if (statusser[s]) statusser[s].push(l);
+      else statusser['ny'].push(l);
+    }
+
+    for (const [status, leads] of Object.entries(statusser)) {
+      const container = document.getElementById('cards-' + status);
+      document.getElementById('cnt-' + status).textContent = leads.length;
+      if (leads.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.75rem;padding:.75rem">Ingen leads her</div>';
+        continue;
+      }
+      container.innerHTML = leads.map(l => `
+        <div class="crm-card" onclick="openCRMLead('${l.id}')">
+          <div class="crm-card-klient">${l.klient_navn || 'Ukendt klient'}</div>
+          <div class="crm-card-name">${l.navn || 'Ukendt'}</div>
+          <div class="crm-card-meta">${l.email || ''}${l.telefon ? '<br>📞 ' + l.telefon : ''}</div>
+          ${l.noter ? `<div style="font-size:.72rem;color:var(--accent2);font-style:italic;margin-bottom:.35rem;border-left:2px solid var(--accent2);padding-left:.4rem">${l.noter.slice(0,60)}${l.noter.length>60?'…':''}</div>` : ''}
+          <div class="crm-card-tid">${tidsAgo(l.oprettet)}</div>
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    ['ny','kontaktet','møde','lukket'].forEach(s => {
+      document.getElementById('cards-' + s).innerHTML = '<div style="text-align:center;color:var(--red);font-size:.75rem;padding:.75rem">Fejl</div>';
+    });
+  }
+}
+
+function openCRMLead(id) {
+  const l = crmLeads.find(x => x.id === id);
+  if (!l) return;
+  const statusser = ['ny','kontaktet','møde','lukket'];
+  const statusLabels = { ny: 'Ny', kontaktet: 'Kontaktet', 'møde': 'Møde aftalt', lukket: 'Lukket ✓' };
+  const cur = l.status || 'ny';
+
+  document.getElementById('crmModalContent').innerHTML = `
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem">${l.klient_navn || ''}</div>
+    <div style="font-size:1.15rem;font-weight:800;margin-bottom:.25rem">${l.navn || 'Ukendt'}</div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.7">
+      ${l.email ? '✉️ ' + l.email + '<br>' : ''}
+      ${l.telefon ? '📞 ' + l.telefon + '<br>' : ''}
+      ${l.besked ? '💬 ' + l.besked + '<br>' : ''}
+      <span style="color:var(--muted);font-size:.72rem">${tidsAgo(l.oprettet)}</span>
+    </div>
+
+    <div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.5rem">STATUS</div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.25rem">
+      ${statusser.map(s => `
+        <button class="crm-status-btn ${s===cur?'style="background:var(--accent);color:#fff;border-color:var(--accent)"':''}"
+          id="stbtn-${s}" onclick="setCRMStatus('${id}','${s}')"
+          style="${s===cur?'background:var(--accent);color:#fff;border-color:var(--accent)':''}">
+          ${statusLabels[s]}
+        </button>
+      `).join('')}
+    </div>
+
+    <div style="font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:.5rem">NOTER</div>
+    <textarea id="crmNoteInput" class="form-input" style="min-height:90px;font-size:.85rem;margin-bottom:.75rem" placeholder="Skriv en note om dette lead...">${l.noter || ''}</textarea>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveCRMNote('${id}')">💾 Gem note</button>
+  `;
+  document.getElementById('crmLeadModal').style.display = 'flex';
+}
+
+async function setCRMStatus(id, status) {
+  try {
+    await fetch(`${AGENT_URL}/crm/lead/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      body: JSON.stringify({ status })
+    });
+    const l = crmLeads.find(x => x.id === id);
+    if (l) l.status = status;
+    // Opdater knapper i modal
+    ['ny','kontaktet','møde','lukket'].forEach(s => {
+      const btn = document.getElementById('stbtn-' + s);
+      if (btn) {
+        btn.style.background = s === status ? 'var(--accent)' : '';
+        btn.style.color = s === status ? '#fff' : '';
+        btn.style.borderColor = s === status ? 'var(--accent)' : '';
+      }
+    });
+    loadCRM();
+  } catch(e) { alert('Kunne ikke opdatere status'); }
+}
+
+async function saveCRMNote(id) {
+  const noter = document.getElementById('crmNoteInput').value;
+  try {
+    await fetch(`${AGENT_URL}/crm/lead/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      body: JSON.stringify({ noter })
+    });
+    const l = crmLeads.find(x => x.id === id);
+    if (l) l.noter = noter;
+    closeCRMModal();
+    loadCRM();
+  } catch(e) { alert('Kunne ikke gemme note'); }
+}
+
+function closeCRMModal() {
+  document.getElementById('crmLeadModal').style.display = 'none';
+}
+
+// Luk modal ved klik udenfor
+document.getElementById('crmLeadModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCRMModal();
+});
+
+function populateCRMFilter() {
+  const sel = document.getElementById('crmKlientFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Alle klienter</option>';
+  clients.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    if (c.id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
 
 // ── HJEMMESIDE SCANNER ────────────────────────────────
 async function scanHjemmeside() {

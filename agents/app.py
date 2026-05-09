@@ -3153,6 +3153,52 @@ def hent_agent_log():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/crm/leads', methods=['GET'])
+def crm_leads():
+    """Hent alle leads med klientnavn til CRM"""
+    if not db:
+        return jsonify([]), 200
+    try:
+        klient_id = request.args.get('klient_id')
+        q = db.table('leads').select('id, klient_id, navn, email, telefon, besked, status, noter, oprettet').order('oprettet', desc=True)
+        if klient_id:
+            q = q.eq('klient_id', klient_id)
+        leads = q.execute().data or []
+
+        # Hent klientnavne
+        klient_res = db.table('klienter').select('id, navn').execute()
+        klient_map = {k['id']: k['navn'] for k in (klient_res.data or [])}
+
+        for l in leads:
+            l['klient_navn'] = klient_map.get(l.get('klient_id'), 'Ukendt')
+            l['status'] = l.get('status') or 'ny'
+            l['noter'] = l.get('noter') or ''
+
+        return jsonify(leads)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/crm/lead/<lead_id>', methods=['PATCH'])
+def crm_opdater_lead(lead_id):
+    """Opdater status og/eller noter på et lead"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        data = request.get_json() or {}
+        update = {}
+        if 'status' in data:
+            update['status'] = data['status']
+        if 'noter' in data:
+            update['noter'] = data['noter']
+        if not update:
+            return jsonify({'error': 'Ingen data'}), 400
+        db.table('leads').update(update).eq('id', lead_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     print(f"🤖 NexOlsen Agent Server kører på port {port}")
