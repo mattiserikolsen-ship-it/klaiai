@@ -384,6 +384,9 @@
     <div class="nav-item" data-view="indsigter" onclick="showView('indsigter')">
       <span class="ni">📈</span> Indsigter
     </div>
+    <div class="nav-item" data-view="outbound" onclick="showView('outbound')" style="color:#60a5fa">
+      <span class="ni">🚀</span> Outbound
+    </div>
     <div class="nav-divider"></div>
     <div class="nav-label">Agenter</div>
     <div class="nav-item" data-view="agents" onclick="showView('agents')">
@@ -599,6 +602,78 @@
       <div style="background:#fff; border-radius:18px; padding:1.75rem; width:100%; max-width:480px; box-shadow:0 24px 64px rgba(0,0,0,0.18); position:relative">
         <button onclick="closeCRMModal()" style="position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--muted)">✕</button>
         <div id="crmModalContent"></div>
+      </div>
+    </div>
+
+    <!-- ── OUTBOUND SALGSMASKINE ── -->
+    <div id="view-outbound" class="hidden">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+        <div>
+          <div style="font-size:1rem;font-weight:800">🚀 Outbound Salgsmaskine</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem">Find prospekter, scan sites, generér personlige emails og send automatisk</div>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <a href="https://klaiai.onrender.com/demo" target="_blank" class="btn btn-ghost btn-sm">🔗 Se demo-side</a>
+          <button class="btn btn-secondary btn-sm" onclick="scanAlleProspektor()">⟳ Scan alle uscannet</button>
+        </div>
+      </div>
+
+      <!-- Tilføj prospekter -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="font-size:.88rem;font-weight:700;margin-bottom:.85rem">Tilføj prospekt-websites</div>
+        <div style="display:flex;gap:.6rem;align-items:flex-start">
+          <textarea id="prospektUrls" placeholder="nempool.net&#10;vvs-firma.dk&#10;tandlægen.dk&#10;(én URL per linje — eller kommasepareret)"
+            style="flex:1;min-height:90px;padding:.7rem .9rem;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;font-family:inherit;resize:vertical;background:var(--bg2);color:var(--text)"></textarea>
+          <button class="btn btn-primary" onclick="tilfoejProspekter()" style="padding:.75rem 1.25rem;white-space:nowrap">
+            + Tilføj
+          </button>
+        </div>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:.5rem">
+          Systemet scanner hvert site automatisk: finder firmanavn, ydelser, om de har chatbot, og skriver en personlig cold email.
+        </div>
+      </div>
+
+      <!-- Prospekt-tabel -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:.85rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span id="prospektCount" style="font-size:.85rem;font-weight:700">0 prospekter</span>
+          <div style="display:flex;gap:.5rem">
+            <select id="prospektFilter" onchange="renderProspekter()" style="font-size:.75rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--text)">
+              <option value="">Alle</option>
+              <option value="ny">Ny</option>
+              <option value="scannet">Scannet</option>
+              <option value="email-sendt">Email sendt</option>
+              <option value="scan-fejl">Scan fejl</option>
+            </select>
+          </div>
+        </div>
+        <div id="prospektListe">
+          <div style="text-align:center;padding:3rem;color:var(--muted);font-size:.85rem">
+            Tilføj websites ovenfor for at komme i gang
+          </div>
+        </div>
+      </div>
+
+      <!-- Email-modal -->
+      <div id="emailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)lukEmailModal()">
+        <div style="background:var(--card);border-radius:16px;padding:2rem;max-width:600px;width:100%;max-height:85vh;overflow-y:auto;position:relative" onclick="event.stopPropagation()">
+          <button onclick="lukEmailModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted)">✕</button>
+          <div style="font-size:1rem;font-weight:800;margin-bottom:1.25rem" id="emailModalTitel">Email til prospekt</div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase">Send til email</label>
+            <input id="emailModalTil" type="email" placeholder="kontakt@firma.dk" class="form-input"/>
+          </div>
+          <div style="margin-bottom:1rem">
+            <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase">Email-udkast (redigér frit)</label>
+            <textarea id="emailModalTekst" style="width:100%;min-height:220px;padding:.75rem .9rem;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;font-family:inherit;line-height:1.6;resize:vertical;background:var(--bg2);color:var(--text)"></textarea>
+          </div>
+          <div style="display:flex;gap:.75rem;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="lukEmailModal()">Annullér</button>
+            <button class="btn btn-primary" id="emailModalSendBtn" onclick="sendEmailFraModal()">✉ Send email</button>
+          </div>
+          <div id="emailModalStatus" style="font-size:.82rem;margin-top:.75rem;text-align:center"></div>
+        </div>
       </div>
     </div>
 
@@ -1783,7 +1858,7 @@ async function syncChatbotConfigToDB(clientId, cfg) {
 }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter'];
+const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
@@ -1798,6 +1873,7 @@ const topbarInfo = {
   'gen-rapport':   ['Rapport Generator', 'Generer automatiske rapporter'],
   'crm':           ['CRM – Lead Pipeline', 'Håndter og følg op på alle dine leads'],
   'indsigter':     ['Indsigter & Rapporter', 'Grafer, statistik og månedlige rapporter til klienter'],
+  'outbound':      ['🚀 Outbound Salgsmaskine', 'Find prospekter, scan sites og send personlige cold emails automatisk'],
 };
 
 function showView(v) {
@@ -4666,6 +4742,206 @@ function kopierWidget() {
     </div>
   </div>
 </div>
+
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  OUTBOUND SALGSMASKINE
+// ══════════════════════════════════════════════════════════════
+let outboundProspekter = [];
+let aktivEmailPid = null;
+
+async function loadOutbound() {
+  try {
+    const res = await fetch(AGENT_URL + '/prospekt/liste');
+    const d = await res.json();
+    outboundProspekter = d.prospekter || [];
+    renderProspekter();
+  } catch(e) { console.error(e); }
+}
+
+async function tilfoejProspekter() {
+  const raw = document.getElementById('prospektUrls').value.trim();
+  if (!raw) return;
+  try {
+    const res = await fetch(AGENT_URL + '/prospekt/tilfoej', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls: raw })
+    });
+    const d = await res.json();
+    document.getElementById('prospektUrls').value = '';
+    await loadOutbound();
+    // Auto-scan de nye
+    for (const pid of (d.ids || [])) {
+      scanProspekt(pid, true);
+    }
+  } catch(e) { alert('Fejl ved tilføjelse'); }
+}
+
+async function scanProspekt(pid, silent = false) {
+  // Opdater status i UI
+  const idx = outboundProspekter.findIndex(p => p.id === pid);
+  if (idx >= 0) { outboundProspekter[idx].status = 'scanner...'; renderProspekter(); }
+
+  try {
+    const res = await fetch(AGENT_URL + '/prospekt/scan/' + pid, { method: 'POST' });
+    const d = await res.json();
+    if (d.success) {
+      const i = outboundProspekter.findIndex(p => p.id === pid);
+      if (i >= 0) outboundProspekter[i] = d.prospekt;
+    }
+  } catch(e) { console.warn('Scan fejl for', pid, e); }
+  if (!silent) renderProspekter();
+}
+
+async function scanAlleProspektor() {
+  const uscannet = outboundProspekter.filter(p => p.status === 'ny' || p.status === 'scan-fejl');
+  if (!uscannet.length) { alert('Ingen uscannet prospekter'); return; }
+  for (const p of uscannet) {
+    await scanProspekt(p.id, false);
+    await new Promise(r => setTimeout(r, 800)); // lille pause
+  }
+  renderProspekter();
+}
+
+async function sletProspekt(pid) {
+  try {
+    await fetch(AGENT_URL + '/prospekt/slet/' + pid, { method: 'DELETE' });
+    outboundProspekter = outboundProspekter.filter(p => p.id !== pid);
+    renderProspekter();
+  } catch(e) {}
+}
+
+function åbnEmailModal(pid) {
+  const p = outboundProspekter.find(x => x.id === pid);
+  if (!p) return;
+  aktivEmailPid = pid;
+  document.getElementById('emailModalTitel').textContent = 'Email til ' + (p.navn || p.url);
+  document.getElementById('emailModalTil').value = p.email || '';
+  document.getElementById('emailModalTekst').value = p.email_udkast || '';
+  document.getElementById('emailModalStatus').textContent = '';
+  document.getElementById('emailModalSendBtn').disabled = false;
+  document.getElementById('emailModalSendBtn').textContent = '✉ Send email';
+  document.getElementById('emailModal').style.display = 'flex';
+}
+
+function lukEmailModal() {
+  document.getElementById('emailModal').style.display = 'none';
+  aktivEmailPid = null;
+}
+
+async function sendEmailFraModal() {
+  if (!aktivEmailPid) return;
+  const email = document.getElementById('emailModalTil').value.trim();
+  const tekst = document.getElementById('emailModalTekst').value.trim();
+  const btn   = document.getElementById('emailModalSendBtn');
+  const status = document.getElementById('emailModalStatus');
+
+  if (!email || !email.includes('@')) {
+    status.textContent = '⚠️ Indtast en gyldig email-adresse';
+    status.style.color = 'var(--red)';
+    return;
+  }
+
+  // Gem redigeret udkast
+  await fetch(AGENT_URL + '/prospekt/opdater/' + aktivEmailPid, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, email_udkast: tekst })
+  });
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sender...';
+  status.textContent = '';
+
+  try {
+    const res = await fetch(AGENT_URL + '/prospekt/send-email/' + aktivEmailPid, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const d = await res.json();
+    if (d.success) {
+      status.textContent = `✓ Sendt til ${d.sendt_til}`;
+      status.style.color = 'var(--green)';
+      const i = outboundProspekter.findIndex(p => p.id === aktivEmailPid);
+      if (i >= 0) { outboundProspekter[i].status = 'email-sendt'; outboundProspekter[i].email = email; }
+      setTimeout(lukEmailModal, 2000);
+      renderProspekter();
+    } else {
+      status.textContent = '❌ ' + (d.error || 'Ukendt fejl');
+      status.style.color = 'var(--red)';
+      btn.disabled = false;
+      btn.textContent = '✉ Send email';
+    }
+  } catch(e) {
+    status.textContent = 'Netværksfejl';
+    status.style.color = 'var(--red)';
+    btn.disabled = false;
+    btn.textContent = '✉ Send email';
+  }
+}
+
+const STATUS_FARVE = {
+  'ny':         ['#9a9590','#f0efec'],
+  'scanner...': ['#7c3aed','#f3f0ff'],
+  'scannet':    ['#0a5c8a','#e0f2fe'],
+  'email-sendt':['#16a34a','#dcfce7'],
+  'scan-fejl':  ['#c0392b','#fdf0ee'],
+};
+
+function renderProspekter() {
+  const filter = document.getElementById('prospektFilter')?.value || '';
+  const vis    = filter ? outboundProspekter.filter(p => p.status === filter) : outboundProspekter;
+  document.getElementById('prospektCount').textContent = `${outboundProspekter.length} prospekter`;
+
+  const el = document.getElementById('prospektListe');
+  if (!vis.length) {
+    el.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--muted);font-size:.85rem">${filter ? 'Ingen med denne status' : 'Tilføj websites ovenfor for at komme i gang'}</div>`;
+    return;
+  }
+
+  el.innerHTML = vis.map(p => {
+    const [sc, sb] = STATUS_FARVE[p.status] || ['#9a9590','#f0efec'];
+    const harChatbot = p.har_chatbot === true
+      ? `<span style="background:#fef9c3;color:#854d0e;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:4px">Har chatbot</span>`
+      : p.har_chatbot === false
+      ? `<span style="background:#dcfce7;color:#15803d;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:4px">Ingen chatbot</span>`
+      : '';
+
+    return `<div style="display:flex;align-items:flex-start;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.25rem">
+          <span style="font-weight:700;font-size:.875rem">${p.navn || p.url}</span>
+          <span style="background:${sb};color:${sc};font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:4px">${p.status}</span>
+          ${harChatbot}
+        </div>
+        <div style="font-size:.75rem;color:var(--muted)">${p.url}</div>
+        ${p.beskrivelse ? `<div style="font-size:.78rem;color:var(--mid);margin-top:.3rem;line-height:1.5">${p.beskrivelse}</div>` : ''}
+        ${p.smertepunkt ? `<div style="font-size:.75rem;color:#7c3aed;margin-top:.2rem">💡 ${p.smertepunkt}</div>` : ''}
+        ${p.email ? `<div style="font-size:.73rem;color:var(--muted);margin-top:.2rem">📧 ${p.email}</div>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.4rem;flex-shrink:0;align-items:flex-end">
+        ${p.status === 'ny' || p.status === 'scan-fejl'
+          ? `<button class="btn btn-ghost btn-sm" onclick="scanProspekt('${p.id}')">⟳ Scan</button>`
+          : ''}
+        ${p.status === 'scannet' || p.status === 'email-sendt'
+          ? `<button class="btn btn-primary btn-sm" onclick="åbnEmailModal('${p.id}')">✉ ${p.status === 'email-sendt' ? 'Gensend' : 'Send email'}</button>`
+          : ''}
+        <button class="btn btn-ghost btn-sm" onclick="sletProspekt('${p.id}')" style="color:var(--red);border-color:transparent">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Indlæs outbound når view vises
+const _origShowViewOutbound = showView;
+function showView(v) {
+  _origShowViewOutbound(v);
+  if (v === 'outbound') loadOutbound();
+}
+</script>
 
 </body>
 </html>

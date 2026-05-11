@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NexOlsen — Se din AI-chatbot live på 60 sekunder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --dark:   #0d0d0d;
+      --mid:    #1a1918;
+      --accent: #0a2463;
+      --green:  #16a34a;
+      --border: rgba(255,255,255,0.1);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--dark); color: #fff; min-height: 100vh; }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 780px; margin: 0 auto;
+      padding: 5rem 1.5rem 4rem;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(22,163,74,.15); border: 1px solid rgba(22,163,74,.3);
+      color: #4ade80; border-radius: 50px; padding: .35rem 1rem;
+      font-size: .78rem; font-weight: 700; letter-spacing: .5px;
+      margin-bottom: 1.75rem; text-transform: uppercase;
+    }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      font-weight: 900; line-height: 1.1;
+      letter-spacing: -2px; margin-bottom: 1.25rem;
+    }
+    .hero h1 span { color: #60a5fa; }
+    .hero p {
+      font-size: 1.1rem; color: rgba(255,255,255,.55);
+      line-height: 1.7; max-width: 540px; margin: 0 auto 2.5rem;
+    }
+
+    /* ── INPUT FORM ── */
+    .url-form {
+      display: flex; gap: .6rem; max-width: 560px; margin: 0 auto;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .url-input {
+      flex: 1; min-width: 260px;
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(255,255,255,.15);
+      border-radius: 12px; padding: .9rem 1.2rem;
+      font-size: 1rem; font-family: inherit; color: #fff;
+      outline: none; transition: border-color .2s;
+    }
+    .url-input::placeholder { color: rgba(255,255,255,.3); }
+    .url-input:focus { border-color: rgba(96,165,250,.6); }
+    .url-btn {
+      background: #60a5fa; color: #0d1117;
+      border: none; border-radius: 12px;
+      padding: .9rem 1.75rem; font-size: 1rem;
+      font-weight: 800; font-family: inherit; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .url-btn:hover { background: #93c5fd; transform: translateY(-1px); }
+    .url-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .url-hint { font-size: .78rem; color: rgba(255,255,255,.3); margin-top: .75rem; text-align: center; }
+
+    /* ── LOADING ── */
+    #loadingSection {
+      max-width: 560px; margin: 2rem auto 0;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px; padding: 2rem;
+      text-align: center; display: none;
+    }
+    .loader {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.1);
+      border-top-color: #60a5fa;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-steps { display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; }
+    .step { font-size: .82rem; color: rgba(255,255,255,.4); display: flex; align-items: center; gap: .6rem; justify-content: center; }
+    .step.done { color: #4ade80; }
+    .step.aktiv { color: #fff; }
+
+    /* ── RESULTAT ── */
+    #resultSection { display: none; }
+    .result-hero {
+      text-align: center; padding: 3rem 1.5rem 2rem;
+    }
+    .result-company {
+      font-size: 1rem; color: rgba(255,255,255,.5); margin-bottom: .4rem;
+    }
+    .result-title {
+      font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 900;
+      letter-spacing: -1px; margin-bottom: .75rem;
+    }
+    .result-desc { color: rgba(255,255,255,.55); font-size: .95rem; max-width: 500px; margin: 0 auto; line-height: 1.6; }
+
+    /* Chatbot preview */
+    .chatbot-preview-wrap {
+      max-width: 480px; margin: 2rem auto;
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .cb-header {
+      padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+    }
+    .cb-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .cb-hname { font-weight: 700; font-size: 15px; }
+    .cb-hstatus { font-size: 11px; opacity: .7; margin-top: 1px; }
+    .cb-messages {
+      background: #fff; padding: 16px; min-height: 160px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .cb-msg-bot {
+      background: #f3f4f6; color: #111;
+      border-radius: 16px 16px 16px 4px;
+      padding: 10px 14px; font-size: 14px; line-height: 1.5;
+      max-width: 84%; align-self: flex-start;
+    }
+    .cb-msg-user {
+      color: #fff; border-radius: 16px 16px 4px 16px;
+      padding: 10px 14px; font-size: 14px; line-height: 1.5;
+      max-width: 84%; align-self: flex-end;
+    }
+    .cb-typing {
+      display: flex; gap: 4px; align-items: center;
+      padding: 10px 14px; align-self: flex-start;
+    }
+    .cb-dot {
+      width: 7px; height: 7px; background: #bbb; border-radius: 50%;
+      animation: cbBounce 1.2s infinite;
+    }
+    .cb-dot:nth-child(2) { animation-delay: .2s; }
+    .cb-dot:nth-child(3) { animation-delay: .4s; }
+    @keyframes cbBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+    .cb-input-row {
+      background: #fff; padding: 10px 14px;
+      border-top: 1px solid #f0f0f0;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .cb-input-fake {
+      flex: 1; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 9px 14px; font-size: 14px; color: #aaa;
+      pointer-events: none;
+    }
+    .cb-send-fake {
+      width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px; flex-shrink: 0;
+    }
+    .cb-powered {
+      background: #fff; text-align: center;
+      font-size: 11px; color: #ccc; padding: 5px;
+      border-top: 1px solid #f5f5f5;
+    }
+
+    /* Advarsel: allerede chatbot */
+    .har-chatbot-adv {
+      max-width: 480px; margin: 0 auto 1rem;
+      background: rgba(234,179,8,.1); border: 1px solid rgba(234,179,8,.25);
+      border-radius: 10px; padding: .85rem 1rem;
+      font-size: .82rem; color: #fbbf24;
+      display: flex; gap: .6rem; align-items: flex-start;
+    }
+
+    /* CTA */
+    .cta-section {
+      max-width: 480px; margin: 2rem auto 4rem;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px; padding: 2rem;
+      text-align: center;
+    }
+    .cta-title { font-size: 1.3rem; font-weight: 800; margin-bottom: .5rem; }
+    .cta-sub { color: rgba(255,255,255,.5); font-size: .9rem; margin-bottom: 1.5rem; line-height: 1.6; }
+    .cta-form { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
+    .cta-email {
+      flex: 1; min-width: 200px;
+      background: rgba(255,255,255,.07); border: 1.5px solid rgba(255,255,255,.15);
+      border-radius: 10px; padding: .8rem 1rem;
+      font-size: .95rem; font-family: inherit; color: #fff; outline: none;
+    }
+    .cta-email::placeholder { color: rgba(255,255,255,.3); }
+    .cta-btn {
+      background: #16a34a; color: #fff; border: none; border-radius: 10px;
+      padding: .8rem 1.5rem; font-size: .95rem; font-weight: 700;
+      font-family: inherit; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .cta-btn:hover { background: #15803d; }
+    .cta-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .cta-success {
+      background: rgba(22,163,74,.15); border: 1px solid rgba(22,163,74,.3);
+      border-radius: 10px; padding: 1rem; color: #4ade80;
+      font-size: .9rem; font-weight: 600; display: none;
+    }
+    .cta-note { font-size: .75rem; color: rgba(255,255,255,.25); margin-top: .75rem; }
+
+    /* ── TRUST BADGES ── */
+    .trust {
+      display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;
+      padding: 2rem 1.5rem 4rem; border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .trust-item { font-size: .82rem; color: rgba(255,255,255,.35); display: flex; align-items: center; gap: .4rem; }
+    .trust-icon { font-size: 1rem; }
+
+    /* ── HOW IT WORKS ── */
+    .how {
+      max-width: 780px; margin: 0 auto;
+      padding: 3rem 1.5rem 0;
+      text-align: center;
+    }
+    .how-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 2rem; opacity: .7; }
+    .steps-row { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; }
+    .step-card {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px; padding: 1.5rem; flex: 1; min-width: 180px; max-width: 220px;
+      text-align: center;
+    }
+    .step-num {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(96,165,250,.15); color: #60a5fa;
+      font-weight: 800; font-size: .9rem;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto .75rem;
+    }
+    .step-card h3 { font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+    .step-card p { font-size: .8rem; color: rgba(255,255,255,.4); line-height: 1.6; }
+
+    @media (max-width: 600px) {
+      .url-form { flex-direction: column; }
+      .url-btn { width: 100%; }
+      .cta-form { flex-direction: column; }
+      .cta-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero" id="heroSection">
+  <div class="hero-badge">
+    <div class="badge-dot"></div>
+    Gratis demo — ingen kreditkort
+  </div>
+  <h1>Se din AI-chatbot<br/><span>live på 60 sekunder</span></h1>
+  <p>Skriv din hjemmeside-URL og vi bygger en skræddersyet chatbot-demo til din virksomhed — med dine ydelser, farver og tone.</p>
+
+  <form class="url-form" onsubmit="startDemo(event)">
+    <input class="url-input" id="urlInput" type="text"
+      placeholder="fx nempool.net eller din-virksomhed.dk"
+      autocomplete="off" spellcheck="false"/>
+    <button class="url-btn" type="submit" id="demoBtn">
+      Byg min demo →
+    </button>
+  </form>
+  <div class="url-hint">Virker med alle hjemmesider · ingen installation nødvendig</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="howSection">
+  <div class="how-title">Sådan virker det</div>
+  <div class="steps-row">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <h3>Scan</h3>
+      <p>Vi analyserer din hjemmeside og lærer din virksomhed at kende</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <h3>Generér</h3>
+      <p>AI bygger en chatbot tilpasset dine ydelser, priser og tone</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <h3>Live demo</h3>
+      <p>Du ser og taler med din egen chatbot inden for 60 sekunder</p>
+    </div>
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <h3>Gå live</h3>
+      <p>Én linje kode på din side — chatbotten er klar til dine besøgende</p>
+    </div>
+  </div>
+</section>
+
+<!-- LOADING -->
+<div id="loadingSection">
+  <div class="loader"></div>
+  <div style="font-weight:700;font-size:1rem;margin-bottom:.25rem">Analyserer din hjemmeside...</div>
+  <div style="font-size:.82rem;color:rgba(255,255,255,.4)" id="loadingUrl"></div>
+  <div class="loading-steps">
+    <div class="step aktiv" id="step1">⟳ Henter hjemmeside</div>
+    <div class="step" id="step2">○ Analyserer indhold med AI</div>
+    <div class="step" id="step3">○ Genererer chatbot-config</div>
+    <div class="step" id="step4">○ Bygger din demo</div>
+  </div>
+</div>
+
+<!-- RESULTAT -->
+<div id="resultSection">
+  <div class="result-hero">
+    <div class="result-company" id="resCompany"></div>
+    <div class="result-title">Din chatbot er klar! 🎉</div>
+    <div class="result-desc" id="resDesc"></div>
+  </div>
+
+  <div id="harChatbotAdv" class="har-chatbot-adv" style="display:none">
+    ⚠️ Vi kan se I allerede bruger et chat-system. NexOlsen er smartere — den genererer leads automatisk og sender dem til din email. Se selv herunder.
+  </div>
+
+  <div class="chatbot-preview-wrap">
+    <div class="cb-header" id="cbHeader" style="background:#0a2463">
+      <div class="cb-avatar">🤖</div>
+      <div>
+        <div class="cb-hname" id="cbNavn">Alma</div>
+        <div class="cb-hstatus">● Online — svarer straks</div>
+      </div>
+    </div>
+    <div class="cb-messages" id="cbMessages">
+      <div class="cb-msg-bot" id="cbVelkomst">Hej! Hvordan kan jeg hjælpe dig?</div>
+    </div>
+    <div class="cb-input-row">
+      <input class="cb-input-fake" id="cbInput" placeholder="Skriv en besked og chat med din demo-chatbot..."/>
+      <div class="cb-send-fake" id="cbSendBtn" style="background:#0a2463">➤</div>
+    </div>
+    <div class="cb-powered">Drevet af <strong>NexOlsen</strong></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <div class="cta-title">Vil du have den på din rigtige hjemmeside?</div>
+    <div class="cta-sub">Chatbotten er klar til at gå live. Giv os din email — vi sender dig et tilbud og login inden for 24 timer.</div>
+    <div class="cta-form">
+      <input class="cta-email" id="ctaEmail" type="email" placeholder="din@email.dk"/>
+      <button class="cta-btn" onclick="sendTilmeld()" id="ctaBtn">Ja tak, kontakt mig →</button>
+    </div>
+    <div class="cta-success" id="ctaSuccess">
+      ✓ Tak! Vi vender tilbage inden for 24 timer med dit personlige tilbud.
+    </div>
+    <div class="cta-note">Ingen spam · Ingen binding · 14 dages gratis prøve</div>
+  </div>
+</div>
+
+<!-- TRUST -->
+<div class="trust">
+  <div class="trust-item"><span class="trust-icon">🇩🇰</span> Dansk virksomhed</div>
+  <div class="trust-item"><span class="trust-icon">⚡</span> Live på 10 minutter</div>
+  <div class="trust-item"><span class="trust-icon">🔒</span> GDPR-compliant</div>
+  <div class="trust-item"><span class="trust-icon">🤖</span> Drevet af Claude AI</div>
+</div>
+
+<script>
+const API = 'https://klaiai.onrender.com';
+let currentDemoId = null;
+let currentFarve  = '#0a2463';
+let chatHistorik  = [];
+
+// ── START DEMO ──────────────────────────────────────────
+async function startDemo(e) {
+  e.preventDefault();
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+
+  const btn = document.getElementById('demoBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyserer...';
+
+  document.getElementById('heroSection').style.marginBottom = '1.5rem';
+  document.getElementById('howSection').style.display = 'none';
+  document.getElementById('loadingUrl').textContent = url.replace(/^https?:\/\//, '');
+  document.getElementById('loadingSection').style.display = 'block';
+  document.getElementById('resultSection').style.display = 'none';
+
+  // Animer loading-steps
+  const steps = ['step1','step2','step3','step4'];
+  const labels = ['⟳ Henter hjemmeside','⟳ Analyserer indhold med AI','⟳ Genererer chatbot-config','⟳ Bygger din demo'];
+  let si = 0;
+  const stepInterval = setInterval(() => {
+    if (si > 0) {
+      document.getElementById(steps[si-1]).textContent = '✓ ' + labels[si-1].slice(2);
+      document.getElementById(steps[si-1]).className = 'step done';
+    }
+    if (si < steps.length) {
+      document.getElementById(steps[si]).textContent = labels[si];
+      document.getElementById(steps[si]).className = 'step aktiv';
+    }
+    si++;
+    if (si >= steps.length + 1) clearInterval(stepInterval);
+  }, 900);
+
+  try {
+    const res = await fetch(API + '/demo/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    clearInterval(stepInterval);
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Scan fejlede');
+    }
+    const d = await res.json();
+    visResultat(d);
+  } catch(err) {
+    document.getElementById('loadingSection').style.display = 'none';
+    alert('Kunne ikke scanne siden: ' + err.message + '\n\nPrøv at tjekke URL\'en og prøv igen.');
+    btn.disabled = false;
+    btn.textContent = 'Byg min demo →';
+  }
+}
+
+function visResultat(d) {
+  document.getElementById('loadingSection').style.display = 'none';
+
+  currentDemoId = d.demo_id;
+  currentFarve  = d.farve || '#0a2463';
+  chatHistorik  = [];
+
+  document.getElementById('resCompany').textContent = d.virk_navn;
+  document.getElementById('resDesc').textContent = d.beskrivelse || `Chatbotten er trænet på ${d.virk_navn}s hjemmeside og kender jeres ydelser.`;
+  document.getElementById('cbNavn').textContent = d.chatbot_navn || 'Alma';
+  document.getElementById('cbVelkomst').textContent = d.velkomst || 'Hej! Hvordan kan jeg hjælpe dig?';
+  document.getElementById('cbHeader').style.background = currentFarve;
+  document.getElementById('cbSendBtn').style.background = currentFarve;
+
+  // Styling af bruger-chat-bobler
+  document.querySelectorAll('.cb-msg-user').forEach(el => el.style.background = currentFarve);
+
+  document.getElementById('harChatbotAdv').style.display = d.har_chatbot ? 'flex' : 'none';
+  document.getElementById('resultSection').style.display = 'block';
+  document.getElementById('heroSection').style.display = 'none';
+
+  // Gør chat interaktiv
+  document.getElementById('cbInput').placeholder = 'Skriv en besked og chat med din demo-chatbot...';
+  document.getElementById('cbInput').disabled = false;
+  document.getElementById('cbInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendChatBesked();
+  });
+  document.getElementById('cbSendBtn').onclick = sendChatBesked;
+}
+
+// ── DEMO CHAT ───────────────────────────────────────────
+async function sendChatBesked() {
+  const input = document.getElementById('cbInput');
+  const tekst = input.value.trim();
+  if (!tekst || !currentDemoId) return;
+  input.value = '';
+
+  // Vis bruger-besked
+  tilfoejBesked('user', tekst);
+  chatHistorik.push({ role: 'user', content: tekst });
+
+  // Typing indicator
+  const typingEl = document.createElement('div');
+  typingEl.className = 'cb-typing';
+  typingEl.innerHTML = '<div class="cb-dot"></div><div class="cb-dot"></div><div class="cb-dot"></div>';
+  document.getElementById('cbMessages').appendChild(typingEl);
+  scrollChat();
+
+  try {
+    const res = await fetch(API + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client: 'demo', demo_id: currentDemoId,
+        message: tekst, history: chatHistorik.slice(-8)
+      })
+    });
+    const data = await res.json();
+    typingEl.remove();
+    const svar = data.reply || data.svar || 'Beklager, prøv igen om lidt.';
+    tilfoejBesked('bot', svar);
+    chatHistorik.push({ role: 'assistant', content: svar });
+  } catch(e) {
+    typingEl.remove();
+    tilfoejBesked('bot', 'Beklager, kunne ikke forbinde. Prøv igen.');
+  }
+}
+
+function tilfoejBesked(type, tekst) {
+  const el = document.createElement('div');
+  el.className = type === 'user' ? 'cb-msg-user' : 'cb-msg-bot';
+  if (type === 'user') el.style.background = currentFarve;
+  el.textContent = tekst;
+  document.getElementById('cbMessages').appendChild(el);
+  scrollChat();
+}
+
+function scrollChat() {
+  const msgs = document.getElementById('cbMessages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── CTA TILMELD ─────────────────────────────────────────
+async function sendTilmeld() {
+  const email = document.getElementById('ctaEmail').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('ctaEmail').focus();
+    return;
+  }
+  const btn = document.getElementById('ctaBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sender...';
+
+  try {
+    await fetch(API + '/demo/tilmeld', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, demo_id: currentDemoId })
+    });
+    document.getElementById('ctaSuccess').style.display = 'block';
+    document.querySelector('.cta-form').style.display = 'none';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Ja tak, kontakt mig →';
+  }
+}
+</script>
+</body>
+</html>

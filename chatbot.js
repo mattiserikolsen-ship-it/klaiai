@@ -3,11 +3,12 @@
  * Embed: <script src="https://klaiai.onrender.com/chatbot.js" data-client="KLIENT_ID"></script>
  */
 (function () {
-  const script = document.currentScript || document.querySelector('script[data-client]');
+  const script = document.currentScript || document.querySelector('script[data-client],script[data-demo]');
   const CLIENT_ID = script?.getAttribute('data-client') || 'demo';
+  const DEMO_ID   = script?.getAttribute('data-demo') || null;
   const COLOR = script?.getAttribute('data-color') || '#0a2463';
   const API_URL = script?.getAttribute('data-api') || 'https://klaiai.onrender.com';
-  const AUTO_OPEN_DELAY = 1500; // ms før chat åbner automatisk
+  const AUTO_OPEN_DELAY = DEMO_ID ? 600 : 1500;
 
   let history = [];
   let isOpen = false;
@@ -197,12 +198,21 @@
   // ── INIT ─────────────────────────────────────────────
   async function init() {
     try {
-      const res = await fetch(`${API_URL}/widget/${CLIENT_ID}`);
+      const url = DEMO_ID
+        ? `${API_URL}/demo/config/${DEMO_ID}`
+        : `${API_URL}/widget/${CLIENT_ID}`;
+      const res = await fetch(url);
       if (res.ok) {
         config = await res.json();
         const botNavn = config.navn || 'Alma';
         document.getElementById('klaiai-header-name').textContent = botNavn;
         document.getElementById('klaiai-tab-name').textContent = botNavn;
+        // Anvend dynamisk farve fra demo config
+        if (config.farve && config.farve !== COLOR) {
+          document.querySelectorAll('[style*="background: ' + COLOR + '"], [style*="background:' + COLOR + '"]').forEach(el => {
+            el.style.background = config.farve;
+          });
+        }
       }
     } catch (e) { /* bruger default config */ }
 
@@ -232,7 +242,12 @@
       const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client: CLIENT_ID, message: text, history: history.slice(-10) })
+        body: JSON.stringify({
+          client: DEMO_ID ? 'demo' : CLIENT_ID,
+          demo_id: DEMO_ID || null,
+          message: text,
+          history: history.slice(-10)
+        })
       });
       const data = await res.json();
       removeTyping(typing);

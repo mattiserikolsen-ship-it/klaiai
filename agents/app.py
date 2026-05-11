@@ -41,7 +41,9 @@ STRIPE_PRISER = {
 }
 
 # ── TOKEN STORE (in-memory) ────────────────────────────
-active_tokens = {}  # token -> {'role': 'admin'/'client', 'klient_id': ...}
+active_tokens = {}   # token -> {'role': 'admin'/'client', 'klient_id': ...}
+demo_sessions = {}   # demo_id -> {'klient_config': {...}, 'url': '...', 'created_at': ...}
+prospekter    = {}   # prospekt_id -> {'url', 'navn', 'beskrivelse', 'har_chatbot', 'email_udkast', 'status'}
 
 app = Flask(__name__, static_folder='../app', static_url_path='/app')
 CORS(app)
@@ -339,16 +341,20 @@ def log_gap(klient_id: str, spoergsmaal: str, bot_svar: str):
 def chat():
     data = request.json
     klient_id = data.get('client', 'demo')
+    demo_id   = data.get('demo_id')
     besked = data.get('message', '')
     historik = data.get('history', [])
 
     if not besked:
         return jsonify({'error': 'Ingen besked'}), 400
 
-    if klient_id != 'demo' and not er_klient_aktiv(klient_id):
-        return jsonify({'svar': 'Denne chatbot er ikke tilgængelig i øjeblikket.'}), 403
-
-    klient = get_klient(klient_id)
+    # Demo-session: brug genereret config
+    if demo_id and demo_id in demo_sessions:
+        klient = demo_sessions[demo_id]['klient_config']
+    else:
+        if klient_id != 'demo' and not er_klient_aktiv(klient_id):
+            return jsonify({'svar': 'Denne chatbot er ikke tilgængelig i øjeblikket.'}), 403
+        klient = get_klient(klient_id)
     messages = [{'role': m['role'], 'content': m['content']} for m in historik[-10:]]
     messages.append({'role': 'user', 'content': besked})
 
@@ -2716,6 +2722,346 @@ def login_page():
     from flask import send_from_directory
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     return send_from_directory(app_dir, 'login.html')
+
+# ══════════════════════════════════════════════════════════════
+#  DEMO FRA URL
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/demo', methods=['GET'])
+def demo_page():
+    from flask import send_from_directory
+    app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
+    return send_from_directory(app_dir, 'demo.html')
+
+@app.route('/demo/scan', methods=['POST'])
+def demo_scan():
+    """Scanner en hjemmeside-URL og genererer en personlig chatbot-config"""
+    import uuid, re, datetime as _dt
+    data = request.json or {}
+    raw_url = (data.get('url') or '').strip()
+    if not raw_url:
+        return jsonify({'error': 'URL mangler'}), 400
+    if not raw_url.startswith('http'):
+        raw_url = 'https://' + raw_url
+
+    # Hent hjemmeside
+    try:
+        resp = http_requests.get(raw_url, timeout=10, verify=False,
+            headers={'User-Agent': 'Mozilla/5.0 (compatible; NexOlsen-Demo/1.0)'})
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, 'html.parser')
+    except Exception as e:
+        return jsonify({'error': f'Kunne ikke hente siden: {str(e)}'}), 400
+
+    # Tjek om de allerede har en chatbot
+    html_lower = resp.text.lower()
+    chatbot_vendors = ['intercom', 'zendesk', 'drift.com', 'hubspot', 'tidio',
+                       'freshchat', 'crisp.chat', 'tawk.to', 'chatbot', 'livechat',
+                       'klaiai', 'widget.js', 'chat-widget']
+    har_chatbot = any(v in html_lower for v in chatbot_vendors)
+
+    # Udtræk tekst
+    for tag in soup(['script', 'style', 'nav', 'footer', 'header']):
+        tag.decompose()
+    tekst = soup.get_text(separator=' ', strip=True)
+    tekst = re.sub(r'\s+', ' ', tekst)[:4000]
+
+    # Udtræk primærfarve fra CSS (første hex-farve der ikke er sort/hvid)
+    css_farver = re.findall(r'#([0-9a-fA-F]{3,6})', resp.text)
+    primær_farve = '#0a2463'
+    for f in css_farver:
+        if len(f) in (3, 6):
+            if f not in ('fff', 'ffffff', '000', '000000', 'FFF', 'FFFFFF'):
+                primær_farve = '#' + f
+                break
+
+    # Udtræk titel / virksomhedsnavn
+    title = soup.find('title')
+    virk_navn = title.text.strip().split('|')[0].split('–')[0].strip() if title else raw_url
+
+    # Generer chatbot-config med Claude
+    try:
+        prompt_resp = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=600,
+            messages=[{'role': 'user', 'content': f"""Baseret på denne hjemmesidetekst, generér en chatbot-konfiguration på dansk.
+
+Hjemmeside: {raw_url}
+Virksomhedsnavn: {virk_navn}
+Tekst fra siden:
+{tekst}
+
+Svar KUN med gyldig JSON (ingen forklaring) i dette format:
+{{
+  "chatbot_navn": "fornuftigt navn (fx Alma, Mia, Emil)",
+  "velkomst": "personlig velkomstbesked der nævner virksomheden og hvad de tilbyder (maks 20 ord)",
+  "ydelser": "kommasepareret liste af de vigtigste ydelser/produkter fra siden",
+  "beskrivelse": "1-2 sætninger om hvad virksomheden laver"
+}}"""}]
+        )
+        cfg_raw = prompt_resp.content[0].text.strip()
+        # Udtræk JSON
+        json_match = re.search(r'\{.*\}', cfg_raw, re.DOTALL)
+        ai_cfg = json.loads(json_match.group()) if json_match else {}
+    except Exception as e:
+        print(f"Demo scan AI fejl: {e}")
+        ai_cfg = {}
+
+    demo_id = str(uuid.uuid4())[:12]
+    klient_config = {
+        'navn': virk_navn,
+        'chatbot_navn': ai_cfg.get('chatbot_navn', 'Alma'),
+        'velkomst': ai_cfg.get('velkomst', f'Hej! Jeg er {virk_navn}s AI-assistent. Hvordan kan jeg hjælpe dig?'),
+        'farve': primær_farve,
+        'ekstra_viden': ai_cfg.get('ydelser', ''),
+        'info': {
+            'åbningstider': '',
+            'kontakt': '',
+            'ydelser': ai_cfg.get('ydelser', ''),
+            'priser': '',
+            'adresse': '',
+            'andet': ai_cfg.get('beskrivelse', '')
+        }
+    }
+    demo_sessions[demo_id] = {
+        'klient_config': klient_config,
+        'url': raw_url,
+        'har_chatbot': har_chatbot,
+        'created_at': _dt.datetime.now().isoformat()
+    }
+
+    return jsonify({
+        'demo_id': demo_id,
+        'virk_navn': virk_navn,
+        'chatbot_navn': klient_config['chatbot_navn'],
+        'velkomst': klient_config['velkomst'],
+        'farve': primær_farve,
+        'har_chatbot': har_chatbot,
+        'beskrivelse': ai_cfg.get('beskrivelse', ''),
+        'ydelser': ai_cfg.get('ydelser', '')
+    })
+
+@app.route('/demo/config/<demo_id>', methods=['GET'])
+def demo_config(demo_id):
+    """Returnerer chatbot-config for en demo-session"""
+    if demo_id not in demo_sessions:
+        return jsonify({'error': 'Demo-session udløbet — prøv igen'}), 404
+    cfg = demo_sessions[demo_id]['klient_config']
+    return jsonify({
+        'navn': cfg['chatbot_navn'],
+        'velkomst': cfg['velkomst'],
+        'farve': cfg['farve'],
+        'info': cfg['info'],
+        'ekstra_viden': cfg.get('ekstra_viden', '')
+    })
+
+@app.route('/demo/tilmeld', methods=['POST'])
+def demo_tilmeld():
+    """Gemmer email fra demo-siden som et prospekt-lead"""
+    data = request.json or {}
+    email   = (data.get('email') or '').strip()
+    demo_id = data.get('demo_id') or ''
+    url     = ''
+    navn    = ''
+    if demo_id in demo_sessions:
+        url  = demo_sessions[demo_id].get('url', '')
+        navn = demo_sessions[demo_id]['klient_config'].get('navn', '')
+
+    if not email or '@' not in email:
+        return jsonify({'error': 'Ugyldig email'}), 400
+
+    # Gem som prospekt i Supabase (i lead-tabellen under admin-klient)
+    if db:
+        try:
+            db.table('leads').insert({
+                'klient_id': 'demo',
+                'navn': navn or email.split('@')[0],
+                'email': email,
+                'besked': f'Demo-interesse via {url}',
+                'kilde': 'demo',
+                'status': 'ny'
+            }).execute()
+        except Exception as e:
+            print(f"Demo tilmeld DB fejl: {e}")
+
+    # Send bekræftelsesmail
+    if SENDGRID_API_KEY and email:
+        html = f"""
+<div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1918">
+  <div style="background:#0a2463;padding:2rem;border-radius:12px 12px 0 0;text-align:center">
+    <div style="font-size:1.5rem;font-weight:900;color:#fff">Tak for din interesse! 🎉</div>
+  </div>
+  <div style="background:#fff;padding:2rem;border-radius:0 0 12px 12px;border:1px solid #e5e3de;border-top:none">
+    <p>Vi har registreret din interesse og vender tilbage inden for 24 timer med et personligt tilbud til <strong>{navn or url}</strong>.</p>
+    <p>Mens du venter kan du se mere på <a href="https://nexolsen.dk" style="color:#0a2463">nexolsen.dk</a>.</p>
+    <p style="color:#9a9590;font-size:.85rem">NexOlsen · support@nexolsen.dk</p>
+  </div>
+</div>"""
+        send_mail(email, 'Vi vender tilbage inden for 24 timer 👋', html, 'NexOlsen')
+
+    # Notifier admin
+    if SENDGRID_API_KEY and ADMIN_EMAIL:
+        send_mail(ADMIN_EMAIL, f'NY DEMO-INTERESSE: {email} ({navn or url})',
+            f'Email: {email}\nVirksomhed: {navn}\nURL: {url}\n\nFølg op!', 'NexOlsen System')
+
+    return jsonify({'success': True})
+
+
+# ══════════════════════════════════════════════════════════════
+#  OUTBOUND SALGSMASKINE
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/prospekt/liste', methods=['GET'])
+def prospekt_liste():
+    return jsonify({'prospekter': list(prospekter.values())})
+
+@app.route('/prospekt/tilfoej', methods=['POST'])
+def prospekt_tilfoej():
+    """Tilføj en eller flere prospekt-URLs"""
+    import uuid
+    data = request.json or {}
+    urls_raw = data.get('urls', '')
+    # Accepter komma, newline eller semikolon som separator
+    import re
+    urls = [u.strip() for u in re.split(r'[,\n;]+', urls_raw) if u.strip()]
+    tilfoejede = []
+    for url in urls:
+        if not url.startswith('http'):
+            url = 'https://' + url
+        pid = str(uuid.uuid4())[:10]
+        prospekter[pid] = {
+            'id': pid, 'url': url, 'navn': '', 'beskrivelse': '',
+            'har_chatbot': None, 'email': '', 'telefon': '',
+            'email_udkast': '', 'status': 'ny', 'noter': ''
+        }
+        tilfoejede.append(pid)
+    return jsonify({'success': True, 'tilfoejede': len(tilfoejede), 'ids': tilfoejede})
+
+@app.route('/prospekt/scan/<pid>', methods=['POST'])
+def prospekt_scan(pid):
+    """Scanner et prospekts hjemmeside og fylder info ind"""
+    import re
+    if pid not in prospekter:
+        return jsonify({'error': 'Prospekt ikke fundet'}), 404
+    p = prospekter[pid]
+    url = p['url']
+    try:
+        resp = http_requests.get(url, timeout=10, verify=False,
+            headers={'User-Agent': 'Mozilla/5.0 (compatible; NexOlsen/1.0)'})
+        soup = BeautifulSoup(resp.text, 'html.parser')
+    except Exception as e:
+        p['status'] = 'scan-fejl'
+        return jsonify({'error': str(e)}), 400
+
+    # Tjek eksisterende chatbot
+    html_lower = resp.text.lower()
+    chatbot_vendors = ['intercom', 'zendesk', 'drift', 'hubspot', 'tidio',
+                       'freshchat', 'crisp', 'tawk.to', 'livechat', 'klaiai',
+                       'widget.js', 'chat-widget', 'chatbase', 'botpress']
+    p['har_chatbot'] = any(v in html_lower for v in chatbot_vendors)
+
+    # Udtræk email og telefon
+    emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', resp.text)
+    tlf    = re.findall(r'(?:\+45[\s]?)?(?:\d{2}[\s]?){4}', resp.text)
+    p['email']   = emails[0] if emails else ''
+    p['telefon'] = tlf[0].strip() if tlf else ''
+
+    # Udtræk tekst
+    for tag in soup(['script', 'style', 'nav', 'footer']):
+        tag.decompose()
+    tekst = re.sub(r'\s+', ' ', soup.get_text(separator=' ', strip=True))[:3000]
+
+    title = soup.find('title')
+    p['navn'] = title.text.strip().split('|')[0].split('–')[0].strip() if title else url
+
+    # Generer beskrivelse + email-udkast med Claude
+    try:
+        ai_resp = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=700,
+            messages=[{'role': 'user', 'content': f"""Du er salgskonsulent hos NexOlsen, der sælger AI-chatbots til danske virksomheder.
+
+Analysér denne hjemmeside og svar KUN med JSON:
+
+URL: {url}
+Virksomhedsnavn: {p['navn']}
+Tekst: {tekst}
+Har allerede chatbot: {p['har_chatbot']}
+
+JSON-format:
+{{
+  "beskrivelse": "1 sætning om hvad virksomheden laver",
+  "smertepunkt": "den vigtigste grund til at de har brug for en AI-chatbot (leads, bookinger, FAQ...)",
+  "email_emne": "fængende emne til cold email (maks 8 ord)",
+  "email_tekst": "personlig cold email på 4-5 linjer dansk. Nævn specifikt hvad de sælger, og hvad de mister ved ikke at have AI. Afslut med en konkret CTA. Underskriv som 'Mattis fra NexOlsen'. INGEN emojis."
+}}"""}]
+        )
+        raw = ai_resp.content[0].text.strip()
+        jm  = re.search(r'\{.*\}', raw, re.DOTALL)
+        ai_data = json.loads(jm.group()) if jm else {}
+    except Exception as e:
+        print(f"Prospekt scan AI fejl: {e}")
+        ai_data = {}
+
+    p['beskrivelse']  = ai_data.get('beskrivelse', '')
+    p['smertepunkt']  = ai_data.get('smertepunkt', '')
+    p['email_udkast'] = f"Emne: {ai_data.get('email_emne', '')}\n\n{ai_data.get('email_tekst', '')}"
+    p['status'] = 'scannet'
+    prospekter[pid] = p
+    return jsonify({'success': True, 'prospekt': p})
+
+@app.route('/prospekt/send-email/<pid>', methods=['POST'])
+def prospekt_send_email(pid):
+    """Sender cold email til prospektet"""
+    if pid not in prospekter:
+        return jsonify({'error': 'Prospekt ikke fundet'}), 404
+    p = prospekter[pid]
+    data = request.json or {}
+    email_override = data.get('email', '').strip()
+
+    til_email = email_override or p.get('email', '')
+    if not til_email or '@' not in til_email:
+        return jsonify({'error': 'Ingen gyldig email — indsæt manuelt'}), 400
+
+    udkast = p.get('email_udkast', '')
+    linjer = udkast.split('\n')
+    emne   = linjer[0].replace('Emne:', '').strip() if linjer else f"AI-chatbot til {p['navn']}"
+    tekst  = '\n'.join(linjer[2:]).strip() if len(linjer) > 2 else udkast
+
+    # HTML email
+    html = f"""<div style="font-family:Arial,sans-serif;max-width:560px;padding:20px;color:#1a1918">
+{('<br>'.join(tekst.split(chr(10))))}
+<br><br>
+<a href="https://klaiai.onrender.com/demo" style="display:inline-block;background:#0a2463;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:700;font-size:.9rem">
+  Se din gratis AI-demo →
+</a>
+<br><br>
+<span style="font-size:.8rem;color:#9a9590">NexOlsen · AI-agenter til din virksomhed · <a href="mailto:support@nexolsen.dk" style="color:#9a9590">support@nexolsen.dk</a></span>
+</div>"""
+
+    ok = send_mail(til_email, emne, html, 'Mattis fra NexOlsen')
+    if ok:
+        p['status'] = 'email-sendt'
+        p['email']  = til_email
+        prospekter[pid] = p
+        return jsonify({'success': True, 'sendt_til': til_email})
+    return jsonify({'error': 'Email fejlede — tjek SendGrid'}), 500
+
+@app.route('/prospekt/opdater/<pid>', methods=['PATCH'])
+def prospekt_opdater(pid):
+    """Opdater email-udkast eller noter manuelt"""
+    if pid not in prospekter:
+        return jsonify({'error': 'Ikke fundet'}), 404
+    data = request.json or {}
+    for felt in ('email', 'email_udkast', 'noter', 'status'):
+        if felt in data:
+            prospekter[pid][felt] = data[felt]
+    return jsonify({'success': True, 'prospekt': prospekter[pid]})
+
+@app.route('/prospekt/slet/<pid>', methods=['DELETE'])
+def prospekt_slet(pid):
+    prospekter.pop(pid, None)
+    return jsonify({'success': True})
 
 @app.route('/portal/<klient_id>', methods=['GET'])
 def klient_portal(klient_id):
