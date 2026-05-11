@@ -3642,8 +3642,8 @@ function setAgentStatus(online) {
     dot.style.background = 'var(--green)';
     txt.textContent = 'Chatbot-agent kører — klar til test';
   } else {
-    dot.style.background = 'var(--red)';
-    txt.innerHTML = 'Agent offline — start den med: <code style="background:var(--bg2);padding:.1rem .4rem;border-radius:4px">python3 agents/chatbot_agent.py</code>';
+    dot.style.background = 'var(--orange)';
+    txt.innerHTML = 'Forbinder til Render... (<a href="#" onclick="switchTab(\'chatbot-test\')" style="color:var(--accent)">prøv igen</a>)';
   }
 }
 

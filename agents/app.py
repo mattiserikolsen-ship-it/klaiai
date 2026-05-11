@@ -2682,6 +2682,10 @@ def serve_booking_widget_js():
 def ping():
     return jsonify({'status': 'ok'})
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok', 'service': 'NexOlsen Agent Server'})
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
