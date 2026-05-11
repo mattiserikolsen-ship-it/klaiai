@@ -829,6 +829,7 @@
         <div style="margin-left:auto; display:flex; gap:.6rem; align-items:center">
           <span class="badge badge-green" id="detailStatus">Aktiv</span>
           <button class="btn btn-secondary btn-sm" onclick="openEditModal()">✏️ Rediger</button>
+          <button class="btn btn-secondary btn-sm" onclick="gensendVelkomst()" title="Send onboarding-email med login-credentials til klienten">📧 Velkomst</button>
           <button class="btn btn-secondary btn-sm" onclick="openClientPortal()">Åbn portal →</button>
           <button id="toggleAktivBtn" class="btn btn-sm" onclick="toggleKlientAktiv()" style="background:var(--orange-bg);color:var(--orange)">⏸ Deaktiver</button>
           <button class="btn btn-danger btn-sm" onclick="deleteClient()">🗑 Slet</button>
@@ -2576,6 +2577,14 @@ function createClient() {
   saveClients();
   syncKlientToDB(client);
 
+  // Send onboarding-email til klienten (asynkront, fejl er non-fatal)
+  setTimeout(() => {
+    fetch(AGENT_URL + '/send-velkomst/' + client.id, { method: 'POST' })
+      .then(r => r.json())
+      .then(d => { if (d.success) console.log('Velkomstemail sendt til', d.sendt_til); })
+      .catch(e => console.warn('Velkomstemail fejlede:', e));
+  }, 3000); // Vent 3s så chatbot-config også er gemt inden emailen vises
+
   // Chatbot config fra trin 2
   syncChatbotConfigToDB(client.id, {
     chatbot_navn: document.getElementById('nc_bot_navn').value || 'Alma',
@@ -2695,7 +2704,27 @@ async function toggleKlientAktiv() {
 }
 
 function openClientPortal() {
-  window.open('client.html?id=' + currentClient?.id, '_blank');
+  window.open(AGENT_URL + '/portal/' + currentClient?.id, '_blank');
+}
+
+async function gensendVelkomst() {
+  if (!currentClient?.id) return;
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sender...'; }
+  try {
+    const res = await fetch(AGENT_URL + '/send-velkomst/' + currentClient.id, { method: 'POST' });
+    const d = await res.json();
+    if (d.success) {
+      if (btn) btn.textContent = `✓ Sendt til ${d.sendt_til}`;
+      setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '📧 Velkomst'; } }, 4000);
+    } else {
+      alert('Fejl: ' + (d.error || 'Ukendt fejl'));
+      if (btn) { btn.disabled = false; btn.textContent = '📧 Velkomst'; }
+    }
+  } catch(e) {
+    alert('Netværksfejl — prøv igen');
+    if (btn) { btn.disabled = false; btn.textContent = '📧 Velkomst'; }
+  }
 }
 
 // ── PRODUKT TAB ───────────────────────────────────────

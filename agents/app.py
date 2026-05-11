@@ -1571,6 +1571,113 @@ def opret_klient():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/send-velkomst/<klient_id>', methods=['POST'])
+def send_velkomst(klient_id):
+    """Sender onboarding-email til klienten med login-credentials og portal-link"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    try:
+        res = db.table('klienter').select('*').eq('id', klient_id).single().execute()
+        if not res.data:
+            return jsonify({'error': 'Klient ikke fundet'}), 404
+        k = res.data
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    navn     = k.get('navn', 'kunde')
+    email    = k.get('email', '')
+    password = k.get('password', '')
+    if not email or '@' not in email:
+        return jsonify({'error': 'Klient har ingen gyldig email'}), 400
+
+    portal_url = f'https://klaiai.onrender.com/portal/{klient_id}'
+    login_url  = 'https://klaiai.onrender.com/login'
+    fornavn    = navn.split()[0] if navn else 'der'
+
+    html = f"""
+<div style="font-family:'Inter',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1918;background:#f8f7f4;padding:2rem 1rem">
+  <div style="background:#0a2463;border-radius:14px 14px 0 0;padding:2.5rem 2rem;text-align:center">
+    <div style="font-size:1.8rem;font-weight:900;color:#fff;letter-spacing:-1px">NexOlsen</div>
+    <div style="color:rgba(255,255,255,.6);font-size:.9rem;margin-top:.4rem">Din AI-portal er klar 🎉</div>
+  </div>
+
+  <div style="background:#fff;border-radius:0 0 14px 14px;padding:2rem;border:1px solid #e5e3de;border-top:none">
+    <p style="font-size:1rem;font-weight:700;margin-bottom:.5rem">Hej {fornavn}!</p>
+    <p style="color:#4a4845;line-height:1.7;margin-bottom:1.5rem">
+      Din NexOlsen-portal er nu klar. Her kan du følge med i dine leads, bookinger og din chatbots aktivitet — alt på ét sted.
+    </p>
+
+    <!-- LOGIN BOKS -->
+    <div style="background:#f0f4f8;border-radius:12px;padding:1.5rem;margin-bottom:1.75rem;border:1px solid #e2e8f0">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#9a9590;margin-bottom:1rem">Dine loginoplysninger</div>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <div>
+          <span style="font-size:.78rem;color:#9a9590;display:block;margin-bottom:.15rem">Email</span>
+          <span style="font-weight:700;font-size:.95rem">{email}</span>
+        </div>
+        <div>
+          <span style="font-size:.78rem;color:#9a9590;display:block;margin-bottom:.15rem">Adgangskode</span>
+          <span style="font-weight:700;font-size:.95rem;font-family:monospace;background:#e5e3de;padding:.2rem .5rem;border-radius:5px">{password if password else '(kontakt NexOlsen)'}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA KNAP -->
+    <div style="text-align:center;margin-bottom:1.75rem">
+      <a href="{login_url}" style="display:inline-block;background:#0a2463;color:#fff;text-decoration:none;font-size:.95rem;font-weight:700;padding:1rem 2.5rem;border-radius:10px;letter-spacing:-.2px">
+        Log ind på din portal →
+      </a>
+    </div>
+
+    <!-- HVAD KAN DU GØRe -->
+    <div style="border-top:1px solid #e5e3de;padding-top:1.5rem;margin-bottom:1.5rem">
+      <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#9a9590;margin-bottom:1rem">Hvad kan du se i portalen?</div>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <div style="display:flex;gap:.75rem;align-items:flex-start">
+          <span style="font-size:1rem;width:24px">🎯</span>
+          <div><strong>Leads</strong> — se hvem der har henvendt sig via din chatbot, inkl. navn, email og besked</div>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:flex-start">
+          <span style="font-size:1rem;width:24px">📅</span>
+          <div><strong>Bookinger</strong> — oversigt over alle bekræftede bookinger</div>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:flex-start">
+          <span style="font-size:1rem;width:24px">📊</span>
+          <div><strong>Rapport</strong> — ugentlige og månedlige statistikker over din chatbots præstation</div>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:flex-start">
+          <span style="font-size:1rem;width:24px">⚙️</span>
+          <div><strong>Indstillinger</strong> — tilpas din chatbots svar, farve og åbningstider selv</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTALL WIDGET -->
+    <div style="background:#eef2ec;border-radius:10px;padding:1.25rem;margin-bottom:1.5rem">
+      <div style="font-size:.82rem;font-weight:700;color:#4a6741;margin-bottom:.6rem">📌 Installer din chatbot</div>
+      <div style="font-size:.82rem;color:#3d5636;line-height:1.6;margin-bottom:.75rem">
+        Indsæt denne ene linje kode på din hjemmeside, lige over <code style="background:#fff;padding:.1rem .3rem;border-radius:3px">&lt;/body&gt;</code>:
+      </div>
+      <div style="background:#1a1918;border-radius:8px;padding:.85rem;font-family:monospace;font-size:.78rem;color:#a8d8a8;word-break:break-all">
+        &lt;script src="https://klaiai.onrender.com/widget.js" data-id="{klient_id}"&gt;&lt;/script&gt;
+      </div>
+      <div style="font-size:.75rem;color:#4a6741;margin-top:.5rem">Der er en trin-for-trin guide til alle platforme inde i portalen under "Kom i gang".</div>
+    </div>
+
+    <p style="color:#9a9590;font-size:.8rem;text-align:center;line-height:1.6">
+      Spørgsmål? Skriv til <a href="mailto:support@nexolsen.dk" style="color:#0a2463">support@nexolsen.dk</a><br/>
+      NexOlsen · AI-agenter til din virksomhed
+    </p>
+  </div>
+</div>"""
+
+    try:
+        send_mail(email, f'Din NexOlsen-portal er klar, {fornavn}! 🎉', html, 'NexOlsen')
+        return jsonify({'success': True, 'sendt_til': email})
+    except Exception as e:
+        return jsonify({'error': f'Email fejlede: {str(e)}'}), 500
+
+
 @app.route('/chatbot-config', methods=['POST'])
 def gem_chatbot_config():
     """Gemmer chatbot konfiguration for en klient"""
