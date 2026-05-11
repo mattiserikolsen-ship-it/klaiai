@@ -2666,6 +2666,13 @@ def serve_chatbot_js():
     js_dir = os.path.join(os.path.dirname(__file__), '..')
     return send_from_directory(js_dir, 'chatbot.js', mimetype='application/javascript')
 
+@app.route('/widget.js', methods=['GET'])
+def serve_widget_js():
+    """Alias for chatbot.js — bruges i widget-kode genereret til klienter"""
+    from flask import send_from_directory
+    js_dir = os.path.join(os.path.dirname(__file__), '..')
+    return send_from_directory(js_dir, 'chatbot.js', mimetype='application/javascript')
+
 @app.route('/lead-form.js', methods=['GET'])
 def serve_lead_form_js():
     from flask import send_from_directory
@@ -2731,6 +2738,18 @@ def login_page():
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     return send_from_directory(app_dir, 'login.html')
 
+def _ryd_gamle_sessions():
+    """Fjern demo_sessions ældre end 2 timer og prospekter ældre end 7 dage"""
+    import datetime as _dt
+    nu = _dt.datetime.now()
+    for did in list(demo_sessions.keys()):
+        try:
+            oprettet = _dt.datetime.fromisoformat(demo_sessions[did].get('created_at', ''))
+            if (nu - oprettet).total_seconds() > 7200:  # 2 timer
+                del demo_sessions[did]
+        except:
+            del demo_sessions[did]
+
 # ══════════════════════════════════════════════════════════════
 #  DEMO FRA URL
 # ══════════════════════════════════════════════════════════════
@@ -2745,6 +2764,7 @@ def demo_page():
 def demo_scan():
     """Scanner en hjemmeside-URL og genererer en personlig chatbot-config"""
     import uuid, re, datetime as _dt
+    _ryd_gamle_sessions()  # Ryd gamle sessioner
     data = request.json or {}
     raw_url = (data.get('url') or '').strip()
     if not raw_url:

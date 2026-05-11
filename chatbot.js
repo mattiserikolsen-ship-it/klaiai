@@ -3,8 +3,9 @@
  * Embed: <script src="https://klaiai.onrender.com/chatbot.js" data-client="KLIENT_ID"></script>
  */
 (function () {
-  const script = document.currentScript || document.querySelector('script[data-client],script[data-demo]');
-  const CLIENT_ID = script?.getAttribute('data-client') || 'demo';
+  const script = document.currentScript || document.querySelector('script[data-client],script[data-id],script[data-demo]');
+  // Understøt både data-client og data-id (bruges i widget-kode til klienter)
+  const CLIENT_ID = script?.getAttribute('data-client') || script?.getAttribute('data-id') || 'demo';
   const DEMO_ID   = script?.getAttribute('data-demo') || null;
   const COLOR = script?.getAttribute('data-color') || '#0a2463';
   const API_URL = script?.getAttribute('data-api') || 'https://klaiai.onrender.com';
