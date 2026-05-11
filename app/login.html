@@ -84,11 +84,11 @@
   const AGENT_URL = 'https://klaiai.onrender.com';
 
   // Hvis allerede logget ind, redirect
-  const token = sessionStorage.getItem('klaiai_token');
-  const role = sessionStorage.getItem('klaiai_role');
+  const token = localStorage.getItem('klaiai_token');
+  const role = localStorage.getItem('klaiai_role');
   if (token && role === 'admin') window.location.href = '/app/admin.html';
   if (token && role === 'client') {
-    const kid = sessionStorage.getItem('klaiai_klient_id');
+    const kid = localStorage.getItem('klaiai_klient_id');
     if (kid) window.location.href = '/portal/' + kid;
   }
 
@@ -119,13 +119,13 @@
         return;
       }
 
-      sessionStorage.setItem('klaiai_token', data.token);
-      sessionStorage.setItem('klaiai_role', data.role);
+      localStorage.setItem('klaiai_token', data.token);
+      localStorage.setItem('klaiai_role', data.role);
 
       if (data.role === 'admin') {
         window.location.href = '/app/admin.html';
       } else {
-        sessionStorage.setItem('klaiai_klient_id', data.klient_id);
+        localStorage.setItem('klaiai_klient_id', data.klient_id);
         window.location.href = '/portal/' + data.klient_id;
       }
     } catch(ex) {

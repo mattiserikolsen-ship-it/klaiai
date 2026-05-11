@@ -3361,12 +3361,13 @@ function generateRapport() {
   const frekvens = document.getElementById('rapportFrekvens').value;
   const typeNames = { okonomi:'Økonomirapport 💰', salg:'Salgsrapport 📊', marketing:'Marketing rapport 📣', lager:'Lagerstatus 📦' };
 
-  const summary = `
-    <strong>${client?client.name:'Klient'}</strong> modtager følgende rapporter <strong>${frekvens}</strong>:<br><br>
-    ${selectedRapports.map(r => `✅ ${typeNames[r]}`).join('<br>')}<br><br>
-    Rapporterne genereres automatisk og sendes til <strong>${client?.email||'klientens e-mail'}</strong>.
+  const el = document.getElementById('rapportSummary');
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  el.innerHTML = `
+    <strong>${esc(client ? client.name : 'Klient')}</strong> modtager følgende rapporter <strong>${esc(frekvens)}</strong>:<br><br>
+    ${selectedRapports.map(r => `✅ ${esc(typeNames[r] || r)}`).join('<br>')}<br><br>
+    Rapporterne genereres automatisk og sendes til <strong>${esc(client?.email || 'klientens e-mail')}</strong>.
   `;
-  document.getElementById('rapportSummary').innerHTML = summary;
   document.getElementById('rapportResult').classList.remove('hidden');
   if (client) markProductGenerated(client.id, 'rapport');
 }

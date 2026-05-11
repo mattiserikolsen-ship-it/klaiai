@@ -597,23 +597,23 @@
 <script>
 // ── AUTH GUARD ─────────────────────────────────────────
 (function() {
-  const token = sessionStorage.getItem('klaiai_token');
-  const role  = sessionStorage.getItem('klaiai_role');
+  const token = localStorage.getItem('klaiai_token');
+  const role  = localStorage.getItem('klaiai_role');
   if (!token || role !== 'client') {
-    sessionStorage.clear();
+    localStorage.clear();
     window.location.href = '/login';
   }
 })();
 
 function logud() {
-  sessionStorage.clear();
+  localStorage.clear();
   window.location.href = '/login';
 }
 
 const API = 'https://klaiai.onrender.com';
 const params = new URLSearchParams(window.location.search);
-// Brug klient_id fra sessionStorage som sikker fallback
-const CLIENT_ID = params.get('id') || sessionStorage.getItem('klaiai_klient_id') || '';
+// Brug klient_id fra localStorage som sikker fallback
+const CLIENT_ID = params.get('id') || localStorage.getItem('klaiai_klient_id') || '';
 
 let data = { leads: [], bookinger: [], klient: null };
 // Lokalt state for "kontaktet" — gemmes i localStorage
@@ -1049,7 +1049,7 @@ const statusLabels = {
 async function loadAbonnement() {
   try {
     const res = await fetch(`${API}/stripe/status/${CLIENT_ID}`, {
-      headers: { 'Authorization': sessionStorage.getItem('klaiai_token') || '' }
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
     });
     const abo = await res.json();
     renderAbonnement(abo);
@@ -1095,7 +1095,7 @@ async function åbnFaktureringsportal() {
   try {
     const res = await fetch(`${API}/stripe/portal`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': sessionStorage.getItem('klaiai_token') || '' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
       body: JSON.stringify({ klient_id: CLIENT_ID })
     });
     const data = await res.json();
@@ -1159,7 +1159,7 @@ async function gemIndstillinger() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': sessionStorage.getItem('klaiai_token') || ''
+        'Authorization': localStorage.getItem('klaiai_token') || ''
       },
       body: JSON.stringify(payload)
     });

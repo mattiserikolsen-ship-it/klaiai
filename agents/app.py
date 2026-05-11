@@ -2939,39 +2939,60 @@ def demo_tilmeld():
 #  OUTBOUND SALGSMASKINE
 # ══════════════════════════════════════════════════════════════
 
+def _hent_prospekt(pid):
+    if not db:
+        return prospekter.get(pid)
+    try:
+        r = db.table('prospekter').select('*').eq('id', pid).single().execute()
+        return r.data
+    except:
+        return None
+
+def _gem_prospekt(p):
+    if db:
+        try:
+            db.table('prospekter').upsert(p).execute()
+        except Exception as e:
+            print(f"Prospekt gem fejl: {e}")
+    prospekter[p['id']] = p
+
 @app.route('/prospekt/liste', methods=['GET'])
 def prospekt_liste():
+    if db:
+        try:
+            r = db.table('prospekter').select('*').order('created_at', desc=True).execute()
+            return jsonify({'prospekter': r.data or []})
+        except Exception as e:
+            print(f"Prospekt liste fejl: {e}")
     return jsonify({'prospekter': list(prospekter.values())})
 
 @app.route('/prospekt/tilfoej', methods=['POST'])
 def prospekt_tilfoej():
-    """Tilføj en eller flere prospekt-URLs"""
-    import uuid
+    import uuid, re
     data = request.json or {}
     urls_raw = data.get('urls', '')
-    # Accepter komma, newline eller semikolon som separator
-    import re
     urls = [u.strip() for u in re.split(r'[,\n;]+', urls_raw) if u.strip()]
     tilfoejede = []
     for url in urls:
         if not url.startswith('http'):
             url = 'https://' + url
         pid = str(uuid.uuid4())[:10]
-        prospekter[pid] = {
+        p = {
             'id': pid, 'url': url, 'navn': '', 'beskrivelse': '',
-            'har_chatbot': None, 'email': '', 'telefon': '',
-            'email_udkast': '', 'status': 'ny', 'noter': ''
+            'smertepunkt': '', 'har_chatbot': None, 'email': '',
+            'telefon': '', 'email_udkast': '', 'status': 'ny', 'noter': ''
         }
+        _gem_prospekt(p)
         tilfoejede.append(pid)
     return jsonify({'success': True, 'tilfoejede': len(tilfoejede), 'ids': tilfoejede})
 
 @app.route('/prospekt/scan/<pid>', methods=['POST'])
 def prospekt_scan(pid):
-    """Scanner et prospekts hjemmeside og fylder info ind"""
     import re
-    if pid not in prospekter:
+    p = _hent_prospekt(pid)
+    if not p:
         return jsonify({'error': 'Prospekt ikke fundet'}), 404
-    p = prospekter[pid]
+
     url = p['url']
     try:
         resp = http_requests.get(url, timeout=10, verify=False,
@@ -2979,22 +3000,20 @@ def prospekt_scan(pid):
         soup = BeautifulSoup(resp.text, 'html.parser')
     except Exception as e:
         p['status'] = 'scan-fejl'
+        _gem_prospekt(p)
         return jsonify({'error': str(e)}), 400
 
-    # Tjek eksisterende chatbot
     html_lower = resp.text.lower()
     chatbot_vendors = ['intercom', 'zendesk', 'drift', 'hubspot', 'tidio',
                        'freshchat', 'crisp', 'tawk.to', 'livechat', 'klaiai',
                        'widget.js', 'chat-widget', 'chatbase', 'botpress']
     p['har_chatbot'] = any(v in html_lower for v in chatbot_vendors)
 
-    # Udtræk email og telefon
     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', resp.text)
     tlf    = re.findall(r'(?:\+45[\s]?)?(?:\d{2}[\s]?){4}', resp.text)
     p['email']   = emails[0] if emails else ''
     p['telefon'] = tlf[0].strip() if tlf else ''
 
-    # Udtræk tekst
     for tag in soup(['script', 'style', 'nav', 'footer']):
         tag.decompose()
     tekst = re.sub(r'\s+', ' ', soup.get_text(separator=' ', strip=True))[:3000]
@@ -3002,7 +3021,6 @@ def prospekt_scan(pid):
     title = soup.find('title')
     p['navn'] = title.text.strip().split('|')[0].split('–')[0].strip() if title else url
 
-    # Generer beskrivelse + email-udkast med Claude
     try:
         ai_resp = ai.messages.create(
             model='claude-haiku-4-5-20251001',
@@ -3035,19 +3053,16 @@ JSON-format:
     p['smertepunkt']  = ai_data.get('smertepunkt', '')
     p['email_udkast'] = f"Emne: {ai_data.get('email_emne', '')}\n\n{ai_data.get('email_tekst', '')}"
     p['status'] = 'scannet'
-    prospekter[pid] = p
+    _gem_prospekt(p)
     return jsonify({'success': True, 'prospekt': p})
 
 @app.route('/prospekt/send-email/<pid>', methods=['POST'])
 def prospekt_send_email(pid):
-    """Sender cold email til prospektet"""
-    if pid not in prospekter:
+    p = _hent_prospekt(pid)
+    if not p:
         return jsonify({'error': 'Prospekt ikke fundet'}), 404
-    p = prospekter[pid]
     data = request.json or {}
-    email_override = data.get('email', '').strip()
-
-    til_email = email_override or p.get('email', '')
+    til_email = data.get('email', '').strip() or p.get('email', '')
     if not til_email or '@' not in til_email:
         return jsonify({'error': 'Ingen gyldig email — indsæt manuelt'}), 400
 
@@ -3056,7 +3071,6 @@ def prospekt_send_email(pid):
     emne   = linjer[0].replace('Emne:', '').strip() if linjer else f"AI-chatbot til {p['navn']}"
     tekst  = '\n'.join(linjer[2:]).strip() if len(linjer) > 2 else udkast
 
-    # HTML email
     html = f"""<div style="font-family:Arial,sans-serif;max-width:560px;padding:20px;color:#1a1918">
 {('<br>'.join(tekst.split(chr(10))))}
 <br><br>
@@ -3071,23 +3085,29 @@ def prospekt_send_email(pid):
     if ok:
         p['status'] = 'email-sendt'
         p['email']  = til_email
-        prospekter[pid] = p
+        _gem_prospekt(p)
         return jsonify({'success': True, 'sendt_til': til_email})
     return jsonify({'error': 'Email fejlede — tjek SendGrid'}), 500
 
 @app.route('/prospekt/opdater/<pid>', methods=['PATCH'])
 def prospekt_opdater(pid):
-    """Opdater email-udkast eller noter manuelt"""
-    if pid not in prospekter:
+    p = _hent_prospekt(pid)
+    if not p:
         return jsonify({'error': 'Ikke fundet'}), 404
     data = request.json or {}
     for felt in ('email', 'email_udkast', 'noter', 'status'):
         if felt in data:
-            prospekter[pid][felt] = data[felt]
-    return jsonify({'success': True, 'prospekt': prospekter[pid]})
+            p[felt] = data[felt]
+    _gem_prospekt(p)
+    return jsonify({'success': True, 'prospekt': p})
 
 @app.route('/prospekt/slet/<pid>', methods=['DELETE'])
 def prospekt_slet(pid):
+    if db:
+        try:
+            db.table('prospekter').delete().eq('id', pid).execute()
+        except:
+            pass
     prospekter.pop(pid, None)
     return jsonify({'success': True})
 
