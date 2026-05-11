@@ -1892,6 +1892,7 @@ function showView(v) {
   if (v === 'new-client') { _wzStep = 1; wzGo(1); }
   if (v === 'crm') { populateCRMFilter(); loadCRM(); }
   if (v === 'indsigter') { populateIndsigterFilter(); }
+  if (v === 'outbound') loadOutbound();
 }
 
 function switchTab(t) {
@@ -4935,12 +4936,7 @@ function renderProspekter() {
   }).join('');
 }
 
-// Indlæs outbound når view vises
-const _origShowViewOutbound = showView;
-function showView(v) {
-  _origShowViewOutbound(v);
-  if (v === 'outbound') loadOutbound();
-}
+
 </script>
 
 </body>
