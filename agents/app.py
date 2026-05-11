@@ -2678,6 +2678,10 @@ def serve_booking_widget_js():
     js_dir = os.path.join(os.path.dirname(__file__), '..')
     return send_from_directory(js_dir, 'booking-widget.js', mimetype='application/javascript')
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({'status': 'ok'})
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
