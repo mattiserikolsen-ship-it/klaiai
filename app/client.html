@@ -291,6 +291,9 @@
     </div>
   </div>
   <div class="sidebar-footer">
+    <button onclick="logud()" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);border-radius:8px;padding:.5rem .9rem;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;transition:all .15s;margin-bottom:.6rem" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
+      ↩ Log ud
+    </button>
     <div class="powered">Drevet af NexOlsen</div>
   </div>
 </nav>
@@ -301,7 +304,9 @@
       <div class="topbar-title" id="topbarTitle">Overblik</div>
       <div class="topbar-sub" id="topbarSub">Din NexOlsen portal</div>
     </div>
-    <button class="topbar-refresh" onclick="loadData()">↻ Opdater</button>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <button class="topbar-refresh" onclick="loadData()">↻ Opdater</button>
+    </div>
   </div>
   <div class="content">
 
@@ -587,12 +592,22 @@
 // ── AUTH GUARD ─────────────────────────────────────────
 (function() {
   const token = sessionStorage.getItem('klaiai_token');
-  if (!token) window.location.href = '/login';
+  const role  = sessionStorage.getItem('klaiai_role');
+  if (!token || role !== 'client') {
+    sessionStorage.clear();
+    window.location.href = '/login';
+  }
 })();
+
+function logud() {
+  sessionStorage.clear();
+  window.location.href = '/login';
+}
 
 const API = 'https://klaiai.onrender.com';
 const params = new URLSearchParams(window.location.search);
-const CLIENT_ID = params.get('id') || '';
+// Brug klient_id fra sessionStorage som sikker fallback
+const CLIENT_ID = params.get('id') || sessionStorage.getItem('klaiai_klient_id') || '';
 
 let data = { leads: [], bookinger: [], klient: null };
 // Lokalt state for "kontaktet" — gemmes i localStorage
@@ -646,32 +661,39 @@ function showView(v) {
 async function loadData() {
   if (!CLIENT_ID) return;
   try {
-    const [statsRes, configRes] = await Promise.all([
-      fetch(`${API}/stats`),
+    const [leadsRes, bookRes, configRes] = await Promise.all([
+      fetch(`${API}/leads/${CLIENT_ID}`),
+      fetch(`${API}/bookinger/${CLIENT_ID}`),
       fetch(`${API}/widget/${CLIENT_ID}`)
     ]);
-    const stats = await statsRes.json();
-    const klient = stats.klienter?.find(k => k.klient_id === CLIENT_ID);
-    data.klient = klient;
 
+    if (leadsRes.ok) data.leads = (await leadsRes.json()).leads || [];
+    if (bookRes.ok)  data.bookinger = (await bookRes.json()).bookinger || [];
     if (configRes.ok) data.chatbot = await configRes.json();
 
-    const navn = klient?.navn || data.chatbot?.navn || 'din virksomhed';
+    const navn = data.chatbot?.navn || 'din virksomhed';
     document.getElementById('sidebarName').textContent = navn;
     document.getElementById('welcomeTitle').textContent = `Hej, ${navn.split(' ')[0]}!`;
     document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine NexOlsen-agenter laver for dig.`;
     document.title = `NexOlsen – ${navn}`;
 
-    const leads = klient?.leads || 0;
-    const bookinger = klient?.bookinger || 0;
+    const leads = data.leads.length;
+    const bookinger = data.bookinger.length;
     document.getElementById('ovLeads').textContent = leads;
     document.getElementById('ovBookinger').textContent = bookinger;
-    document.getElementById('ovAgenter').textContent = '2';
+    document.getElementById('ovAgenter').textContent = '3';
 
-    // Konverteringsdata
-    beregnKonvertering(leads, bookinger, data.chatbot, klient);
-
+    beregnKonvertering(leads, bookinger, data.chatbot, null);
     renderAgenter();
+    renderOverblikLeads();
+    renderLeads();
+    renderBookinger();
+
+    // Badge
+    const ulæste = data.leads.filter(l => !kontaktetIds.has(String(l.id))).length;
+    const badge = document.getElementById('leadBadge');
+    if (ulæste > 0) { badge.textContent = ulæste; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
   } catch(e) { console.error(e); }
 }
 
@@ -709,6 +731,13 @@ function beregnKonvertering(leads, bookinger, cfg, klient) {
 }
 
 // ── LEADS ──────────────────────────────────────────────
+const CRM_STATUS = {
+  ny:        { label: 'Ny',          color: '#6b7280', bg: '#f3f4f6' },
+  kontaktet: { label: 'Kontaktet',   color: '#0a5c8a', bg: '#e0f2fe' },
+  møde:      { label: 'Møde aftalt', color: '#7c3aed', bg: '#ede9fe' },
+  lukket:    { label: 'Kunde',       color: '#16a34a', bg: '#dcfce7' },
+};
+
 function leadHTML(l, kort = false) {
   const initials = (l.navn || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
   const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
@@ -716,6 +745,8 @@ function leadHTML(l, kort = false) {
   const kilde = l.kilde === 'chatbot'
     ? `<span class="badge badge-chatbot">Chatbot</span>`
     : `<span class="badge badge-formular">Formular</span>`;
+  const st = l.status && CRM_STATUS[l.status] ? CRM_STATUS[l.status] : null;
+  const statusBadge = st ? `<span style="background:${st.bg};color:${st.color};font-size:.68rem;font-weight:700;padding:.15rem .55rem;border-radius:5px;letter-spacing:.2px">${st.label}</span>` : '';
 
   return `<div class="lead-item ${erKontaktet ? 'kontaktet' : ''}" id="lead-${l.id}">
     <div class="lead-avatar">${initials}</div>
@@ -726,7 +757,7 @@ function leadHTML(l, kort = false) {
       </div>
       <div class="lead-contact">${[l.email, l.telefon, l.virksomhed].filter(Boolean).join(' · ')}</div>
       ${l.besked ? `<div class="lead-msg">"${l.besked}"</div>` : ''}
-      <div class="lead-meta">${kilde}</div>
+      <div class="lead-meta">${kilde}${statusBadge}</div>
     </div>
     <div class="lead-right">
       <div class="lead-time">${dato}</div>
@@ -829,6 +860,7 @@ function renderAgenter() {
 
 // ── FETCH LEADS & BOOKINGER ────────────────────────────
 async function loadLeadsOgBookinger() {
+  // Genindlæs data direkte (bruges ved opdatering af enkelt view)
   try {
     const [lr, br] = await Promise.all([
       fetch(`${API}/leads/${CLIENT_ID}`),
@@ -1144,7 +1176,7 @@ async function gemIndstillinger() {
 
 // Init
 if (CLIENT_ID) {
-  loadData().then(() => { loadLeadsOgBookinger(); loadKomIGang(); });
+  loadData().then(() => { loadKomIGang(); });
 }
 showView('overblik');
 
