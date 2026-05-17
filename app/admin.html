@@ -367,10 +367,15 @@
 <div class="sidebar">
   <div class="sidebar-logo">NexOlsen <small>Admin panel</small></div>
   <nav class="sidebar-nav">
-    <div class="nav-label">Oversigt</div>
+    <div class="nav-label">I dag</div>
     <div class="nav-item active" data-view="dashboard" onclick="showView('dashboard')">
-      <span class="ni">📊</span> Dashboard
+      <span class="ni">⊡</span> Overblik
     </div>
+    <div class="nav-item" data-view="crm" onclick="showView('crm')">
+      <span class="ni">🎯</span> Leads
+      <span id="navLeadBadge" class="hidden" style="margin-left:auto;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .45rem;border-radius:4px"></span>
+    </div>
+    <div class="nav-divider"></div>
     <div class="nav-label">Klienter</div>
     <div class="nav-item" data-view="clients" onclick="showView('clients')">
       <span class="ni">👥</span> Alle klienter
@@ -378,41 +383,16 @@
     <div class="nav-item" data-view="new-client" onclick="showView('new-client')">
       <span class="ni">➕</span> Ny klient
     </div>
-    <div class="nav-item" data-view="crm" onclick="showView('crm')">
-      <span class="ni">🎯</span> CRM – Leads
-    </div>
     <div class="nav-item" data-view="indsigter" onclick="showView('indsigter')">
       <span class="ni">📈</span> Indsigter
     </div>
-    <div class="nav-item" data-view="outbound" onclick="showView('outbound')" style="color:#60a5fa">
-      <span class="ni">🚀</span> Outbound
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-label">Agenter</div>
-    <div class="nav-item" data-view="agents" onclick="showView('agents')">
-      <span class="ni">🤖</span> Alle agenter
-    </div>
-    <div class="nav-divider"></div>
-    <div class="nav-label">Fakturering</div>
     <div class="nav-item" data-view="fakturaer" onclick="showView('fakturaer')">
       <span class="ni">📄</span> Fakturaer
     </div>
     <div class="nav-divider"></div>
-    <div class="nav-label">Generatorer</div>
-    <div class="nav-item" data-view="gen-chatbot" onclick="showView('gen-chatbot')">
-      <span class="ni">💬</span> Chatbot
-    </div>
-    <div class="nav-item" data-view="gen-lead" onclick="showView('gen-lead')">
-      <span class="ni">🎯</span> Lead-opfølgning
-    </div>
-    <div class="nav-item" data-view="gen-mail" onclick="showView('gen-mail')">
-      <span class="ni">📧</span> Mail flow
-    </div>
-    <div class="nav-item" data-view="gen-booking" onclick="showView('gen-booking')">
-      <span class="ni">📅</span> Booking
-    </div>
-    <div class="nav-item" data-view="gen-rapport" onclick="showView('gen-rapport')">
-      <span class="ni">📈</span> Rapporter
+    <div class="nav-label">Vækst</div>
+    <div class="nav-item" data-view="outbound" onclick="showView('outbound')">
+      <span class="ni">🚀</span> Outbound
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -508,10 +488,10 @@
           <div style="font-weight:700; font-size:.9rem">Alle klienter</div>
           <div style="font-size:.75rem; color:var(--muted); margin-top:.2rem">Se og rediger klienter</div>
         </div>
-        <div class="card" style="padding:1.1rem; cursor:pointer" onclick="showView('gen-lead')">
-          <div style="font-size:1.4rem; margin-bottom:.4rem">🎯</div>
-          <div style="font-weight:700; font-size:.9rem">Lead-opfølgning</div>
-          <div style="font-size:.75rem; color:var(--muted); margin-top:.2rem">Generer opfølgningsmail</div>
+        <div class="card" style="padding:1.1rem; cursor:pointer" onclick="showView('outbound')">
+          <div style="font-size:1.4rem; margin-bottom:.4rem">🚀</div>
+          <div style="font-weight:700; font-size:.9rem">Outbound</div>
+          <div style="font-size:.75rem; color:var(--muted); margin-top:.2rem">Find og kontakt prospekter</div>
         </div>
       </div>
 
@@ -4094,6 +4074,16 @@ async function loadStats() {
     // TOP STATS
     document.getElementById('dashLeadsIdag').textContent = data.total_leads_i_dag ?? '—';
     document.getElementById('dashLeadsUge').textContent = data.total_leads_uge ?? '—';
+
+    // Nav badge — vis antal nye leads i dag
+    const badge = document.getElementById('navLeadBadge');
+    const nyeIdag = data.total_leads_i_dag ?? 0;
+    if (nyeIdag > 0) {
+      badge.textContent = nyeIdag;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
 
     const aktive = (data.klienter || []).filter(k => k.health === 'green').length;
     const inaktive = (data.klienter || []).filter(k => k.health !== 'green').length;
