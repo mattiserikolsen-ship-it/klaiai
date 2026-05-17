@@ -1871,7 +1871,7 @@ function showView(v) {
   if (v.startsWith('gen-')) populateClientSelects();
   if (v === 'new-client') { _wzStep = 1; wzGo(1); }
   if (v === 'crm') { populateCRMFilter(); loadCRM(); }
-  if (v === 'indsigter') { populateIndsigterFilter(); }
+  if (v === 'indsigter') { populateIndsigterFilter(); if (document.getElementById('indsigterKlient').value) loadIndsigter(); }
   if (v === 'outbound') loadOutbound();
 }
 
@@ -4361,7 +4361,13 @@ async function loadIndsigter() {
   content.innerHTML = '<div style="color:var(--muted);text-align:center;padding:3rem">Henter data...</div>';
 
   try {
-    const res = await fetch(`${AGENT_URL}/rapport/${klientId}`, { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    const res = await fetch(`${AGENT_URL}/rapport/${klientId}`, {
+      signal: controller.signal,
+      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') }
+    });
+    clearTimeout(timeout);
     if (!res.ok) throw new Error();
     const d = await res.json();
 
@@ -4441,7 +4447,10 @@ async function loadIndsigter() {
     });
 
   } catch(e) {
-    content.innerHTML = '<div style="color:var(--red);text-align:center;padding:2rem">Kunne ikke hente data</div>';
+    const msg = e.name === 'AbortError'
+      ? 'Serveren svarer ikke (timeout) — Render starter op, prøv igen om 30 sek.'
+      : 'Kunne ikke hente data — tjek at serveren kører';
+    content.innerHTML = `<div style="color:var(--red);text-align:center;padding:2rem">${msg}</div>`;
   }
 }
 
