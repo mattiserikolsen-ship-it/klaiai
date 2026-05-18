@@ -405,6 +405,13 @@ def chat():
             except:
                 pass
 
+        # Log chat session ved første besked i konversationen
+        if not historik and klient_id != 'demo' and db:
+            try:
+                db.table('chat_sessions').insert({'klient_id': klient_id}).execute()
+            except:
+                pass
+
         # Log gap hvis botten ikke kunne svare
         if reply_final and er_deflection(reply_final):
             log_gap(klient_id, besked, reply_final)
@@ -1163,18 +1170,27 @@ def get_rapport(klient_id):
 
 
 def _hent_rapport_data(klient_id):
-    """Henter leads + bookinger til rapport. Returnerer (leads, bookinger)."""
-    leads, bookinger = [], []
+    """Henter leads, bookinger, gaps og chat-sessions til rapport."""
+    leads, bookinger, gaps, chat_count = [], [], [], 0
     if db:
         try:
             leads = db.table('leads').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute().data or []
             bookinger = db.table('bookinger').select('*').eq('klient_id', klient_id).eq('status', 'bekræftet').execute().data or []
         except:
             pass
-    return leads, bookinger
+        try:
+            gaps = db.table('chatbot_gaps').select('spoergsmaal, created_at').eq('klient_id', klient_id).eq('status', 'åben').order('created_at', desc=True).limit(5).execute().data or []
+        except:
+            pass
+        try:
+            sessions_res = db.table('chat_sessions').select('id', count='exact').eq('klient_id', klient_id).execute()
+            chat_count = sessions_res.count or 0
+        except:
+            pass
+    return leads, bookinger, gaps, chat_count
 
 
-def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, maaned=None):
+def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=None, chat_count=0, maaned=None):
     """Bygger rapport HTML-streng med måned-over-måned og CRM-tragt."""
     from datetime import datetime, timezone, timedelta
     now = datetime.now(timezone.utc)
@@ -1249,6 +1265,40 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, maaned=None):
     if not nye_leads_html:
         nye_leads_html = '<tr><td colspan="4" style="padding:16px 0;font-size:13px;color:#9a9590;text-align:center">Ingen leads denne måned</td></tr>'
 
+    # Gaps sektion — ubesvarede spørgsmål
+    if gaps is None:
+        gaps = []
+    if gaps:
+        gap_rækker = ''.join(
+            f'<li style="padding:6px 0;border-bottom:1px solid #fef2f2;font-size:12px;color:#7f1d1d">'
+            f'{g.get("spoergsmaal", "")[:120]}</li>'
+            for g in gaps
+        )
+        gaps_sektion = f"""
+  <!-- GAPS -->
+  <tr><td style="background:#fff;padding:24px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
+    <div style="font-size:13px;font-weight:700;color:#1a1918;margin-bottom:12px">Spørgsmål chatbotten ikke kunne besvare</div>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px">
+      <div style="font-size:11px;color:#7f1d1d;font-weight:700;margin-bottom:10px">
+        {len(gaps)} ubesvarede spørgsmål · Tilføj svar i din portal for at forbedre chatbotten
+      </div>
+      <ul style="margin:0;padding:0 0 0 16px;list-style:disc">
+        {gap_rækker}
+      </ul>
+      <a href="https://klaiai.dk/app/client.html?id={klient_id}" style="display:inline-block;margin-top:14px;font-size:12px;font-weight:700;color:#dc2626;text-decoration:none">
+        → Udfyld manglende svar i portalen
+      </a>
+    </div>
+  </td></tr>"""
+    else:
+        gaps_sektion = """
+  <!-- GAPS (ingen) -->
+  <tr><td style="background:#fff;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;font-size:12px;color:#166534">
+      ✓ Chatbotten bevarede alle spørgsmål denne periode — ingen videnshuller fundet.
+    </div>
+  </td></tr>"""
+
     fornavn = klient_navn.split()[0] if klient_navn else 'der'
     return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"/><title>NexOlsen Rapport — {mdr_navn}</title></head>
@@ -1271,25 +1321,32 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, maaned=None):
   <!-- TOP STATS -->
   <tr><td style="background:#f8f7f4;padding:20px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td width="33%" style="padding:4px">
-        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
-          <div style="font-size:36px;font-weight:800;color:#0a2463;letter-spacing:-2px">{total_denne}</div>
-          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Leads denne måned</div>
-          <div style="font-size:11px;color:{vækst_farve};font-weight:700;margin-top:4px">{vækst_tegn}{vækst} vs. sidste måned</div>
+      <td width="25%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:30px;font-weight:800;color:#7c3aed;letter-spacing:-2px">{chat_count}</div>
+          <div style="font-size:10px;color:#9a9590;margin-top:4px;font-weight:500">Chatsamtaler</div>
+          <div style="font-size:10px;color:#7c3aed;font-weight:700;margin-top:4px">i alt</div>
         </div>
       </td>
-      <td width="33%" style="padding:4px">
-        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
-          <div style="font-size:36px;font-weight:800;color:#16a34a;letter-spacing:-2px">{crm_lukket}</div>
-          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Lukkede leads</div>
-          <div style="font-size:11px;color:#16a34a;font-weight:700;margin-top:4px">{round(crm_lukket/max(total_denne,1)*100)}% konvertering</div>
+      <td width="25%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:30px;font-weight:800;color:#0a2463;letter-spacing:-2px">{total_denne}</div>
+          <div style="font-size:10px;color:#9a9590;margin-top:4px;font-weight:500">Leads</div>
+          <div style="font-size:10px;color:{vækst_farve};font-weight:700;margin-top:4px">{vækst_tegn}{vækst} vs. sidst</div>
         </div>
       </td>
-      <td width="33%" style="padding:4px">
-        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:20px;text-align:center">
-          <div style="font-size:36px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(bookinger)}</div>
-          <div style="font-size:11px;color:#9a9590;margin-top:4px;font-weight:500">Bookinger i alt</div>
-          <div style="font-size:11px;color:#9a9590;font-weight:500;margin-top:4px">{chatbot} via chatbot</div>
+      <td width="25%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:30px;font-weight:800;color:#16a34a;letter-spacing:-2px">{crm_lukket}</div>
+          <div style="font-size:10px;color:#9a9590;margin-top:4px;font-weight:500">Lukkede leads</div>
+          <div style="font-size:10px;color:#16a34a;font-weight:700;margin-top:4px">{round(crm_lukket/max(total_denne,1)*100)}% konvertering</div>
+        </div>
+      </td>
+      <td width="25%" style="padding:4px">
+        <div style="background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:30px;font-weight:800;color:#1a1918;letter-spacing:-2px">{len(bookinger)}</div>
+          <div style="font-size:10px;color:#9a9590;margin-top:4px;font-weight:500">Bookinger</div>
+          <div style="font-size:10px;color:#9a9590;font-weight:500;margin-top:4px">{chatbot} via chatbot</div>
         </div>
       </td>
     </tr></table>
@@ -1328,6 +1385,8 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, maaned=None):
     </table>
   </td></tr>
 
+  {gaps_sektion}
+
   <!-- AI ANBEFALING -->
   <tr><td style="background:#fff;padding:24px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="background:#f0f4ff;border-left:3px solid #0a2463;border-radius:0 10px 10px 0;padding:16px 20px">
@@ -1364,8 +1423,8 @@ def preview_rapport(klient_id):
     from flask import Response
     klient = get_klient(klient_id)
     klient_navn = klient.get('navn', 'din virksomhed')
-    leads, bookinger = _hent_rapport_data(klient_id)
-    html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger)
+    leads, bookinger, gaps, chat_count = _hent_rapport_data(klient_id)
+    html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=gaps, chat_count=chat_count)
     return Response(html, mimetype='text/html')
 
 
@@ -1380,8 +1439,8 @@ def send_rapport(klient_id):
     if not mail_til or '@' not in mail_til:
         return jsonify({'error': 'Ingen gyldig email fundet'}), 400
 
-    leads, bookinger = _hent_rapport_data(klient_id)
-    html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger)
+    leads, bookinger, gaps, chat_count = _hent_rapport_data(klient_id)
+    html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=gaps, chat_count=chat_count)
 
     from datetime import datetime
     dato_str = datetime.now().strftime('%-d. %B %Y')
@@ -3473,8 +3532,8 @@ def kør_ugerapport_agent():
                 continue
             klient_navn = k.get('virksomhed_navn', klient_id)
             # Generer rapport HTML
-            rapport_html = _byg_rapport_html(klient_id, klient_navn,
-                *_hent_rapport_data(klient_id))
+            leads, bookinger, gaps, chat_count = _hent_rapport_data(klient_id)
+            rapport_html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=gaps, chat_count=chat_count)
             uge_nr = datetime.now().isocalendar()[1]
             try:
                 sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
@@ -3841,8 +3900,8 @@ def kør_månedlig_rapport():
             if not email or '@' not in email:
                 continue
             try:
-                leads, bookinger = _hent_rapport_data(k['id'])
-                html = _byg_rapport_html(k['id'], k.get('navn',''), leads, bookinger, maaned=mdr_start)
+                leads, bookinger, gaps, chat_count = _hent_rapport_data(k['id'])
+                html = _byg_rapport_html(k['id'], k.get('navn',''), leads, bookinger, gaps=gaps, chat_count=chat_count, maaned=mdr_start)
                 mdr_navn = mdr_start.strftime('%B %Y')
                 message = Mail(
                     from_email=(SENDGRID_FROM, 'NexOlsen'),
