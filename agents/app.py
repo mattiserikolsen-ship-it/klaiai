@@ -1158,9 +1158,17 @@ def get_rapport(klient_id):
         chatbot  = sum(1 for l in leads if l.get('kilde') == 'chatbot')
         formular = len(leads) - chatbot
 
+        chat_sessions_total = 0
+        try:
+            cs = db.table('chat_sessions').select('id', count='exact').eq('klient_id', klient_id).execute()
+            chat_sessions_total = cs.count or 0
+        except:
+            pass
+
         return jsonify({
             'total_leads': len(leads),
             'total_bookinger': len(bookinger),
+            'chat_sessions': chat_sessions_total,
             'kilde': {'chatbot': chatbot, 'formular': formular},
             'uger':     {'labels': uge_labels, 'leads': leads_uge, 'bookinger': book_uge},
             'maaneder': {'labels': mdr_labels, 'leads': leads_mdr, 'bookinger': book_mdr},
@@ -3783,6 +3791,18 @@ def klient_cockpit(klient_id):
                     'total_steps': len(steps)
                 })
 
+        # ── Chat sessions ──
+        chat_sessions_count = 0
+        chat_sessions_uge = 0
+        try:
+            cs_res = db.table('chat_sessions').select('created_at', count='exact').eq('klient_id', klient_id).execute()
+            chat_sessions_count = cs_res.count or 0
+            uge_grænse = syv_dage_siden.isoformat()
+            cs_uge_res = db.table('chat_sessions').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', uge_grænse).execute()
+            chat_sessions_uge = cs_uge_res.count or 0
+        except:
+            pass
+
         # ── Agent log ──
         log_res = db.table('agent_log').select('*').eq('klient_id', klient_id).order('created_at', desc=True).limit(25).execute()
         agent_log = log_res.data or []
@@ -3816,6 +3836,10 @@ def klient_cockpit(klient_id):
             },
             'agent_log': agent_log,
             'chatbot': chatbot_info,
+            'chat_sessions': {
+                'total': chat_sessions_count,
+                'denne_uge': chat_sessions_uge
+            },
             'hentet': nu.isoformat()
         })
     except Exception as e:

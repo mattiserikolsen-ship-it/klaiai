@@ -1131,6 +1131,10 @@
             <div style="font-size:1.8rem;font-weight:800;color:var(--purple)" id="ck_mail_aktiv">—</div>
             <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Mail flow</div>
           </div>
+          <div class="stat-card" style="text-align:center">
+            <div style="font-size:1.8rem;font-weight:800;color:#7c3aed" id="ck_chat_uge">—</div>
+            <div style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Chatsamtaler uge</div>
+          </div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
@@ -2048,6 +2052,7 @@ async function loadCockpit() {
     document.getElementById('ck_book_idag').textContent = d.bookinger.i_dag;
     document.getElementById('ck_mail_aktiv').textContent = d.mail_flow.aktiv ? 'Aktiv' : 'Inaktiv';
     document.getElementById('ck_mail_aktiv').style.color = d.mail_flow.aktiv ? 'var(--green)' : 'var(--muted)';
+    document.getElementById('ck_chat_uge').textContent = d.chat_sessions?.denne_uge ?? '—';
 
     // Søjlediagram
     renderCockpitChart(d.leads.per_dag);
@@ -4374,10 +4379,10 @@ async function loadIndsigter() {
     content.innerHTML = `
       <!-- Stats -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div class="stat-card"><div class="stat-num" style="color:#7c3aed">${d.chat_sessions ?? '—'}</div><div class="stat-label">Chatsamtaler</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${d.total_leads}</div><div class="stat-label">Leads i alt</div></div>
         <div class="stat-card"><div class="stat-num" style="color:var(--green)">${d.total_bookinger}</div><div class="stat-label">Bookinger</div></div>
         <div class="stat-card"><div class="stat-num">${d.kilde?.chatbot ?? 0}</div><div class="stat-label">Via chatbot</div></div>
-        <div class="stat-card"><div class="stat-num">${d.kilde?.formular ?? 0}</div><div class="stat-label">Via formular</div></div>
       </div>
 
       <!-- Grafer -->
