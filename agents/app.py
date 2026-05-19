@@ -1414,15 +1414,6 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=None, chat_
 </table>
 </td></tr></table>
 </body></html>"""
-  <tr><td style="background:#fff;padding:24px 36px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
-    <a href="https://klaiai.dk/app/client.html?id={klient_id}" style="display:inline-block;background:#1a1918;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:9px">
-      Se fuld portal →
-    </a>
-    <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af NexOlsen · klaiai.dk</div>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>"""
 
 
 @app.route('/preview-rapport/<klient_id>', methods=['GET'])
