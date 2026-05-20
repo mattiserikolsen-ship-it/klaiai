@@ -873,7 +873,7 @@ def get_gaps(klient_id):
     if not db:
         return jsonify({'gaps': []})
     try:
-        res = db.table('chatbot_gaps').select('*').eq('klient_id', klient_id).eq('status', 'åben').order('created_at', desc=True).limit(20).execute()
+        res = db.table('chatbot_gaps').select('*').eq('klient_id', klient_id).eq('status', 'åben').order('oprettet', desc=True).limit(20).execute()
         return jsonify({'gaps': res.data or []})
     except Exception as e:
         return jsonify({'gaps': [], 'error': str(e)})
@@ -1187,7 +1187,7 @@ def _hent_rapport_data(klient_id):
         except:
             pass
         try:
-            gaps = db.table('chatbot_gaps').select('spoergsmaal, created_at').eq('klient_id', klient_id).eq('status', 'åben').order('created_at', desc=True).limit(5).execute().data or []
+            gaps = db.table('chatbot_gaps').select('spoergsmaal, oprettet').eq('klient_id', klient_id).eq('status', 'åben').order('oprettet', desc=True).limit(5).execute().data or []
         except:
             pass
         try:
