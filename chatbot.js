@@ -283,7 +283,7 @@
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" style="color:inherit;text-decoration:underline">$1</a>')
-      .replace(/(https?:\/\/[^\s<"]+)/g, (url) => `<a href="${url}" target="_blank" style="color:inherit;text-decoration:underline">${url}</a>`)
+      .replace(/(?<!href=")(https?:\/\/[^\s<"]+)/g, (url) => `<a href="${url}" target="_blank" style="color:inherit;text-decoration:underline">${url}</a>`)
       .replace(/\n/g, '<br>');
   }
 
