@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Lead-mail preview</title>
+  <style>
+    body { background: #e5e7eb; font-family: Arial, sans-serif; padding: 40px 20px; }
+    h2 { text-align: center; color: #374151; margin-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+    .meta { text-align: center; color: #9ca3af; font-size: 12px; margin-bottom: 32px; }
+    .tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; }
+    .tab { padding: 8px 20px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; font-size: 13px; font-weight: 600; color: #6b7280; }
+    .tab.active { background: #0a1a3a; color: #fff; border-color: #0a1a3a; }
+  </style>
+</head>
+<body>
+  <h2>Lead-mail preview — NemPool</h2>
+  <p class="meta">Sådan ser den automatiske opfølgningsmail ud for kunden</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="visMail(1, this)">Mail 1 — Første kontakt</div>
+    <div class="tab" onclick="visMail(2, this)">Mail 2 — Dag 3 opfølgning</div>
+    <div class="tab" onclick="visMail(3, this)">Mail 3 — Sidste opfølgning</div>
+  </div>
+
+  <div id="mailContainer"></div>
+
+  <script>
+    const HERO = 'https://nempool.net/cdn/shop/files/ChatGPT_Image_3._mar._2026_20.31.26.png';
+    const FIRMA = 'NemPool';
+    const SITE = 'https://nempool.net';
+    const LEAD = 'Anders Jensen';
+
+    const mails = {
+      1: {
+        emne: 'Tak for din henvendelse, Anders',
+        tekst: [
+          `Tusind tak fordi du kontaktede os, Anders.`,
+          `Vi hos NemPool tilbyder et bredt udvalg af kvalitetspools til danske hjem — fra kompakte plungepools til store familiepools med alt tilbehør inkluderet.`,
+          `Har du spørgsmål, er du altid velkommen til at skrive til os på info@nempool.net. Du kan også finde inspiration, priser og det fulde sortiment på vores hjemmeside.`,
+          `Med venlig hilsen,<br>Teamet hos NemPool`
+        ]
+      },
+      2: {
+        emne: 'Har du haft mulighed for at kigge nærmere, Anders?',
+        tekst: [
+          `Hej Anders,`,
+          `Vi ville høre, om du har haft mulighed for at kigge nærmere på vores udvalg siden sidst.`,
+          `En af de store fordele ved NemPool er vores komplette pakkeløsninger — du får alt fra pool til filtersystem og tilbehør samlet ét sted, til skarp pris og med hurtig levering til hele Danmark.`,
+          `Skriv til os på info@nempool.net hvis du har spørgsmål, eller besøg nempool.net for at se hele udvalget.`
+        ]
+      },
+      3: {
+        emne: 'Anders — du er altid velkommen hos NemPool',
+        tekst: [
+          `Hej Anders,`,
+          `Vi sender en sidste hilsen for at sige, at du altid er velkommen til at vende tilbage, hvis du på et tidspunkt får lyst til at kigge nærmere på en pool.`,
+          `Du finder os på nempool.net eller kan skrive til info@nempool.net — vi svarer gerne på spørgsmål stort som småt.`,
+          `Med venlig hilsen,<br>Teamet hos NemPool`
+        ]
+      }
+    };
+
+    function bygMail(nr) {
+      const m = mails[nr];
+      const paragraphs = m.tekst.map(l => `<p style="margin:0 0 14px 0;line-height:1.7;color:#374151">${l}</p>`).join('');
+      return `
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td align="center" style="padding:0 16px">
+          <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <!-- EMNE-LINJE -->
+            <tr><td style="background:#f3f4f6;padding:10px 20px;font-size:11px;color:#6b7280;border-bottom:1px solid #e5e7eb">
+              <strong>Emne:</strong> ${m.emne}
+            </td></tr>
+
+            <!-- HERO -->
+            <tr><td>
+              <img src="${HERO}" alt="NemPool" style="width:100%;max-height:280px;object-fit:cover;display:block"/>
+            </td></tr>
+
+            <!-- HEADER -->
+            <tr><td style="background:#0a1a3a;padding:24px 36px">
+              <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px">${FIRMA}</div>
+            </td></tr>
+
+            <!-- INDHOLD -->
+            <tr><td style="padding:32px 36px">
+              <div style="font-size:22px;font-weight:700;color:#111827;margin-bottom:20px;letter-spacing:-0.3px">Hej ${LEAD.split(' ')[0]},</div>
+              ${paragraphs}
+            </td></tr>
+
+            <!-- CTA -->
+            <tr><td style="padding:0 36px 32px;text-align:center">
+              <a href="${SITE}" style="display:inline-block;background:#0a1a3a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;letter-spacing:0.2px">Besøg vores hjemmeside →</a>
+            </td></tr>
+
+            <!-- FOOTER -->
+            <tr><td style="background:#f9fafb;padding:20px 36px;border-top:1px solid #e5e7eb;text-align:center">
+              <div style="font-size:12px;color:#9ca3af">Du modtager denne mail fordi du har henvendt dig til ${FIRMA}.</div>
+            </td></tr>
+
+          </table>
+          </td></tr>
+        </table>
+      `;
+    }
+
+    function visMail(nr, el) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('mailContainer').innerHTML = bygMail(nr);
+    }
+
+    visMail(1, document.querySelector('.tab'));
+  </script>
+</body>
+</html>

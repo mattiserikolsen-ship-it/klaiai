@@ -571,9 +571,9 @@ def modtag_lead():
 
 def generer_lead_mail(lead, klient, mail_nr):
     instruktion = {
-        1: 'Dette er den første kontakt. Vær varm og imødekommende. Tak for henvendelsen, beskriv kort hvad virksomheden tilbyder og inviter til dialog. Afslut med et konkret call-to-action.',
-        2: 'Opfølgning dag 3. Spørg venligt om de har haft mulighed for at overveje tilbuddet. Fremhæv én konkret fordel ved produktet/ydelsen. Gør det let at svare.',
-        3: 'Sidste opfølgning. Gør det personligt. Lav et konkret, tidsbegrænset tilbud. Skab let urgency. Afslut positivt uanset svar.'
+        1: 'Dette er den første kontakt. Vær varm og imødekommende. Tak for henvendelsen og beskriv kort hvad virksomheden tilbyder. Afslut med at de er velkomne til at skrive på virksomhedens email eller besøge hjemmesiden hvis de har spørgsmål.',
+        2: 'Opfølgning dag 3. Spørg venligt om de har haft mulighed for at kigge nærmere. Fremhæv én konkret fordel ved produktet/ydelsen. Afslut med at de kan skrive eller gå ind på hjemmesiden.',
+        3: 'Sidste opfølgning. Gør det personligt og varmt. Afslut positivt — sig at de altid er velkomne til at skrive eller besøge hjemmesiden hvis de på et tidspunkt får lyst.'
     }.get(mail_nr, '')
 
     response = ai.messages.create(
@@ -585,8 +585,7 @@ Lead-navn: {lead.get('navn','der')}
 Henvendelse: {lead.get('besked','Generel forespørgsel')}
 Virksomhed: {klient['navn']}
 Ydelser: {klient.get('ydelser','')}
-Tilbud: {klient.get('tilbud','Gratis uforpligtende rådgivning')}
-Kontakt: {klient.get('kontakt','')}
+Kontakt email: {klient.get('kontakt','')}
 Hjemmeside: {klient.get('hjemmeside','')}
 
 Instrukser: {instruktion}
@@ -594,8 +593,8 @@ Instrukser: {instruktion}
 Krav til mailen:
 - Personlig tiltale med leaddets fornavn
 - Professionel men venlig tone
-- Konkret og handlingsorienteret
-- 4-6 linjer brødtekst
+- ALDRIG opfordr til at booke møde, ringe eller tage en snak — kun til at skrive på email eller besøge hjemmesiden
+- 3-5 linjer brødtekst
 - Ingen emojis
 - Dansk
 
