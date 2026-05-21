@@ -129,11 +129,20 @@ def get_klient(klient_id):
                         klient_navn = k_res.data.get('navn', '')
                 except:
                     pass
+                # Hent hjemmeside separat
+                klient_hjemmeside = ''
+                try:
+                    hj_res = db.table('klienter').select('hjemmeside').eq('id', klient_id).single().execute()
+                    if hj_res.data:
+                        klient_hjemmeside = hj_res.data.get('hjemmeside', '')
+                except:
+                    pass
                 return {
                     'navn': klient_navn,
                     'chatbot_navn': cfg.get('chatbot_navn', 'Alma'),
                     'velkomst': cfg.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
                     'farve': cfg.get('farve', '#0a2463'),
+                    'hjemmeside': klient_hjemmeside,
                     'info': {
                         'åbningstider': cfg.get('aabningsider', ''),
                         'kontakt': cfg.get('kontakt', ''),
@@ -142,7 +151,9 @@ def get_klient(klient_id):
                         'adresse': cfg.get('adresse', ''),
                         'andet': cfg.get('andet', '')
                     },
-                    'ekstra_viden': cfg.get('ekstra_viden', '')
+                    'ekstra_viden': cfg.get('ekstra_viden', ''),
+                    'mail_image_url': cfg.get('mail_image_url', '') or None,
+                    'auto_godkend_mails': cfg.get('auto_godkend_mails', False)
                 }
         except Exception as e:
             print(f"get_klient fejl: {e}")
@@ -431,7 +442,7 @@ def widget_config(klient_id):
         return jsonify({'error': 'inaktiv'}), 403
     klient = get_klient(klient_id)
     info = klient.get('info', {})
-    return jsonify({
+    result = {
         'navn': klient.get('chatbot_navn', 'Alma'),
         'velkomst': klient.get('velkomst', 'Hej! Hvordan kan jeg hjælpe?'),
         'farve': klient.get('farve', '#0a2463'),
@@ -443,8 +454,11 @@ def widget_config(klient_id):
             'priser': info.get('priser', ''),
             'adresse': info.get('adresse', ''),
             'andet': info.get('andet', '')
-        }
-    })
+        },
+        'mail_image_url': klient.get('mail_image_url', ''),
+        'auto_godkend_mails': klient.get('auto_godkend_mails', False)
+    }
+    return jsonify(result)
 
 
 # ── LEAD ENDPOINTS ─────────────────────────────────────
@@ -493,14 +507,17 @@ def modtag_lead():
         mail['sendt'] = False
         mails.append(mail)
 
-    # Tjek om klient har auto-godkend slået til
+    # Tjek om klient har auto-godkend slået til + hent hero-billede URL
     auto_godkend = False
+    mail_image_url = None
+    klient_hjemmeside = klient.get('hjemmeside', '')
     lead_db_id = None
     if db:
         try:
-            cfg = db.table('chatbot_config').select('auto_godkend_mails').eq('klient_id', klient_id).execute()
+            cfg = db.table('chatbot_config').select('auto_godkend_mails,mail_image_url').eq('klient_id', klient_id).execute()
             if cfg.data:
                 auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
+                mail_image_url = cfg.data[0].get('mail_image_url') or None
             # Hent lead id
             lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('created_at', desc=True).limit(1).execute()
             if lead_res.data:
@@ -509,9 +526,18 @@ def modtag_lead():
             pass
 
     if auto_godkend and lead.get('email') and SENDGRID_API_KEY:
-        # Send straks
+        # Send straks med professionel HTML-mail
         for mail in mails:
-            sendt = send_mail(lead['email'], mail['emne'], mail['tekst'], klient_info['navn'])
+            html = byg_html_mail(
+                lead_navn=lead.get('navn', ''),
+                tekst=mail['tekst'],
+                klient_navn=klient_info['navn'],
+                klient_hjemmeside=klient_hjemmeside,
+                hero_image_url=mail_image_url,
+                cta_tekst='Besøg vores hjemmeside',
+                cta_url=klient_hjemmeside or None
+            )
+            sendt = send_mail(lead['email'], mail['emne'], mail['tekst'], klient_info['navn'], html_content=html)
             mail['sendt'] = sendt
         if db and lead_db_id:
             try:
@@ -545,27 +571,36 @@ def modtag_lead():
 
 def generer_lead_mail(lead, klient, mail_nr):
     instruktion = {
-        1: 'Svar straks og tak for henvendelsen. Introducer virksomheden kort og tilbyd hjælp.',
-        2: 'Venlig opfølgning. Spørg om de har haft mulighed for at kigge på tilbuddet.',
-        3: 'Sidste opfølgning. Gør det personligt og lav et konkret tilbud.'
+        1: 'Dette er den første kontakt. Vær varm og imødekommende. Tak for henvendelsen, beskriv kort hvad virksomheden tilbyder og inviter til dialog. Afslut med et konkret call-to-action.',
+        2: 'Opfølgning dag 3. Spørg venligt om de har haft mulighed for at overveje tilbuddet. Fremhæv én konkret fordel ved produktet/ydelsen. Gør det let at svare.',
+        3: 'Sidste opfølgning. Gør det personligt. Lav et konkret, tidsbegrænset tilbud. Skab let urgency. Afslut positivt uanset svar.'
     }.get(mail_nr, '')
 
     response = ai.messages.create(
-        model='claude-haiku-4-5-20251001',
-        max_tokens=400,
-        messages=[{'role': 'user', 'content': f"""Skriv opfølgningsmail #{mail_nr} til dette lead.
+        model='claude-sonnet-4-6',
+        max_tokens=600,
+        messages=[{'role': 'user', 'content': f"""Du er en professionel dansk salgsekspert. Skriv opfølgningsmail #{mail_nr} til dette lead.
 
-Lead: {lead.get('navn','der')} fra {lead.get('virksomhed','')}
+Lead-navn: {lead.get('navn','der')}
 Henvendelse: {lead.get('besked','Generel forespørgsel')}
-Klient: {klient['navn']} — {klient.get('ydelser','')}
-Tilbud: {klient.get('tilbud','')}
+Virksomhed: {klient['navn']}
+Ydelser: {klient.get('ydelser','')}
+Tilbud: {klient.get('tilbud','Gratis uforpligtende rådgivning')}
 Kontakt: {klient.get('kontakt','')}
+Hjemmeside: {klient.get('hjemmeside','')}
 
-{instruktion}
+Instrukser: {instruktion}
 
-Skriv kort (3-5 linjer), personlig, professionel dansk. Ingen emojis.
+Krav til mailen:
+- Personlig tiltale med leaddets fornavn
+- Professionel men venlig tone
+- Konkret og handlingsorienteret
+- 4-6 linjer brødtekst
+- Ingen emojis
+- Dansk
 
-EMNE: <emnet>
+Returner KUN dette format:
+EMNE: <emnelinjen>
 TEKST:
 <brødteksten>"""}]
     )
@@ -584,17 +619,61 @@ TEKST:
     return {'emne': emne or f'Opfølgning fra {klient["navn"]}', 'tekst': '\n'.join(body).strip(), 'mail_nr': mail_nr}
 
 
-def send_mail(til, emne, tekst, fra_navn):
+def byg_html_mail(lead_navn, tekst, klient_navn, klient_hjemmeside, hero_image_url=None, cta_tekst='Se vores produkter', cta_url=None):
+    """Bygger en professionel HTML-mail med valgfrit hero-billede."""
+    paragraphs = ''.join(f'<p style="margin:0 0 14px 0;line-height:1.7;color:#374151">{l}</p>' for l in tekst.split('\n') if l.strip())
+    hero_html = ''
+    if hero_image_url:
+        hero_html = f'<img src="{hero_image_url}" alt="{klient_navn}" style="width:100%;max-height:280px;object-fit:cover;display:block;border-radius:8px 8px 0 0"/>'
+    cta_url = cta_url or klient_hjemmeside or '#'
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+  <!-- HERO BILLEDE -->
+  {f'<tr><td>{hero_html}</td></tr>' if hero_html else ''}
+
+  <!-- HEADER -->
+  <tr><td style="background:#0a1a3a;padding:24px 36px">
+    <div style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px">{klient_navn}</div>
+  </td></tr>
+
+  <!-- INDHOLD -->
+  <tr><td style="padding:32px 36px">
+    <div style="font-size:22px;font-weight:700;color:#111827;margin-bottom:20px;letter-spacing:-0.3px">Hej {lead_navn.split()[0] if lead_navn else 'der'},</div>
+    {paragraphs}
+  </td></tr>
+
+  <!-- CTA KNAP -->
+  <tr><td style="padding:0 36px 32px;text-align:center">
+    <a href="{cta_url}" style="display:inline-block;background:#0a1a3a;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:8px;letter-spacing:0.2px">{cta_tekst} →</a>
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#f9fafb;padding:20px 36px;border-top:1px solid #e5e7eb;text-align:center">
+    <div style="font-size:12px;color:#9ca3af">Du modtager denne mail fordi du har henvendt dig til {klient_navn}.</div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>"""
+
+
+def send_mail(til, emne, tekst, fra_navn, html_content=None):
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return False
     try:
-        html = '<br>'.join(tekst.split('\n'))
+        if not html_content:
+            html = '<br>'.join(tekst.split('\n'))
+            html_content = f'<div style="font-family:Arial,sans-serif;max-width:600px;padding:20px">{html}</div>'
         message = Mail(
             from_email=(SENDGRID_FROM, fra_navn),
             to_emails=til,
             subject=emne,
             plain_text_content=tekst,
-            html_content=f'<div style="font-family:Arial,sans-serif;max-width:600px;padding:20px">{html}</div>'
+            html_content=html_content
         )
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
@@ -822,7 +901,17 @@ def godkend_mails(klient_id=None):
 
     klient = get_klient(klient_id)
     klient_navn = klient.get('navn', 'Virksomheden')
+    klient_hjemmeside = klient.get('hjemmeside', '')
     sendt_count = 0
+
+    # Hent hero-billede URL fra chatbot_config
+    mail_image_url = None
+    if db:
+        try:
+            cfg = db.table('chatbot_config').select('mail_image_url').eq('klient_id', klient_id).execute()
+            if cfg.data:
+                mail_image_url = cfg.data[0].get('mail_image_url') or None
+        except: pass
 
     for m in mails:
         mail_id = m.get('id')
@@ -836,7 +925,16 @@ def godkend_mails(klient_id=None):
 
         # Send hvis email findes
         if lead_email and SENDGRID_API_KEY:
-            sendt = send_mail(lead_email, emne, tekst, klient_navn)
+            html = byg_html_mail(
+                lead_navn=lead_navn,
+                tekst=tekst,
+                klient_navn=klient_navn,
+                klient_hjemmeside=klient_hjemmeside,
+                hero_image_url=mail_image_url,
+                cta_tekst='Besøg vores hjemmeside',
+                cta_url=klient_hjemmeside or None
+            )
+            sendt = send_mail(lead_email, emne, tekst, klient_navn, html_content=html)
             if sendt:
                 sendt_count += 1
 
@@ -1772,6 +1870,8 @@ def gem_chatbot_config():
             'adresse': data.get('adresse', ''),
             'andet': data.get('andet', ''),
             'ekstra_viden': data.get('ekstra_viden', ''),
+            'mail_image_url': data.get('mail_image_url', '') or None,
+            'auto_godkend_mails': bool(data.get('auto_godkend_mails', False)),
             'opdateret': 'now()'
         }
         res = db.table('chatbot_config').upsert(cfg, on_conflict='klient_id').execute()

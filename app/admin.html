@@ -1374,6 +1374,25 @@
             </div>
           </div>
 
+          <!-- Lead-mail indstillinger -->
+          <div class="generator-section" style="margin-top:1rem">
+            <div class="generator-section-title">Lead-mail indstillinger</div>
+            <div class="form-grid">
+              <div class="form-group full">
+                <label class="form-label">Hero-billede URL til lead-mails</label>
+                <input class="form-input" id="cb_mail_image_url" placeholder="https://eksempel.dk/billede.jpg — vises øverst i lead-mails"/>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Indsæt URL til et produktbillede fra klientens hjemmeside — bruges i automatiske lead-mails</div>
+              </div>
+              <div class="form-group full">
+                <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.875rem;font-weight:600">
+                  <input type="checkbox" id="cb_auto_godkend" style="width:16px;height:16px;accent-color:var(--accent)"/>
+                  Send lead-mails automatisk (ingen godkendelse)
+                </label>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Når slået til sendes opfølgningsmails straks — ellers kræver de din godkendelse</div>
+              </div>
+            </div>
+          </div>
+
           <button class="btn btn-generate" style="width:100%; justify-content:center; padding:1rem; font-size:.95rem; margin-top:1rem" onclick="generateChatbot()">✨ Gem konfiguration & generer embed kode</button>
           <div id="chatbotResult" class="hidden" style="margin-top:1.25rem">
             <div class="generator-section-title">Embed kode — indsæt på klientens hjemmeside</div>
@@ -1835,7 +1854,9 @@ async function syncChatbotConfigToDB(clientId, cfg) {
         priser: cfg.info?.priser || '',
         adresse: cfg.info?.adresse || '',
         andet: cfg.info?.andet || '',
-        ekstra_viden: cfg.ekstra_viden || ''
+        ekstra_viden: cfg.ekstra_viden || '',
+        mail_image_url: cfg.mail_image_url || null,
+        auto_godkend_mails: cfg.auto_godkend_mails || false
       })
     });
   } catch(e) { console.warn('Chatbot config sync fejlede:', e); }
@@ -2957,6 +2978,8 @@ async function loadChatbotConfig(klientId) {
       document.getElementById('pdfExtractedWrap').classList.remove('hidden');
       opdaterTegnTaeller();
     }
+    if (cfg.mail_image_url) document.getElementById('cb_mail_image_url').value = cfg.mail_image_url;
+    document.getElementById('cb_auto_godkend').checked = !!cfg.auto_godkend_mails;
   } catch(e) { console.warn('Kunne ikke loade chatbot config:', e); }
 }
 
@@ -3049,7 +3072,9 @@ function generateChatbot() {
       adresse: document.getElementById('cb_adresse').value,
       andet: document.getElementById('cb_andet').value
     },
-    ekstra_viden: document.getElementById('cb_ekstra_viden').value
+    ekstra_viden: document.getElementById('cb_ekstra_viden').value,
+    mail_image_url: document.getElementById('cb_mail_image_url').value.trim() || null,
+    auto_godkend_mails: document.getElementById('cb_auto_godkend').checked
   };
 
   const klientId = client?.id || selVal;
