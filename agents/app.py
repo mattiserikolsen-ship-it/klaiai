@@ -7,10 +7,13 @@ Klar til deployment på Render / Railway
 
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import anthropic
 import json
 import os
 import secrets
+import bcrypt
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from supabase import create_client
@@ -47,6 +50,14 @@ prospekter    = {}   # prospekt_id -> {'url', 'navn', 'beskrivelse', 'har_chatbo
 
 app = Flask(__name__, static_folder='../app', static_url_path='/app')
 CORS(app)
+
+# ── RATE LIMITING ──────────────────────────────────────
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri='memory://'
+)
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'klaiai2024')
 # Sæt ADMIN_LOCAL_ONLY=true på Render for at blokere admin-adgang fra internettet
@@ -349,6 +360,7 @@ def log_gap(klient_id: str, spoergsmaal: str, bot_svar: str):
 # ── CHATBOT ENDPOINTS ──────────────────────────────────
 
 @app.route('/chat', methods=['POST'])
+@limiter.limit("30 per minute; 200 per hour")
 def chat():
     data = request.json
     klient_id = data.get('client', 'demo')
@@ -464,6 +476,7 @@ def widget_config(klient_id):
 # ── LEAD ENDPOINTS ─────────────────────────────────────
 
 @app.route('/lead', methods=['POST'])
+@limiter.limit("5 per minute; 20 per hour")
 def modtag_lead():
     """Modtager et nyt lead og genererer opfølgningsmails."""
     data = request.json
@@ -1721,7 +1734,7 @@ def opret_klient():
             'mdpris': int(data.get('mdpris', 0) or 0),
             'status': data.get('status', 'opsætning'),
             'produkter': data.get('produkter', []),
-            'password': data.get('password', '') or '',
+            'password': bcrypt.hashpw(data['password'].encode(), bcrypt.gensalt()).decode() if data.get('password') else '',
             'google_place_id': data.get('google_place_id', '') or '',
             'sms_aktiv': bool(data.get('sms_aktiv', False)),
             'booking_url': data.get('booking_url', '') or ''
@@ -2848,6 +2861,7 @@ def ping():
 
 
 @app.route('/login', methods=['POST'])
+@limiter.limit("10 per minute; 30 per hour")
 def login():
     data = request.json
     email = (data.get('email') or '').strip().lower()
@@ -2871,7 +2885,25 @@ def login():
                 if klient.get('aktiv') == False:
                     return jsonify({'error': 'Adgang er deaktiveret. Kontakt NexOlsen.'}), 403
                 klient_pw = klient.get('password', '')
-                if klient_pw and password == klient_pw:
+                if not klient_pw:
+                    return jsonify({'error': 'Forkert email eller adgangskode'}), 401
+                # Understøt både bcrypt-hash og klartekst (bagudkompatibilitet)
+                pw_ok = False
+                if klient_pw.startswith('$2b$') or klient_pw.startswith('$2a$'):
+                    try:
+                        pw_ok = bcrypt.checkpw(password.encode(), klient_pw.encode())
+                    except:
+                        pw_ok = False
+                else:
+                    pw_ok = (password == klient_pw)
+                    # Opgrader klartekst til hash ved første login
+                    if pw_ok:
+                        try:
+                            ny_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+                            db.table('klienter').update({'password': ny_hash}).eq('id', klient['id']).execute()
+                        except:
+                            pass
+                if pw_ok:
                     token = secrets.token_hex(32)
                     active_tokens[token] = {'role': 'client', 'klient_id': klient['id']}
                     return jsonify({'token': token, 'role': 'client', 'klient_id': klient['id']})
