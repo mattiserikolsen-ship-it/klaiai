@@ -3655,41 +3655,123 @@ Regler:
     except Exception as e:
         print(f"Genopvarmnings-agent fejl: {e}")
 
+def _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url):
+    """Bygger en kort, skarp ugentlig statusmail til klienten."""
+    lead_farve = '#16a34a' if leads_uge > 0 else '#6b7280'
+    chat_farve = '#2563eb' if chat_uge > 0 else '#6b7280'
+    ingen_aktivitet = leads_uge == 0 and chat_uge == 0
+    aktivitet_tekst = (
+        f"Dine AI-agenter har haft en stille uge — ingen samtaler endnu. Chatbotten er klar til næste besøgende."
+        if ingen_aktivitet else
+        f"Her er hvad dine AI-agenter lavede for dig i denne uge."
+    )
+    gaps_html = ''
+    if gaps_uge:
+        gaps_rækker = ''.join(f'<tr><td style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151">{g}</td></tr>' for g in gaps_uge[:3])
+        gaps_html = f"""
+        <tr><td style="padding:24px 36px 0">
+            <div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:8px">Spørgsmål chatbotten ikke kunne svare på:</div>
+            <table width="100%" cellpadding="0" cellspacing="0">{gaps_rækker}</table>
+            <div style="font-size:12px;color:#9ca3af;margin-top:8px">Log ind på din portal for at udfylde svarene</div>
+        </td></tr>"""
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.07)">
+
+  <tr><td style="background:#0a1a3a;padding:20px 36px">
+    <div style="color:#fff;font-size:17px;font-weight:700">{klient_navn}</div>
+    <div style="color:rgba(255,255,255,.5);font-size:12px;margin-top:2px">Ugentlig AI-statusrapport</div>
+  </td></tr>
+
+  <tr><td style="padding:28px 36px 20px">
+    <div style="font-size:22px;font-weight:800;color:#111827;margin-bottom:8px">Denne uges resultat 📊</div>
+    <div style="font-size:14px;color:#6b7280;line-height:1.6">{aktivitet_tekst}</div>
+  </td></tr>
+
+  <tr><td style="padding:0 36px 24px">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="48%" style="background:#f8faff;border-radius:10px;padding:18px 20px;text-align:center">
+          <div style="font-size:36px;font-weight:900;color:{chat_farve}">{chat_uge}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;font-weight:600">CHATSAMTALER</div>
+        </td>
+        <td width="4%"></td>
+        <td width="48%" style="background:#f0fdf4;border-radius:10px;padding:18px 20px;text-align:center">
+          <div style="font-size:36px;font-weight:900;color:{lead_farve}">{leads_uge}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px;font-weight:600">NYE LEADS</div>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  {gaps_html}
+
+  <tr><td style="padding:20px 36px 28px;text-align:center">
+    <a href="{portal_url}" style="display:inline-block;background:#0a1a3a;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px">Se detaljer i din portal →</a>
+  </td></tr>
+
+  <tr><td style="background:#f9fafb;padding:16px 36px;border-top:1px solid #e5e7eb;text-align:center">
+    <div style="font-size:11px;color:#9ca3af">Denne rapport sendes automatisk hver mandag · NexOlsen AI</div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>"""
+
+
 def kør_ugerapport_agent():
-    """📊 Sender ugentlig rapport til alle aktive klienter (kører mandag morgen)"""
+    """📊 Sender kort ugentlig statusmail til alle aktive klienter (mandag morgen)"""
     if not db:
         return
-    if datetime.now().weekday() != 0:  # 0 = mandag
-        return
-    print("📊 Ugentlig rapport-agent kører...")
+    print("📊 Ugentlig statusrapport kører...")
     try:
-        klienter = db.table('chatbot_config')\
-            .select('klient_id, virksomhed_navn, rapport_email')\
-            .eq('aktiv', True)\
-            .execute()
-        for k in klienter.data:
-            klient_id = k['klient_id']
-            rapport_email = k.get('rapport_email')
-            if not rapport_email:
+        uge_nr = datetime.now().isocalendar()[1]
+        uge_ref = f"uge-{uge_nr}-{datetime.now().year}"
+
+        # Hent alle aktive klienter med email
+        klienter_res = db.table('klienter').select('id, navn, email').eq('aktiv', True).execute()
+        for k in (klienter_res.data or []):
+            klient_id = k['id']
+            klient_email = k.get('email', '')
+            klient_navn = k.get('navn', klient_id)
+            if not klient_email or '@' not in klient_email:
                 continue
-            klient_navn = k.get('virksomhed_navn', klient_id)
-            # Generer rapport HTML
-            leads, bookinger, gaps, chat_count = _hent_rapport_data(klient_id)
-            rapport_html = _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=gaps, chat_count=chat_count)
-            uge_nr = datetime.now().isocalendar()[1]
+            if _allerede_sendt('ugerapport', f"{klient_id}-{uge_ref}"):
+                continue
+
+            # Tæl chat-sessions denne uge
+            chat_uge = 0
             try:
-                sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY', ''))
-                msg = Mail(
-                    from_email=os.environ.get('FROM_EMAIL', 'noreply@klaiai.dk'),
-                    to_emails=rapport_email,
-                    subject=f"Ugentlig rapport – uge {uge_nr} | {klient_navn}",
-                    html_content=rapport_html
-                )
-                sg.send(msg)
-                _log_agent('ugerapport', klient_id, f"uge-{uge_nr}", f"Ugerapport sendt til {rapport_email}")
-                print(f"  ✅ Ugerapport sendt til {rapport_email}")
-            except Exception as e:
-                print(f"  ❌ SendGrid fejl for {klient_id}: {e}")
+                uge_start = (datetime.utcnow() - timedelta(days=7)).isoformat()
+                cs = db.table('chat_sessions').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', uge_start).execute()
+                chat_uge = cs.count or 0
+            except: pass
+
+            # Tæl leads denne uge
+            leads_uge = 0
+            try:
+                lr = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', uge_start).execute()
+                leads_uge = lr.count or 0
+            except: pass
+
+            # Hent op til 3 ubesvarede gaps
+            gaps_uge = []
+            try:
+                gr = db.table('chatbot_gaps').select('spoergsmaal').eq('klient_id', klient_id).eq('status', 'ubesvaret').order('oprettet', desc=True).limit(3).execute()
+                gaps_uge = [g['spoergsmaal'] for g in (gr.data or [])]
+            except: pass
+
+            portal_url = f"https://klaiai.onrender.com/portal/{klient_id}"
+            html = _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url)
+
+            sendt = send_mail(klient_email, f"Din ugerapport — {leads_uge} leads, {chat_uge} samtaler denne uge", '', klient_navn, html_content=html)
+            if sendt:
+                _log_agent('ugerapport', klient_id, f"{klient_id}-{uge_ref}", f"Ugerapport sendt til {klient_email}: {leads_uge} leads, {chat_uge} samtaler")
+                print(f"  ✅ {klient_navn}: {leads_uge} leads, {chat_uge} samtaler → {klient_email}")
+            else:
+                print(f"  ❌ Kunne ikke sende til {klient_email}")
     except Exception as e:
         print(f"Ugerapport-agent fejl: {e}")
 
