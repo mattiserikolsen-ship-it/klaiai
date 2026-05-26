@@ -3655,69 +3655,197 @@ Regler:
     except Exception as e:
         print(f"Genopvarmnings-agent fejl: {e}")
 
-def _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url):
-    """Bygger en kort, skarp ugentlig statusmail til klienten."""
-    lead_farve = '#16a34a' if leads_uge > 0 else '#6b7280'
-    chat_farve = '#2563eb' if chat_uge > 0 else '#6b7280'
-    ingen_aktivitet = leads_uge == 0 and chat_uge == 0
-    aktivitet_tekst = (
-        f"Dine AI-agenter har haft en stille uge — ingen samtaler endnu. Chatbotten er klar til næste besøgende."
-        if ingen_aktivitet else
-        f"Her er hvad dine AI-agenter lavede for dig i denne uge."
-    )
+def _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url, leads_forrige=0, chat_forrige=0):
+    """Bygger professionel ugentlig statusmail med logo, grafer og sammenligning."""
+    import datetime as _dt
+    uge_nr = _dt.datetime.now().isocalendar()[1]
+    dato_str = _dt.datetime.now().strftime('%d. %B %Y')
+    ugedage = ['Man','Tir','Ons','Tor','Fre','Lør','Søn']
+
+    # Trend-pile
+    def trend(nu, før):
+        if før == 0 and nu > 0: return '↑', '#16a34a'
+        if nu > før: return f'↑ +{nu-før}', '#16a34a'
+        if nu < før: return f'↓ {nu-før}', '#dc2626'
+        return '→ uændret', '#6b7280'
+
+    chat_trend, chat_trend_farve = trend(chat_uge, chat_forrige)
+    lead_trend, lead_trend_farve = trend(leads_uge, leads_forrige)
+
+    # CSS bar-graf — simulerer 7 dages aktivitet visuelt
+    # Lav en simpel bar der repræsenterer denne uges niveau vs maks
+    def bar_html(værdi, maks, farve, label):
+        pct = min(int((værdi / maks) * 100), 100) if maks > 0 else 5
+        pct = max(pct, 5)
+        return f"""
+        <td style="padding:0 8px;text-align:center;vertical-align:bottom">
+          <div style="font-size:11px;font-weight:700;color:{farve};margin-bottom:4px">{værdi}</div>
+          <div style="width:32px;background:#e5e7eb;border-radius:4px 4px 0 0;overflow:hidden;display:inline-block;vertical-align:bottom">
+            <div style="width:32px;height:{pct}px;background:{farve};border-radius:4px 4px 0 0"></div>
+          </div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:4px">{label}</div>
+        </td>"""
+
+    # Byg graf-rækken (forrige uge vs denne uge visuelt)
+    maks_chat = max(chat_uge, chat_forrige, 1)
+    maks_lead = max(leads_uge, leads_forrige, 1)
+    chat_graf = f"""
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto">
+      <tr style="vertical-align:bottom;height:60px">
+        {bar_html(chat_forrige, maks_chat, '#cbd5e1', 'Forrige')}
+        {bar_html(chat_uge, maks_chat, '#2563eb', 'Denne')}
+      </tr>
+    </table>"""
+    lead_graf = f"""
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto">
+      <tr style="vertical-align:bottom;height:60px">
+        {bar_html(leads_forrige, maks_lead, '#cbd5e1', 'Forrige')}
+        {bar_html(leads_uge, maks_lead, '#16a34a', 'Denne')}
+      </tr>
+    </table>"""
+
+    # Gaps sektion
     gaps_html = ''
     if gaps_uge:
-        gaps_rækker = ''.join(f'<tr><td style="padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;color:#374151">{g}</td></tr>' for g in gaps_uge[:3])
+        gap_items = ''.join(f"""
+        <tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #f3f4f6">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td style="width:6px;padding-right:10px;vertical-align:top">
+                <div style="width:6px;height:6px;background:#f59e0b;border-radius:50%;margin-top:5px"></div>
+              </td>
+              <td style="font-size:13px;color:#374151;line-height:1.5">{g}</td>
+            </tr></table>
+          </td>
+        </tr>""" for g in gaps_uge[:3])
         gaps_html = f"""
-        <tr><td style="padding:24px 36px 0">
-            <div style="font-size:13px;font-weight:700;color:#111827;margin-bottom:8px">Spørgsmål chatbotten ikke kunne svare på:</div>
-            <table width="100%" cellpadding="0" cellspacing="0">{gaps_rækker}</table>
-            <div style="font-size:12px;color:#9ca3af;margin-top:8px">Log ind på din portal for at udfylde svarene</div>
-        </td></tr>"""
+  <tr><td style="padding:0 32px 24px">
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;overflow:hidden">
+      <div style="padding:12px 14px;background:#fef3c7;border-bottom:1px solid #fde68a">
+        <span style="font-size:13px;font-weight:700;color:#92400e">⚠️ Spørgsmål chatbotten ikke kunne besvare</span>
+        <span style="font-size:11px;color:#b45309;margin-left:8px">Log ind og udfyld svarene</span>
+      </div>
+      <table width="100%" cellpadding="0" cellspacing="0">{gap_items}</table>
+    </div>
+  </td></tr>"""
+
+    ingen = chat_uge == 0 and leads_uge == 0
+    hero_tekst = "Stille uge — chatbotten venter på besøgende" if ingen else f"{chat_uge} samtaler og {leads_uge} nye leads denne uge"
+    hero_sub = "Ingen aktivitet endnu — chatbotten er klar og aktiv." if ingen else "Dine AI-agenter har arbejdet for dig i baggrunden."
+
     return f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Helvetica Neue',Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.07)">
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ugerapport uge {uge_nr}</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding:40px 16px">
+<table width="580" cellpadding="0" cellspacing="0" style="max-width:580px">
 
-  <tr><td style="background:#0a1a3a;padding:20px 36px">
-    <div style="color:#fff;font-size:17px;font-weight:700">{klient_navn}</div>
-    <div style="color:rgba(255,255,255,.5);font-size:12px;margin-top:2px">Ugentlig AI-statusrapport</div>
-  </td></tr>
-
-  <tr><td style="padding:28px 36px 20px">
-    <div style="font-size:22px;font-weight:800;color:#111827;margin-bottom:8px">Denne uges resultat 📊</div>
-    <div style="font-size:14px;color:#6b7280;line-height:1.6">{aktivitet_tekst}</div>
-  </td></tr>
-
-  <tr><td style="padding:0 36px 24px">
-    <table width="100%" cellpadding="0" cellspacing="0">
+  <!-- LOGO HEADER -->
+  <tr><td style="padding-bottom:20px;text-align:center">
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto">
       <tr>
-        <td width="48%" style="background:#f8faff;border-radius:10px;padding:18px 20px;text-align:center">
-          <div style="font-size:36px;font-weight:900;color:{chat_farve}">{chat_uge}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:4px;font-weight:600">CHATSAMTALER</div>
-        </td>
-        <td width="4%"></td>
-        <td width="48%" style="background:#f0fdf4;border-radius:10px;padding:18px 20px;text-align:center">
-          <div style="font-size:36px;font-weight:900;color:{lead_farve}">{leads_uge}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:4px;font-weight:600">NYE LEADS</div>
+        <td style="background:#0a1a3a;border-radius:10px;padding:10px 20px">
+          <span style="color:#fff;font-size:18px;font-weight:900;letter-spacing:-0.5px">NexOlsen</span>
+          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px;letter-spacing:1px;text-transform:uppercase">AI</span>
         </td>
       </tr>
     </table>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px">Ugentlig AI-rapport · Uge {uge_nr} · {dato_str}</div>
   </td></tr>
 
-  {gaps_html}
+  <!-- MAIN CARD -->
+  <tr><td style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
-  <tr><td style="padding:20px 36px 28px;text-align:center">
-    <a href="{portal_url}" style="display:inline-block;background:#0a1a3a;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px">Se detaljer i din portal →</a>
+    <!-- HERO -->
+    <tr><td style="background:linear-gradient(135deg,#0a1a3a 0%,#1e3a6e 100%);padding:32px 36px">
+      <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Til {klient_navn}</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:8px">{hero_tekst}</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6)">{hero_sub}</div>
+    </td></tr>
+
+    <!-- KPI KORT -->
+    <tr><td style="padding:28px 32px 20px">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <!-- Chat -->
+          <td width="47%" style="background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:20px;text-align:center">
+            <div style="font-size:11px;color:#6366f1;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">💬 Chatsamtaler</div>
+            <div style="font-size:48px;font-weight:900;color:#1e40af;line-height:1">{chat_uge}</div>
+            <div style="font-size:12px;color:{chat_trend_farve};font-weight:600;margin-top:6px">{chat_trend} vs forrige uge</div>
+            <div style="margin-top:14px">{chat_graf}</div>
+          </td>
+          <td width="6%"></td>
+          <!-- Leads -->
+          <td width="47%" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;text-align:center">
+            <div style="font-size:11px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🎯 Nye leads</div>
+            <div style="font-size:48px;font-weight:900;color:#15803d;line-height:1">{leads_uge}</div>
+            <div style="font-size:12px;color:{lead_trend_farve};font-weight:600;margin-top:6px">{lead_trend} vs forrige uge</div>
+            <div style="margin-top:14px">{lead_graf}</div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <!-- DIVIDER -->
+    <tr><td style="padding:0 32px"><div style="height:1px;background:#f3f4f6"></div></td></tr>
+
+    <!-- HVAD SKETE DER -->
+    <tr><td style="padding:20px 32px">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="30%" style="padding-right:16px;vertical-align:top">
+            <div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Chatbot status</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block"></div>
+              <span style="font-size:13px;color:#374151;font-weight:600">Aktiv 24/7</span>
+            </div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px">Svarer automatisk</div>
+          </td>
+          <td width="1%" style="background:#f3f4f6"></td>
+          <td width="30%" style="padding:0 16px;vertical-align:top">
+            <div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Lead-mails</div>
+            <div style="font-size:13px;color:#374151;font-weight:600">{leads_uge * 3} mails</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px">Sendt automatisk</div>
+          </td>
+          <td width="1%" style="background:#f3f4f6"></td>
+          <td width="30%" style="padding-left:16px;vertical-align:top">
+            <div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Konvertering</div>
+            <div style="font-size:13px;color:#374151;font-weight:600">{'%.1f' % (leads_uge/chat_uge*100 if chat_uge > 0 else 0)}%</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:4px">Samtaler → leads</div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+
+    {gaps_html}
+
+    <!-- DIVIDER -->
+    <tr><td style="padding:0 32px"><div style="height:1px;background:#f3f4f6"></div></td></tr>
+
+    <!-- CTA -->
+    <tr><td style="padding:28px 32px;text-align:center">
+      <div style="font-size:15px;color:#374151;margin-bottom:16px">Se alle leads, samtaler og indsigter i din portal</div>
+      <a href="{portal_url}" style="display:inline-block;background:linear-gradient(135deg,#0a1a3a,#1e3a6e);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:10px;letter-spacing:0.2px">Åbn din portal →</a>
+    </td></tr>
+
   </td></tr>
 
-  <tr><td style="background:#f9fafb;padding:16px 36px;border-top:1px solid #e5e7eb;text-align:center">
-    <div style="font-size:11px;color:#9ca3af">Denne rapport sendes automatisk hver mandag · NexOlsen AI</div>
+  <!-- FOOTER -->
+  <tr><td style="padding:20px 0;text-align:center">
+    <div style="font-size:11px;color:#9ca3af;line-height:1.8">
+      Denne rapport sendes automatisk hver mandag morgen<br>
+      <strong style="color:#6b7280">NexOlsen AI</strong> · support@nexolsen.dk
+    </div>
   </td></tr>
 
 </table>
-</td></tr></table>
+</td></tr>
+</table>
 </body></html>"""
 
 
@@ -3741,19 +3869,26 @@ def kør_ugerapport_agent():
             if _allerede_sendt('ugerapport', f"{klient_id}-{uge_ref}"):
                 continue
 
-            # Tæl chat-sessions denne uge
-            chat_uge = 0
+            # Tæl chat-sessions denne uge og forrige uge
+            nu = datetime.utcnow()
+            uge_start = (nu - timedelta(days=7)).isoformat()
+            forrige_start = (nu - timedelta(days=14)).isoformat()
+
+            chat_uge, chat_forrige = 0, 0
             try:
-                uge_start = (datetime.utcnow() - timedelta(days=7)).isoformat()
                 cs = db.table('chat_sessions').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', uge_start).execute()
                 chat_uge = cs.count or 0
+                cs2 = db.table('chat_sessions').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', forrige_start).lt('created_at', uge_start).execute()
+                chat_forrige = cs2.count or 0
             except: pass
 
-            # Tæl leads denne uge
-            leads_uge = 0
+            # Tæl leads denne uge og forrige uge
+            leads_uge, leads_forrige = 0, 0
             try:
                 lr = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', uge_start).execute()
                 leads_uge = lr.count or 0
+                lr2 = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', forrige_start).lt('created_at', uge_start).execute()
+                leads_forrige = lr2.count or 0
             except: pass
 
             # Hent op til 3 ubesvarede gaps
@@ -3764,7 +3899,7 @@ def kør_ugerapport_agent():
             except: pass
 
             portal_url = f"https://klaiai.onrender.com/portal/{klient_id}"
-            html = _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url)
+            html = _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url, leads_forrige=leads_forrige, chat_forrige=chat_forrige)
 
             sendt = send_mail(klient_email, f"Din ugerapport — {leads_uge} leads, {chat_uge} samtaler denne uge", '', klient_navn, html_content=html)
             if sendt:

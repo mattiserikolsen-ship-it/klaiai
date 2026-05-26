@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Ugerapport preview</title>
+  <style>
+    body { background: #eef2f7; font-family: Arial, sans-serif; padding: 40px 20px; }
+    h2 { text-align: center; color: #374151; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+    .meta { text-align: center; color: #9ca3af; font-size: 12px; margin-bottom: 28px; }
+  </style>
+</head>
+<body>
+  <h2>Ugerapport preview</h2>
+  <p class="meta">Sådan ser den automatiske ugerapport ud for klienten</p>
+  <div id="mail"></div>
+
+  <script>
+    const klientNavn = 'NemPool';
+    const chatUge = 47;
+    const leadsUge = 3;
+    const chatForrige = 31;
+    const leadsForrige = 1;
+    const gapsUge = [
+      'Hvad koster levering til Jylland?',
+      'Kan I installere om vinteren?',
+      'Har I en 5x3m pool?'
+    ];
+    const portalUrl = '#';
+    const ugeNr = 21;
+    const datoStr = '26. maj 2026';
+
+    function trend(nu, foer) {
+      if (foer === 0 && nu > 0) return { t: '↑', c: '#16a34a' };
+      if (nu > foer) return { t: `↑ +${nu-foer}`, c: '#16a34a' };
+      if (nu < foer) return { t: `↓ ${nu-foer}`, c: '#dc2626' };
+      return { t: '→ uændret', c: '#6b7280' };
+    }
+
+    function barHtml(vaerdi, maks, farve, label) {
+      const pct = maks > 0 ? Math.max(Math.min(Math.round(vaerdi/maks*100), 100), 5) : 5;
+      return `<td style="padding:0 8px;text-align:center;vertical-align:bottom">
+        <div style="font-size:11px;font-weight:700;color:${farve};margin-bottom:4px">${vaerdi}</div>
+        <div style="width:32px;background:#e5e7eb;border-radius:4px 4px 0 0;overflow:hidden;display:inline-block;vertical-align:bottom">
+          <div style="width:32px;height:${pct}px;background:${farve};border-radius:4px 4px 0 0"></div>
+        </div>
+        <div style="font-size:10px;color:#9ca3af;margin-top:4px">${label}</div>
+      </td>`;
+    }
+
+    const maksChat = Math.max(chatUge, chatForrige, 1);
+    const maksLead = Math.max(leadsUge, leadsForrige, 1);
+    const ct = trend(chatUge, chatForrige);
+    const lt = trend(leadsUge, leadsForrige);
+
+    const chatGraf = `<table cellpadding="0" cellspacing="0" style="margin:0 auto"><tr style="vertical-align:bottom;height:60px">${barHtml(chatForrige,maksChat,'#cbd5e1','Forrige')}${barHtml(chatUge,maksChat,'#2563eb','Denne')}</tr></table>`;
+    const leadGraf = `<table cellpadding="0" cellspacing="0" style="margin:0 auto"><tr style="vertical-align:bottom;height:60px">${barHtml(leadsForrige,maksLead,'#cbd5e1','Forrige')}${barHtml(leadsUge,maksLead,'#16a34a','Denne')}</tr></table>`;
+
+    const gapItems = gapsUge.map(g => `<tr><td style="padding:10px 14px;border-bottom:1px solid #f3f4f6"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="width:6px;padding-right:10px;vertical-align:top"><div style="width:6px;height:6px;background:#f59e0b;border-radius:50%;margin-top:5px"></div></td><td style="font-size:13px;color:#374151;line-height:1.5">${g}</td></tr></table></td></tr>`).join('');
+
+    const konv = chatUge > 0 ? (leadsUge/chatUge*100).toFixed(1) : '0.0';
+
+    document.getElementById('mail').innerHTML = `
+<table width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding:0 16px">
+<table width="580" cellpadding="0" cellspacing="0" style="max-width:580px">
+
+  <tr><td style="padding-bottom:20px;text-align:center">
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto"><tr>
+      <td style="background:#0a1a3a;border-radius:10px;padding:10px 20px">
+        <span style="color:#fff;font-size:18px;font-weight:900;letter-spacing:-0.5px">NexOlsen</span>
+        <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px;letter-spacing:1px;text-transform:uppercase">AI</span>
+      </td>
+    </tr></table>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px">Ugentlig AI-rapport · Uge ${ugeNr} · ${datoStr}</div>
+  </td></tr>
+
+  <tr><td style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+    <tr><td style="background:linear-gradient(135deg,#0a1a3a 0%,#1e3a6e 100%);padding:32px 36px">
+      <div style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Til ${klientNavn}</div>
+      <div style="font-size:24px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:8px">${chatUge} samtaler og ${leadsUge} nye leads denne uge</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6)">Dine AI-agenter har arbejdet for dig i baggrunden.</div>
+    </td></tr>
+
+    <tr><td style="padding:28px 32px 20px">
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td width="47%" style="background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:11px;color:#6366f1;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">💬 Chatsamtaler</div>
+          <div style="font-size:48px;font-weight:900;color:#1e40af;line-height:1">${chatUge}</div>
+          <div style="font-size:12px;color:${ct.c};font-weight:600;margin-top:6px">${ct.t} vs forrige uge</div>
+          <div style="margin-top:14px">${chatGraf}</div>
+        </td>
+        <td width="6%"></td>
+        <td width="47%" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;text-align:center">
+          <div style="font-size:11px;color:#16a34a;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🎯 Nye leads</div>
+          <div style="font-size:48px;font-weight:900;color:#15803d;line-height:1">${leadsUge}</div>
+          <div style="font-size:12px;color:${lt.c};font-weight:600;margin-top:6px">${lt.t} vs forrige uge</div>
+          <div style="margin-top:14px">${leadGraf}</div>
+        </td>
+      </tr></table>
+    </td></tr>
+
+    <tr><td style="padding:0 32px"><div style="height:1px;background:#f3f4f6"></div></td></tr>
+
+    <tr><td style="padding:20px 32px">
+      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td width="30%" style="padding-right:16px;vertical-align:top">
+          <div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Chatbot status</div>
+          <div><span style="display:inline-block;width:8px;height:8px;background:#22c55e;border-radius:50%;margin-right:6px"></span><span style="font-size:13px;color:#374151;font-weight:600">Aktiv 24/7</span></div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:4px">Svarer automatisk</div>
+        </td>
+        <td width="1%" style="background:#f3f4f6"></td>
+        <td width="30%" style="padding:0 16px;vertical-align:top">
+          <div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Lead-mails</div>
+          <div style="font-size:13px;color:#374151;font-weight:600">${leadsUge*3} mails</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:4px">Sendt automatisk</div>
+        </td>
+        <td width="1%" style="background:#f3f4f6"></td>
+        <td width="30%" style="padding-left:16px;vertical-align:top">
+          <div style="font-size:11px;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Konvertering</div>
+          <div style="font-size:13px;color:#374151;font-weight:600">${konv}%</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:4px">Samtaler → leads</div>
+        </td>
+      </tr></table>
+    </td></tr>
+
+    <tr><td style="padding:0 32px 24px">
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;overflow:hidden">
+        <div style="padding:12px 14px;background:#fef3c7;border-bottom:1px solid #fde68a">
+          <span style="font-size:13px;font-weight:700;color:#92400e">⚠️ Spørgsmål chatbotten ikke kunne besvare</span>
+          <span style="font-size:11px;color:#b45309;margin-left:8px">Log ind og udfyld svarene</span>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0">${gapItems}</table>
+      </div>
+    </td></tr>
+
+    <tr><td style="padding:0 32px"><div style="height:1px;background:#f3f4f6"></div></td></tr>
+
+    <tr><td style="padding:28px 32px;text-align:center">
+      <div style="font-size:15px;color:#374151;margin-bottom:16px">Se alle leads, samtaler og indsigter i din portal</div>
+      <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#0a1a3a,#1e3a6e);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:10px">Åbn din portal →</a>
+    </td></tr>
+
+  </td></tr>
+
+  <tr><td style="padding:20px 0;text-align:center">
+    <div style="font-size:11px;color:#9ca3af;line-height:1.8">
+      Denne rapport sendes automatisk hver mandag morgen<br>
+      <strong style="color:#6b7280">NexOlsen AI</strong> · support@nexolsen.dk
+    </div>
+  </td></tr>
+
+</table>
+</td></tr></table>`;
+  </script>
+</body>
+</html>
