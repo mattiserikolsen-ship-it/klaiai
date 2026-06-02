@@ -1795,6 +1795,20 @@
   }
 })();
 
+// ── API FETCH (tilføjer auth-header automatisk) ────────────────
+async function apiFetch(url, options = {}) {
+  const token = sessionStorage.getItem('klaiai_token');
+  options.headers = options.headers || {};
+  if (token) options.headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    sessionStorage.clear();
+    window.location.href = '/login';
+    return null;
+  }
+  return res;
+}
+
 // ── DATA ──────────────────────────────────────────────
 let clients = JSON.parse(localStorage.getItem('klarai_clients') || '[]');
 let currentClient = null;
@@ -1814,7 +1828,7 @@ function saveClients() { localStorage.setItem('klarai_clients', JSON.stringify(c
 
 async function syncKlientToDB(client) {
   try {
-    await fetch(AGENT_URL + '/klient', {
+    await apiFetch(AGENT_URL + '/klient', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1840,7 +1854,7 @@ async function syncKlientToDB(client) {
 
 async function syncChatbotConfigToDB(clientId, cfg) {
   try {
-    await fetch(AGENT_URL + '/chatbot-config', {
+    await apiFetch(AGENT_URL + '/chatbot-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2662,9 +2676,9 @@ function createClient() {
 
   // Send onboarding-email til klienten (asynkront, fejl er non-fatal)
   setTimeout(() => {
-    fetch(AGENT_URL + '/send-velkomst/' + client.id, { method: 'POST' })
-      .then(r => r.json())
-      .then(d => { if (d.success) console.log('Velkomstemail sendt til', d.sendt_til); })
+    apiFetch(AGENT_URL + '/send-velkomst/' + client.id, { method: 'POST' })
+      .then(r => r?.json())
+      .then(d => { if (d?.success) console.log('Velkomstemail sendt til', d.sendt_til); })
       .catch(e => console.warn('Velkomstemail fejlede:', e));
   }, 3000); // Vent 3s så chatbot-config også er gemt inden emailen vises
 
@@ -2770,7 +2784,7 @@ async function toggleKlientAktiv() {
   btn.textContent = 'Gemmer...';
 
   try {
-    const res = await fetch(AGENT_URL + '/klient-aktiv', {
+    const res = await apiFetch(AGENT_URL + '/klient-aktiv', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: currentClient.id, aktiv: nyStatus })
@@ -2795,7 +2809,7 @@ async function gensendVelkomst() {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sender...'; }
   try {
-    const res = await fetch(AGENT_URL + '/send-velkomst/' + currentClient.id, { method: 'POST' });
+    const res = await apiFetch(AGENT_URL + '/send-velkomst/' + currentClient.id, { method: 'POST' });
     const d = await res.json();
     if (d.success) {
       if (btn) btn.textContent = `✓ Sendt til ${d.sendt_til}`;
@@ -3985,7 +3999,7 @@ async function hentPdfLinks() {
   status.style.color = 'var(--muted)';
 
   try {
-    const res = await fetch(AGENT_URL + '/hent-pdf-links', {
+    const res = await apiFetch(AGENT_URL + '/hent-pdf-links', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ urls: _pdfLinks })
     });
@@ -4097,7 +4111,7 @@ function updateEkstraViden() {
 // ── STATISTIK ─────────────────────────────────────────
 async function loadStats() {
   try {
-    const res = await fetch(AGENT_URL + '/stats');
+    const res = await apiFetch(AGENT_URL + '/stats');
     if (!res.ok) throw new Error();
     const data = await res.json();
 
@@ -4190,7 +4204,7 @@ function tidsAgo(isoStr) {
 // ── INIT: Load klienter fra Supabase ──────────────────
 async function initAdmin() {
   try {
-    const res = await fetch(AGENT_URL + '/klienter');
+    const res = await apiFetch(AGENT_URL + '/klienter');
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -4537,7 +4551,7 @@ async function scanHjemmeside() {
 
   try {
     // Start scanning (returnerer job_id med det samme)
-    const startRes = await fetch(AGENT_URL + '/scan-hjemmeside', {
+    const startRes = await apiFetch(AGENT_URL + '/scan-hjemmeside', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
@@ -4651,7 +4665,7 @@ async function scanTilChatbot() {
   const body = urls.length > 1 ? { urls } : { url: urls[0] };
 
   try {
-    const startRes = await fetch(AGENT_URL + endpoint, {
+    const startRes = await apiFetch(AGENT_URL + endpoint, {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body)
     });
@@ -4784,7 +4798,7 @@ let aktivEmailPid = null;
 
 async function loadOutbound() {
   try {
-    const res = await fetch(AGENT_URL + '/prospekt/liste');
+    const res = await apiFetch(AGENT_URL + '/prospekt/liste');
     const d = await res.json();
     outboundProspekter = d.prospekter || [];
     renderProspekter();
@@ -4795,7 +4809,7 @@ async function tilfoejProspekter() {
   const raw = document.getElementById('prospektUrls').value.trim();
   if (!raw) return;
   try {
-    const res = await fetch(AGENT_URL + '/prospekt/tilfoej', {
+    const res = await apiFetch(AGENT_URL + '/prospekt/tilfoej', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ urls: raw })
@@ -4816,7 +4830,7 @@ async function scanProspekt(pid, silent = false) {
   if (idx >= 0) { outboundProspekter[idx].status = 'scanner...'; renderProspekter(); }
 
   try {
-    const res = await fetch(AGENT_URL + '/prospekt/scan/' + pid, { method: 'POST' });
+    const res = await apiFetch(AGENT_URL + '/prospekt/scan/' + pid, { method: 'POST' });
     const d = await res.json();
     if (d.success) {
       const i = outboundProspekter.findIndex(p => p.id === pid);
@@ -4838,7 +4852,7 @@ async function scanAlleProspektor() {
 
 async function sletProspekt(pid) {
   try {
-    await fetch(AGENT_URL + '/prospekt/slet/' + pid, { method: 'DELETE' });
+    await apiFetch(AGENT_URL + '/prospekt/slet/' + pid, { method: 'DELETE' });
     outboundProspekter = outboundProspekter.filter(p => p.id !== pid);
     renderProspekter();
   } catch(e) {}
@@ -4876,7 +4890,7 @@ async function sendEmailFraModal() {
   }
 
   // Gem redigeret udkast
-  await fetch(AGENT_URL + '/prospekt/opdater/' + aktivEmailPid, {
+  await apiFetch(AGENT_URL + '/prospekt/opdater/' + aktivEmailPid, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, email_udkast: tekst })
@@ -4887,7 +4901,7 @@ async function sendEmailFraModal() {
   status.textContent = '';
 
   try {
-    const res = await fetch(AGENT_URL + '/prospekt/send-email/' + aktivEmailPid, {
+    const res = await apiFetch(AGENT_URL + '/prospekt/send-email/' + aktivEmailPid, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email })

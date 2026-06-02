@@ -44,7 +44,29 @@ STRIPE_PRISER = {
 }
 
 # ── TOKEN STORE (in-memory) ────────────────────────────
-active_tokens = {}   # token -> {'role': 'admin'/'client', 'klient_id': ...}
+import time as _time
+TOKEN_EXPIRY = 8 * 3600  # 8 timer
+
+active_tokens = {}   # token -> {'role': 'admin'/'client', 'klient_id': ..., 'created_at': float}
+
+def _token_ok(token, role=None):
+    """Returnerer True hvis token eksisterer og ikke er udløbet"""
+    info = active_tokens.get(token)
+    if not info:
+        return False
+    if _time.time() - info.get('created_at', 0) > TOKEN_EXPIRY:
+        active_tokens.pop(token, None)
+        return False
+    if role and info.get('role') != role:
+        return False
+    return True
+
+def _ryd_tokens():
+    """Fjern udløbne tokens"""
+    nu = _time.time()
+    udlob = [t for t, info in list(active_tokens.items()) if nu - info.get('created_at', 0) > TOKEN_EXPIRY]
+    for t in udlob:
+        active_tokens.pop(t, None)
 demo_sessions = {}   # demo_id -> {'klient_config': {...}, 'url': '...', 'created_at': ...}
 prospekter    = {}   # prospekt_id -> {'url', 'navn', 'beskrivelse', 'har_chatbot', 'email_udkast', 'status'}
 
@@ -88,6 +110,28 @@ def require_auth(f):
                 401,
                 {'WWW-Authenticate': 'Basic realm="NexOlsen Admin"'}
             )
+        return f(*args, **kwargs)
+    return decorated
+
+def require_admin(f):
+    """Kræver gyldigt admin Bearer token — bruges på alle følsomme admin-endpoints"""
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        raw = request.headers.get('Authorization', '')
+        token = raw.replace('Bearer ', '').strip()
+        if not _token_ok(token, role='admin'):
+            return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+def require_token(f):
+    """Kræver gyldigt token (admin eller klient)"""
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        raw = request.headers.get('Authorization', '')
+        token = raw.replace('Bearer ', '').strip()
+        if not _token_ok(token):
+            return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
         return f(*args, **kwargs)
     return decorated
 
@@ -1589,6 +1633,7 @@ def send_rapport(klient_id):
 # ── GENERAL ────────────────────────────────────────────
 
 @app.route('/stats', methods=['GET'])
+@require_admin
 def stats():
     """Henter brugsstatistik fra Supabase"""
     if not db:
@@ -1705,6 +1750,7 @@ def health():
     })
 
 @app.route('/klienter', methods=['GET'])
+@require_admin
 def hent_klienter():
     """Henter alle klienter fra Supabase"""
     if not db:
@@ -1716,6 +1762,7 @@ def hent_klienter():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/klient-aktiv', methods=['POST'])
+@require_admin
 def opdater_klient_aktiv():
     """Aktiverer eller deaktiverer en klient"""
     if not db:
@@ -1730,6 +1777,7 @@ def opdater_klient_aktiv():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/klient', methods=['POST'])
+@require_admin
 def opret_klient():
     """Opretter eller opdaterer en klient i Supabase"""
     if not db:
@@ -1761,6 +1809,7 @@ def opret_klient():
 
 
 @app.route('/send-velkomst/<klient_id>', methods=['POST'])
+@require_admin
 def send_velkomst(klient_id):
     """Sender onboarding-email til klienten med login-credentials og portal-link"""
     if not db:
@@ -1876,11 +1925,13 @@ def gem_chatbot_config():
     klient_id = data.get('klient_id')
 
     # Valider token — admin kan redigere alt, klient kun sit eget
-    token = request.headers.get('Authorization', '')
-    if token and token in active_tokens:
-        token_info = active_tokens[token]
-        if token_info.get('role') == 'client' and token_info.get('klient_id') != klient_id:
-            return jsonify({'error': 'Ingen adgang'}), 403
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    if not _token_ok(token):
+        return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
+    token_info = active_tokens.get(token, {})
+    if token_info.get('role') == 'client' and token_info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
 
     if not klient_id:
         return jsonify({'error': 'klient_id mangler'}), 400
@@ -2720,6 +2771,7 @@ Hjemmesidetekst:
 
 
 @app.route('/scan-hjemmeside', methods=['POST'])
+@require_admin
 def scan_hjemmeside():
     """Starter asynkron scanning — returnerer job_id med det samme"""
     data = request.json
@@ -2807,6 +2859,7 @@ def hent_pdf_links_endpoint():
 
 
 @app.route('/scan-multi', methods=['POST'])
+@require_admin
 def scan_multi():
     """Scanner flere URLs og kombinerer data — returnerer job_id"""
     data = request.json
@@ -2888,7 +2941,7 @@ def login():
     # Admin login
     if email == admin_email and password == admin_pw:
         token = secrets.token_hex(32)
-        active_tokens[token] = {'role': 'admin'}
+        active_tokens[token] = {'role': 'admin', 'created_at': _time.time()}
         return jsonify({'token': token, 'role': 'admin'})
 
     # Klient login — tjek Supabase
@@ -2920,7 +2973,7 @@ def login():
                             pass
                 if pw_ok:
                     token = secrets.token_hex(32)
-                    active_tokens[token] = {'role': 'client', 'klient_id': klient['id']}
+                    active_tokens[token] = {'role': 'client', 'klient_id': klient['id'], 'created_at': _time.time()}
                     return jsonify({'token': token, 'role': 'client', 'klient_id': klient['id']})
         except:
             pass
@@ -2940,7 +2993,8 @@ def login_page():
     return send_from_directory(app_dir, 'login.html')
 
 def _ryd_gamle_sessions():
-    """Fjern demo_sessions ældre end 2 timer og prospekter ældre end 7 dage"""
+    """Fjern demo_sessions ældre end 2 timer, udløbne tokens og prospekter ældre end 7 dage"""
+    _ryd_tokens()
     import datetime as _dt
     nu = _dt.datetime.now()
     for did in list(demo_sessions.keys()):
@@ -3158,6 +3212,7 @@ def _gem_prospekt(p):
     prospekter[p['id']] = p
 
 @app.route('/prospekt/liste', methods=['GET'])
+@require_admin
 def prospekt_liste():
     if db:
         try:
@@ -3168,6 +3223,7 @@ def prospekt_liste():
     return jsonify({'prospekter': list(prospekter.values())})
 
 @app.route('/prospekt/tilfoej', methods=['POST'])
+@require_admin
 def prospekt_tilfoej():
     import uuid, re
     data = request.json or {}
@@ -3188,6 +3244,7 @@ def prospekt_tilfoej():
     return jsonify({'success': True, 'tilfoejede': len(tilfoejede), 'ids': tilfoejede})
 
 @app.route('/prospekt/scan/<pid>', methods=['POST'])
+@require_admin
 def prospekt_scan(pid):
     import re
     p = _hent_prospekt(pid)
@@ -3258,6 +3315,7 @@ JSON-format:
     return jsonify({'success': True, 'prospekt': p})
 
 @app.route('/prospekt/send-email/<pid>', methods=['POST'])
+@require_admin
 def prospekt_send_email(pid):
     p = _hent_prospekt(pid)
     if not p:
@@ -3291,6 +3349,7 @@ def prospekt_send_email(pid):
     return jsonify({'error': 'Email fejlede — tjek SendGrid'}), 500
 
 @app.route('/prospekt/opdater/<pid>', methods=['PATCH'])
+@require_admin
 def prospekt_opdater(pid):
     p = _hent_prospekt(pid)
     if not p:
@@ -3303,6 +3362,7 @@ def prospekt_opdater(pid):
     return jsonify({'success': True, 'prospekt': p})
 
 @app.route('/prospekt/slet/<pid>', methods=['DELETE'])
+@require_admin
 def prospekt_slet(pid):
     if db:
         try:
@@ -4377,6 +4437,7 @@ print("⏰ APScheduler startet med 6 agenter")
 # ── Agent endpoints ────────────────────────────────────────────
 
 @app.route('/kør-agent/<navn>', methods=['POST'])
+@require_admin
 def kør_agent_manuelt(navn):
     """Manuel trigger af en agent fra admin-panelet"""
     agenter = {
@@ -4397,6 +4458,7 @@ def kør_agent_manuelt(navn):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/agent-log', methods=['GET'])
+@require_admin
 def hent_agent_log():
     """Hent seneste agent-kørsler"""
     klient_id = request.args.get('klient_id')
@@ -4414,6 +4476,7 @@ def hent_agent_log():
 
 
 @app.route('/crm/leads', methods=['GET'])
+@require_admin
 def crm_leads():
     """Hent alle leads med klientnavn til CRM"""
     if not db:
@@ -4440,6 +4503,7 @@ def crm_leads():
 
 
 @app.route('/crm/lead/<lead_id>', methods=['PATCH'])
+@require_admin
 def crm_opdater_lead(lead_id):
     """Opdater status og/eller noter på et lead"""
     if not db:
