@@ -3560,6 +3560,8 @@ def kør_reminder_agent():
             .select('*, leads(navn, email, klient_id)')\
             .eq('dato', i_morgen)\
             .execute()
+        if not bookinger.data:
+            _log_agent('reminder', None, None, '🔔 Ingen bookinger i morgen — ingen påmindelser sendt')
         for b in bookinger.data:
             lead_info = b.get('leads') or {}
             lead_id = b.get('lead_id')
@@ -3658,6 +3660,8 @@ def kør_genopvarmning_agent():
             .eq('status', 'ny')\
             .lt('oprettet', cutoff)\
             .execute()
+        if not leads.data:
+            _log_agent('genopvarmning', None, None, '🧊 Ingen kolde leads fundet — alle leads er under 14 dage gamle')
         for lead in leads.data:
             lead_id = lead['id']
             if _allerede_sendt('genopvarmning', lead_id):
@@ -4449,11 +4453,29 @@ def kør_agent_manuelt(navn):
         'ubesvarede_leads': kør_ubesvarede_leads_reminder,
         'månedlig_rapport': kør_månedlig_rapport,
     }
+    agentnavne = {
+        'reminder': 'Påmindelsesagent',
+        'review': 'Review-agent',
+        'genopvarmning': 'Genopvarmningsagent',
+        'ugerapport': 'Ugentlig rapport-agent',
+        'billing': 'Billing-agent',
+        'ubesvarede_leads': 'Ubesvarede leads-agent',
+        'månedlig_rapport': 'Månedlig rapport-agent',
+    }
     if navn not in agenter:
         return jsonify({'error': f'Ukendt agent: {navn}'}), 400
     try:
         agenter[navn]()
-        return jsonify({'ok': True, 'besked': f'Agent "{navn}" kørt manuelt'})
+        # Hent seneste log-entry for denne agent
+        besked = f'{agentnavne.get(navn, navn)} kørt'
+        if db:
+            try:
+                log = db.table('agent_log').select('besked').eq('agent', navn).order('created_at', desc=True).limit(1).execute()
+                if log.data:
+                    besked = log.data[0].get('besked', besked)
+            except:
+                pass
+        return jsonify({'ok': True, 'besked': besked})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

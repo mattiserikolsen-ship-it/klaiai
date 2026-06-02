@@ -3537,29 +3537,44 @@ function activateAllAgents() {
 }
 
 async function kørAgent(navn) {
-  const btn = event.target;
+  const btn = event.target.closest('button') || event.target;
   const orig = btn.textContent;
+  // Find statuslinje i nærheste kort
+  const card = btn.closest('.agent-card') || btn.parentElement;
+  let statusEl = card?.querySelector('.agent-kør-status');
+  if (!statusEl && card) {
+    statusEl = document.createElement('div');
+    statusEl.className = 'agent-kør-status';
+    statusEl.style.cssText = 'font-size:.78rem;margin-top:.5rem;color:var(--muted)';
+    card.appendChild(statusEl);
+  }
+
   btn.textContent = '⏳ Kører...';
   btn.disabled = true;
+  if (statusEl) statusEl.textContent = '';
   try {
     const token = sessionStorage.getItem('klaiai_token');
     const res = await fetch(`${AGENT_URL}/kør-agent/${navn}`, {
       method: 'POST',
       headers: {'Authorization': `Bearer ${token}`}
     });
+    if (res.status === 401) { sessionStorage.clear(); window.location.href='/login'; return; }
     const data = await res.json();
     if (data.ok) {
       btn.textContent = '✅ Kørt!';
+      if (statusEl) statusEl.textContent = data.besked || 'Agent kørt — ingen aktive opgaver i dag';
       setTimeout(() => hentAgentLog(), 800);
     } else {
       btn.textContent = '❌ Fejl';
-      alert(data.error || 'Ukendt fejl');
+      if (statusEl) statusEl.textContent = data.error || 'Ukendt fejl';
+      else alert(data.error || 'Ukendt fejl');
     }
   } catch(e) {
     btn.textContent = '❌ Fejl';
-    alert(e.message);
+    if (statusEl) statusEl.textContent = e.message;
+    else alert(e.message);
   }
-  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 4000);
 }
 
 async function hentAgentLog() {
