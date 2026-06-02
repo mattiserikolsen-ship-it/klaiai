@@ -4484,7 +4484,7 @@ async function loadIndsigter() {
       headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') }
     });
     clearTimeout(timeout);
-    if (!res.ok) throw new Error();
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `HTTP ${res.status}`); }
     const d = await res.json();
 
     content.innerHTML = `
@@ -4565,7 +4565,7 @@ async function loadIndsigter() {
   } catch(e) {
     const msg = e.name === 'AbortError'
       ? 'Serveren svarer ikke (timeout) — Render starter op, prøv igen om 30 sek.'
-      : 'Kunne ikke hente data — tjek at serveren kører';
+      : `Fejl: ${e.message}`;
     content.innerHTML = `<div style="color:var(--red);text-align:center;padding:2rem">${msg}</div>`;
   }
 }
