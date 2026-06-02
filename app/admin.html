@@ -1784,16 +1784,16 @@
 (function() {
   if (window.location.protocol === 'file:') {
     // Lokal fil — tjek om vi allerede har et rigtigt token
-    const token = sessionStorage.getItem('klaiai_token');
-    const role = sessionStorage.getItem('klaiai_role');
+    const token = localStorage.getItem('klaiai_token');
+    const role = localStorage.getItem('klaiai_role');
     if (token && role === 'admin' && token !== 'local-admin') return;
     // Vis login-prompt inline — sæt ikke local-admin
-    sessionStorage.removeItem('klaiai_token');
-    sessionStorage.removeItem('klaiai_role');
+    localStorage.removeItem('klaiai_token');
+    localStorage.removeItem('klaiai_role');
     return;
   }
-  const token = sessionStorage.getItem('klaiai_token');
-  const role = sessionStorage.getItem('klaiai_role');
+  const token = localStorage.getItem('klaiai_token');
+  const role = localStorage.getItem('klaiai_role');
   if (!token || role !== 'admin') {
     window.location.href = '/login';
   }
@@ -1801,17 +1801,16 @@
 
 // ── API FETCH (tilføjer auth-header automatisk) ────────────────
 async function apiFetch(url, options = {}) {
-  const token = sessionStorage.getItem('klaiai_token');
+  const token = localStorage.getItem('klaiai_token');
   options.headers = options.headers || {};
   if (token && token !== 'local-admin') options.headers['Authorization'] = 'Bearer ' + token;
   const res = await fetch(url, options);
   if (res.status === 401) {
-    // I lokal fil-tilstand: vis login overlay i stedet for redirect
+    localStorage.removeItem('klaiai_token'); localStorage.removeItem('klaiai_role');
     if (window.location.protocol === 'file:') {
       visLoginOverlay();
       return null;
     }
-    sessionStorage.clear();
     window.location.href = '/login';
     return null;
   }
@@ -1848,8 +1847,8 @@ async function gørLogin() {
     });
     const data = await res.json();
     if (data.token && data.role === 'admin') {
-      sessionStorage.setItem('klaiai_token', data.token);
-      sessionStorage.setItem('klaiai_role', 'admin');
+      localStorage.setItem('klaiai_token', data.token);
+      localStorage.setItem('klaiai_role', 'admin');
       document.getElementById('loginOverlay')?.remove();
       location.reload();
     } else {
@@ -2125,7 +2124,7 @@ async function loadCockpit() {
   if (!currentClient) return;
   try {
     const res = await fetch(`${AGENT_URL}/klient-cockpit/${currentClient.id}`, {
-      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') }
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') }
     });
     if (!res.ok) throw new Error('Kunne ikke hente cockpit data');
     const d = await res.json();
@@ -3336,7 +3335,7 @@ function generateMailFlow() {
 async function loadMailFlowStatus(klientId) {
   if (!klientId) return;
   try {
-    const res = await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    const res = await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') } });
     const data = await res.json();
     const status = document.getElementById('mailFlowStatus');
     const stopBtn = document.getElementById('mailFlowStopBtn');
@@ -3359,7 +3358,7 @@ async function gemMailFlow() {
   try {
     const res = await fetch(`${AGENT_URL}/mail-flow/${klientId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') },
       body: JSON.stringify({ steps: _currentMailFlowSteps, flow_type: selectedFlow })
     });
     const data = await res.json();
@@ -3379,7 +3378,7 @@ async function stopMailFlow() {
   if (!klientId) return;
   if (!confirm('Stop det automatiske mail flow for denne klient?')) return;
   try {
-    await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') } });
     document.getElementById('mailFlowStatus').innerHTML = `<span style="color:var(--muted)">Flow stoppet.</span>`;
     document.getElementById('mailFlowStopBtn').classList.add('hidden');
   } catch(e) {}
@@ -3563,7 +3562,7 @@ async function hentAgentLogForKlient(klientId) {
   if (_agentLogCache[klientId]) return _agentLogCache[klientId];
   try {
     const res = await fetch(`${AGENT_URL}/klient-cockpit/${klientId}`, {
-      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') }
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') }
     });
     if (!res.ok) return [];
     const d = await res.json();
@@ -3606,12 +3605,12 @@ async function kørAgent(navn) {
   btn.disabled = true;
   if (statusEl) statusEl.textContent = '';
   try {
-    const token = sessionStorage.getItem('klaiai_token');
+    const token = localStorage.getItem('klaiai_token');
     const res = await fetch(`${AGENT_URL}/kør-agent/${navn}`, {
       method: 'POST',
       headers: {'Authorization': `Bearer ${token}`}
     });
-    if (res.status === 401) { sessionStorage.clear(); window.location.href='/login'; return; }
+    if (res.status === 401) { localStorage.removeItem('klaiai_token'); localStorage.removeItem('klaiai_role'); if (window.location.protocol === 'file:') { visLoginOverlay(); return; } window.location.href='/login'; return; }
     const data = await res.json();
     if (data.ok) {
       btn.textContent = '✅ Kørt!';
@@ -3635,7 +3634,7 @@ async function hentAgentLog() {
   if (!liste) return;
   try {
     const klientId = currentClient?.id;
-    const token = sessionStorage.getItem('klaiai_token');
+    const token = localStorage.getItem('klaiai_token');
     const url = klientId ? `${AGENT_URL}/agent-log?klient_id=${klientId}&limit=20` : `${AGENT_URL}/agent-log?limit=30`;
     const res = await fetch(url, { headers: {'Authorization': `Bearer ${token}`} });
     const rows = await res.json();
@@ -4273,7 +4272,7 @@ function tidsAgo(isoStr) {
 async function initAdmin() {
   // Lokal fil uden token → vis login
   if (window.location.protocol === 'file:') {
-    const t = sessionStorage.getItem('klaiai_token');
+    const t = localStorage.getItem('klaiai_token');
     if (!t || t === 'local-admin') { visLoginOverlay(); return; }
   }
   try {
@@ -4335,7 +4334,7 @@ async function loadCRM() {
 
   try {
     const url = klientId ? `${AGENT_URL}/crm/leads?klient_id=${klientId}` : `${AGENT_URL}/crm/leads`;
-    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') } });
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') } });
     if (!res.ok) throw new Error();
     crmLeads = await res.json();
 
@@ -4409,7 +4408,7 @@ async function setCRMStatus(id, status) {
   try {
     await fetch(`${AGENT_URL}/crm/lead/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') },
       body: JSON.stringify({ status })
     });
     const l = crmLeads.find(x => x.id === id);
@@ -4432,7 +4431,7 @@ async function saveCRMNote(id) {
   try {
     await fetch(`${AGENT_URL}/crm/lead/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') },
       body: JSON.stringify({ noter })
     });
     const l = crmLeads.find(x => x.id === id);
@@ -4482,7 +4481,7 @@ async function loadIndsigter() {
     const timeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch(`${AGENT_URL}/rapport/${klientId}`, {
       signal: controller.signal,
-      headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') }
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') }
     });
     clearTimeout(timeout);
     if (!res.ok) throw new Error();
@@ -4577,7 +4576,7 @@ async function sendRapport(klientId, email) {
   try {
     const res = await fetch(`${AGENT_URL}/send-rapport/${klientId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionStorage.getItem('klaiai_token') },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') },
       body: JSON.stringify({ email: mailinput })
     });
     const data = await res.json();
