@@ -1782,10 +1782,14 @@
 <script>
 // ── AUTH GUARD ────────────────────────────────────────
 (function() {
-  // Åbnet direkte som fil på computeren — sæt admin-session automatisk
   if (window.location.protocol === 'file:') {
-    sessionStorage.setItem('klaiai_token', 'local-admin');
-    sessionStorage.setItem('klaiai_role', 'admin');
+    // Lokal fil — tjek om vi allerede har et rigtigt token
+    const token = sessionStorage.getItem('klaiai_token');
+    const role = sessionStorage.getItem('klaiai_role');
+    if (token && role === 'admin' && token !== 'local-admin') return;
+    // Vis login-prompt inline — sæt ikke local-admin
+    sessionStorage.removeItem('klaiai_token');
+    sessionStorage.removeItem('klaiai_role');
     return;
   }
   const token = sessionStorage.getItem('klaiai_token');
@@ -1799,14 +1803,63 @@
 async function apiFetch(url, options = {}) {
   const token = sessionStorage.getItem('klaiai_token');
   options.headers = options.headers || {};
-  if (token) options.headers['Authorization'] = 'Bearer ' + token;
+  if (token && token !== 'local-admin') options.headers['Authorization'] = 'Bearer ' + token;
   const res = await fetch(url, options);
   if (res.status === 401) {
+    // I lokal fil-tilstand: vis login overlay i stedet for redirect
+    if (window.location.protocol === 'file:') {
+      visLoginOverlay();
+      return null;
+    }
     sessionStorage.clear();
     window.location.href = '/login';
     return null;
   }
   return res;
+}
+
+function visLoginOverlay() {
+  if (document.getElementById('loginOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'loginOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:2rem;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:1.1rem;font-weight:800;color:#0a1628;margin-bottom:1.5rem">Log ind på NexOlsen</div>
+      <input id="lo_email" type="email" placeholder="Email" style="width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:.75rem;box-sizing:border-box"/>
+      <input id="lo_pw" type="password" placeholder="Password" style="width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:1rem;box-sizing:border-box"/>
+      <div id="lo_fejl" style="color:#dc2626;font-size:.82rem;margin-bottom:.75rem;display:none"></div>
+      <button onclick="gørLogin()" style="width:100%;background:#0a2463;color:#fff;border:none;padding:.85rem;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer">Log ind →</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('lo_email')?.focus(), 100);
+}
+
+async function gørLogin() {
+  const email = document.getElementById('lo_email').value.trim();
+  const pw    = document.getElementById('lo_pw').value;
+  const fejl  = document.getElementById('lo_fejl');
+  fejl.style.display = 'none';
+  try {
+    const res = await fetch(AGENT_URL + '/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password: pw })
+    });
+    const data = await res.json();
+    if (data.token && data.role === 'admin') {
+      sessionStorage.setItem('klaiai_token', data.token);
+      sessionStorage.setItem('klaiai_role', 'admin');
+      document.getElementById('loginOverlay')?.remove();
+      location.reload();
+    } else {
+      fejl.textContent = 'Forkert email eller password';
+      fejl.style.display = 'block';
+    }
+  } catch(e) {
+    fejl.textContent = 'Kunne ikke forbinde til serveren';
+    fejl.style.display = 'block';
+  }
 }
 
 // ── DATA ──────────────────────────────────────────────
@@ -4216,8 +4269,13 @@ function tidsAgo(isoStr) {
   } catch(e) { return ''; }
 }
 
-// ── INIT: Load klienter fra Supabase ──────────────────
+/// ── INIT: Load klienter fra Supabase ──────────────────
 async function initAdmin() {
+  // Lokal fil uden token → vis login
+  if (window.location.protocol === 'file:') {
+    const t = sessionStorage.getItem('klaiai_token');
+    if (!t || t === 'local-admin') { visLoginOverlay(); return; }
+  }
   try {
     const res = await apiFetch(AGENT_URL + '/klienter');
     if (res.ok) {
