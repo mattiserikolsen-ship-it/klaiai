@@ -4672,7 +4672,8 @@ def crm_opdater_lead(lead_id):
 
 def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
                       titel, intro, linjer, betingelser, win_temaer,
-                      konkurrent_opsummering, rabat=0, tema='standard', primær_farve='#0a1a3a'):
+                      konkurrent_opsummering, rabat=0, tema='standard', primær_farve='#0a1a3a',
+                      kunde_adresse='', kunde_postnummer='', forbehold=''):
     """Genererer et professionelt HTML-tilbud — understøtter 3 temaer: standard, eksklusiv, professionel"""
     from datetime import datetime, timedelta
     dato       = datetime.now().strftime('%-d. %B %Y')
@@ -4790,7 +4791,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     </tr></table>
     <div style="margin-top:36px;padding-top:36px;border-top:1px solid rgba(255,255,255,.1)">
       <div style="font-size:26px;font-weight:300;color:#fff;letter-spacing:.5px;line-height:1.3">{titel}</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;letter-spacing:.5px">Til: {kunde_navn} &middot; {kunde_email}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;letter-spacing:.5px">Til: {kunde_navn} &middot; {kunde_email}{(' &middot; ' + kunde_adresse + (', ' + kunde_postnummer if kunde_postnummer else '')) if kunde_adresse else ''}</div>
     </div>
   </td></tr>
 
@@ -4803,6 +4804,8 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     {pris_tabel_html}
 
     {konkurrent_html}
+
+    {'<div style="background:#fffbf0;border-left:2px solid #d97706;border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:28px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#92400e;margin-bottom:8px">Forbehold</div><div style="font-size:12px;color:#78350f;line-height:1.7;font-weight:300">' + forbehold.replace(chr(10),'<br>') + '</div></div>' if forbehold else ''}
 
     <div style="border-top:1px solid #f0f0f0;padding-top:24px;margin-bottom:32px">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#bbb;margin-bottom:10px">Betingelser</div>
@@ -4891,7 +4894,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     </tr></table>
     <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1)">
       <div style="font-size:20px;font-weight:700;color:#fff;line-height:1.3">{titel}</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:6px">Til: {kunde_navn} &middot; {kunde_email}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:6px">Til: {kunde_navn} &middot; {kunde_email}{(' &middot; ' + kunde_adresse + (', ' + kunde_postnummer if kunde_postnummer else '')) if kunde_adresse else ''}</div>
     </div>
   </td></tr>
 
@@ -4916,6 +4919,8 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     </div>
 
     {konkurrent_html}
+
+    {'<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px 20px;margin-bottom:28px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#92400e;margin-bottom:8px">⚠️ Forbehold</div><div style="font-size:12px;color:#78350f;line-height:1.7">' + forbehold.replace(chr(10),'<br>') + '</div></div>' if forbehold else ''}
 
     <div style="background:#f9fafb;border-radius:10px;padding:16px 20px;margin-bottom:28px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:8px">Betingelser</div>
@@ -4998,12 +5003,15 @@ def generer_tilbud():
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
     data = request.json or {}
-    klient_id   = data.get('klient_id', '')
-    kunde_navn  = data.get('kunde_navn', '')
-    kunde_email = data.get('kunde_email', '')
-    opgave      = data.get('opgave', '')
-    noter       = data.get('noter', '')
-    kør_konkurrent = data.get('konkurrent_analyse', False)
+    klient_id       = data.get('klient_id', '')
+    kunde_navn      = data.get('kunde_navn', '')
+    kunde_email     = data.get('kunde_email', '')
+    kunde_adresse   = data.get('kunde_adresse', '')
+    kunde_postnummer= data.get('kunde_postnummer', '')
+    forbehold       = data.get('forbehold', '')
+    opgave          = data.get('opgave', '')
+    noter           = data.get('noter', '')
+    kør_konkurrent  = data.get('konkurrent_analyse', False)
 
     # Hent klient info
     klient_navn = 'Virksomheden'
@@ -5118,7 +5126,10 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
         win_temaer=tilbud_data.get('win_temaer', []),
         konkurrent_opsummering=konkurrent_opsummering,
         tema=klient_tilbud_stil,
-        primær_farve=klient_tilbud_farve
+        primær_farve=klient_tilbud_farve,
+        kunde_adresse=kunde_adresse,
+        kunde_postnummer=kunde_postnummer,
+        forbehold=forbehold
     )
 
     total = sum(l.get('total', 0) for l in tilbud_data.get('linjer', []))
@@ -5133,6 +5144,9 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
             'klient_id': klient_id,
             'kunde_navn': kunde_navn,
             'kunde_email': kunde_email,
+            'kunde_adresse': kunde_adresse,
+            'kunde_postnummer': kunde_postnummer,
+            'forbehold': forbehold,
             'titel': tilbud_data.get('titel', 'Tilbud'),
             'html_indhold': html,
             'linjer': tilbud_data.get('linjer', []),
@@ -5212,7 +5226,7 @@ def hent_tilbud_liste(klient_id):
     if not db:
         return jsonify([])
     try:
-        res = db.table('tilbud').select('id,kunde_navn,kunde_email,titel,total_pris,status,oprettet,godkendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        res = db.table('tilbud').select('id,kunde_navn,kunde_email,kunde_adresse,kunde_postnummer,titel,total_pris,status,oprettet,godkendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify(res.data or [])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -5230,7 +5244,7 @@ def portal_tilbud_liste(klient_id):
     if not db:
         return jsonify([])
     try:
-        res = db.table('tilbud').select('id,kunde_navn,kunde_email,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        res = db.table('tilbud').select('id,kunde_navn,kunde_email,kunde_adresse,kunde_postnummer,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify(res.data or [])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -5256,8 +5270,9 @@ def opdater_tilbud(tilbud_id):
     if not db:
         return jsonify({'error': 'Ingen database'}), 500
     data = request.get_json() or {}
-    linjer = data.get('linjer', [])
-    rabat  = float(data.get('rabat', 0) or 0)
+    linjer   = data.get('linjer', [])
+    rabat    = float(data.get('rabat', 0) or 0)
+    forbehold = data.get('forbehold', None)  # None = don't change; '' = clear
 
     try:
         res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
@@ -5282,6 +5297,7 @@ def opdater_tilbud(tilbud_id):
 
         # Use stored meta (intro, betingelser, win_temaer)
         meta = t.get('tilbud_meta') or {}
+        forbehold_final = forbehold if forbehold is not None else (t.get('forbehold') or '')
 
         html = _byg_tilbud_html(
             klient_navn=klient.get('navn', ''),
@@ -5296,14 +5312,19 @@ def opdater_tilbud(tilbud_id):
             konkurrent_opsummering=t.get('konkurrent_analyse', ''),
             rabat=rabat,
             tema=klient.get('tilbud_stil', 'standard') or 'standard',
-            primær_farve=klient.get('tilbud_farve', '#0a1a3a') or '#0a1a3a'
+            primær_farve=klient.get('tilbud_farve', '#0a1a3a') or '#0a1a3a',
+            kunde_adresse=t.get('kunde_adresse', '') or '',
+            kunde_postnummer=t.get('kunde_postnummer', '') or '',
+            forbehold=forbehold_final
         )
 
-        db.table('tilbud').update({
+        update_payload = {
             'html_indhold': html,
             'linjer': linjer,
-            'total_pris': int(total_efter_rabat)
-        }).eq('id', tilbud_id).execute()
+            'total_pris': int(total_efter_rabat),
+            'forbehold': forbehold_final
+        }
+        db.table('tilbud').update(update_payload).eq('id', tilbud_id).execute()
 
         return jsonify({'ok': True, 'html': html, 'total': int(total_efter_rabat), 'linjer': linjer})
     except Exception as e:

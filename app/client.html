@@ -407,8 +407,11 @@
         </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
           <div class="card-title" style="margin:0">Alle tilbud</div>
+          <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0;max-width:300px">
+            <input id="tilbudSøg" type="search" placeholder="Søg navn, adresse..." style="width:100%;padding:.45rem .8rem;border:1px solid var(--border);border-radius:8px;font-size:.8rem;font-family:inherit;outline:none" oninput="renderTilbud()"/>
+          </div>
           <span id="tilbudCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
         <div id="tilbudList"><div class="loading">Henter tilbud...</div></div>
@@ -952,14 +955,31 @@ function renderTilbud() {
   document.getElementById('tbTotal').textContent = tilbudData.length;
   document.getElementById('tbAccepteret').textContent = accepterede.length;
   document.getElementById('tbVærdi').textContent = samletVærdi.toLocaleString('da-DK') + ' kr';
-  document.getElementById('tilbudCount').textContent = `${tilbudData.length} tilbud`;
 
   // Badge med accepterede
   const badge = document.getElementById('tilbudBadge');
   if (accepterede.length > 0) { badge.textContent = accepterede.length + ' ✓'; badge.classList.remove('hidden'); }
   else badge.classList.add('hidden');
 
-  el.innerHTML = tilbudData.map(t => {
+  // Søgefilter
+  const søg = (document.getElementById('tilbudSøg')?.value || '').toLowerCase().trim();
+  const filtreret = søg
+    ? tilbudData.filter(t => {
+        const haystack = [t.kunde_navn, t.kunde_email, t.titel, t.kunde_adresse, t.kunde_postnummer].join(' ').toLowerCase();
+        return haystack.includes(søg);
+      })
+    : tilbudData;
+
+  document.getElementById('tilbudCount').textContent = filtreret.length !== tilbudData.length
+    ? `${filtreret.length} af ${tilbudData.length} tilbud`
+    : `${tilbudData.length} tilbud`;
+
+  if (!filtreret.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Ingen tilbud matcher søgningen.</div></div>';
+    return;
+  }
+
+  el.innerHTML = filtreret.map(t => {
     const dato = t.oprettet ? new Date(t.oprettet).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
     const sendtDato = t.sendt_dato ? new Date(t.sendt_dato).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }) : null;
     const godkendtDato = t.godkendt_dato ? new Date(t.godkendt_dato).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
@@ -982,7 +1002,7 @@ function renderTilbud() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:.2rem">${t.titel || 'Tilbud'}</div>
-          <div style="font-size:.78rem;color:var(--muted)">${t.kunde_navn || '—'}${t.kunde_email ? ' · ' + t.kunde_email : ''}</div>
+          <div style="font-size:.78rem;color:var(--muted)">${t.kunde_navn || '—'}${t.kunde_email ? ' · ' + t.kunde_email : ''}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
           ${t.status === 'accepteret' && godkendtDato ? `<div style="font-size:.75rem;color:#15803d;margin-top:.3rem;font-weight:600">✓ Accepteret ${godkendtDato}</div>` : ''}
           ${sendtDato && t.status !== 'accepteret' ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Sendt ${sendtDato}</div>` : ''}
         </div>

@@ -1271,6 +1271,11 @@
               </div>
             </div>
 
+            <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid #e0e7ff">
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem">⚠️ Forbehold (vises i tilbuddet)</label>
+              <textarea id="editorForbehold" class="form-input" rows="3" style="font-size:.8rem;resize:vertical" placeholder="Fx: Tilbuddet forudsætter normal adgangsforhold. Eventuelle skjulte skader opdaget under arbejdet afregnes separat. Vi påtager os ikke ansvar for eksisterende installationer..."></textarea>
+            </div>
+
             <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
               <button class="btn btn-generate" id="gemTilbudBtn" onclick="gemRedigeretTilbud()">💾 Gem og opdater tilbud</button>
             </div>
@@ -1293,6 +1298,17 @@
             <div>
               <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Kunde email *</label>
               <input id="tKundeEmail" class="form-input" type="email" placeholder="lars@firma.dk"/>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr auto;gap:.75rem;margin-bottom:.75rem">
+            <div>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Adresse (valgfrit)</label>
+              <input id="tKundeAdresse" class="form-input" placeholder="Fx. Vestergade 12"/>
+            </div>
+            <div style="width:110px">
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Postnummer</label>
+              <input id="tKundePostnummer" class="form-input" placeholder="8700"/>
             </div>
           </div>
 
@@ -4516,11 +4532,13 @@ function lukTilbudPreview() {
 }
 
 async function genererTilbud() {
-  const kundeNavn  = document.getElementById('tKundeNavn').value.trim();
-  const kundeEmail = document.getElementById('tKundeEmail').value.trim();
-  const opgave     = document.getElementById('tOpgave').value.trim();
-  const noter      = document.getElementById('tNoter').value.trim();
-  const konkurrent = document.getElementById('tKonkurrent').checked;
+  const kundeNavn       = document.getElementById('tKundeNavn').value.trim();
+  const kundeEmail      = document.getElementById('tKundeEmail').value.trim();
+  const kundeAdresse    = document.getElementById('tKundeAdresse').value.trim();
+  const kundePostnummer = document.getElementById('tKundePostnummer').value.trim();
+  const opgave          = document.getElementById('tOpgave').value.trim();
+  const noter           = document.getElementById('tNoter').value.trim();
+  const konkurrent      = document.getElementById('tKonkurrent').checked;
 
   if (!kundeNavn || !kundeEmail || !opgave) {
     alert('Udfyld kundenavn, email og opgavebeskrivelse');
@@ -4541,6 +4559,8 @@ async function genererTilbud() {
         klient_id: currentClient.id,
         kunde_navn: kundeNavn,
         kunde_email: kundeEmail,
+        kunde_adresse: kundeAdresse,
+        kunde_postnummer: kundePostnummer,
         opgave,
         noter,
         konkurrent_analyse: konkurrent
@@ -4551,7 +4571,7 @@ async function genererTilbud() {
     if (!data.ok) { alert(data.error || 'Fejl ved generering'); statusEl.style.display = 'none'; return; }
 
     lukTilbudModal();
-    visTilbudPreview(data.tilbud_id, data.html, data.konkurrent_analyse, data.linjer);
+    visTilbudPreview(data.tilbud_id, data.html, data.konkurrent_analyse, data.linjer, '');
     hentTilbudListe();
   } catch(e) {
     alert('Fejl: ' + e.message);
@@ -4560,10 +4580,12 @@ async function genererTilbud() {
 }
 
 let aktivtTilbudLinjer = [];
+let aktivtTilbudForbehold = '';
 
-function visTilbudPreview(id, html, konkurrentAnalyse, linjer) {
+function visTilbudPreview(id, html, konkurrentAnalyse, linjer, forbehold) {
   aktivtTilbudId = id;
   aktivtTilbudLinjer = JSON.parse(JSON.stringify(linjer || []));
+  aktivtTilbudForbehold = forbehold || '';
   const panel = document.getElementById('tilbudPreviewPanel');
   const iframe = document.getElementById('tilbudPreviewIframe');
   iframe.innerHTML = html;
@@ -4739,7 +4761,7 @@ async function hentTilbudListe() {
                 <span style="font-size:.88rem;font-weight:800;color:#15803d">${t.titel || 'Tilbud'}</span>
                 <span style="background:#16a34a;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .5rem;border-radius:4px;text-transform:uppercase;letter-spacing:.5px">Accepteret</span>
               </div>
-              <div style="font-size:.75rem;color:#166534">${t.kunde_navn} · ${t.kunde_email}</div>
+              <div style="font-size:.75rem;color:#166534">${t.kunde_navn} · ${t.kunde_email}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
               ${godkendt_dato ? `<div style="font-size:.7rem;color:#4ade80;margin-top:.15rem">Godkendt ${godkendt_dato} · Ref: ${kortRef}</div>` : ''}
             </div>
             <div style="text-align:right;flex-shrink:0">
@@ -4755,7 +4777,7 @@ async function hentTilbudListe() {
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer${er_afvist ? ';opacity:.6' : ''}" onclick="hentOgVisTilbud('${t.id}')">
         <div style="flex:1">
           <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.15rem">${t.titel || 'Tilbud'}</div>
-          <div style="font-size:.75rem;color:var(--muted)">${t.kunde_navn} · ${t.kunde_email}</div>
+          <div style="font-size:.75rem;color:var(--muted)">${t.kunde_navn} · ${t.kunde_email}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:.9rem;font-weight:700;color:var(--accent)">${t.total_pris ? t.total_pris.toLocaleString('da-DK') + ' kr.' : '—'}</div>
@@ -4777,7 +4799,7 @@ async function hentOgVisTilbud(id) {
     const res = await apiFetch(`${AGENT_URL}/tilbud/${id}`);
     if (!res) return;
     const data = await res.json();
-    visTilbudPreview(data.id, data.html_indhold, data.konkurrent_analyse, data.linjer);
+    visTilbudPreview(data.id, data.html_indhold, data.konkurrent_analyse, data.linjer, data.forbehold || '');
   } catch(e) {
     alert('Kunne ikke hente tilbud');
   }
@@ -4856,6 +4878,8 @@ function toggleTilbudEditor() {
     panel.classList.remove('hidden');
     btn.textContent = '✕ Luk editor';
     document.getElementById('editorRabat').value = '';
+    const forbeholdEl = document.getElementById('editorForbehold');
+    if (forbeholdEl) forbeholdEl.value = aktivtTilbudForbehold;
     bygEditorTabel();
   } else {
     panel.classList.add('hidden');
@@ -4918,6 +4942,7 @@ function tilføjEditorLinje() {
 async function gemRedigeretTilbud() {
   if (!aktivtTilbudId) return;
   const rabat = parseFloat(document.getElementById('editorRabat').value) || 0;
+  const forbehold = document.getElementById('editorForbehold')?.value || '';
   const btn = document.getElementById('gemTilbudBtn');
   btn.disabled = true;
   btn.textContent = '⏳ Gemmer...';
@@ -4925,7 +4950,7 @@ async function gemRedigeretTilbud() {
     const res = await apiFetch(`${AGENT_URL}/tilbud/${aktivtTilbudId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ linjer: aktivtTilbudLinjer, rabat })
+      body: JSON.stringify({ linjer: aktivtTilbudLinjer, rabat, forbehold })
     });
     if (!res) { btn.disabled = false; btn.textContent = '💾 Gem og opdater tilbud'; return; }
     const data = await res.json();
