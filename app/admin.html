@@ -901,7 +901,7 @@
         <div class="tab" data-tab="leadmails" onclick="switchTab('leadmails')">📧 Leadmails <span id="mailBadge" class="hidden" style="background:var(--red);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
         <div class="tab" data-tab="insights" onclick="switchTab('insights')" style="color:var(--purple)">🧠 AI Insights</div>
         <div class="tab" data-tab="live" onclick="switchTab('live')" style="color:#059669">📡 Live</div>
-        <div class="tab" data-tab="tilbud" onclick="switchTab('tilbud')" style="color:#7c3aed">📄 Tilbud-AI</div>
+        <div class="tab" data-tab="tilbud" onclick="switchTab('tilbud')" style="color:#7c3aed">📄 Tilbud-AI <span id="tilbudBadge" class="hidden" style="background:#16a34a;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
       </div>
 
       <!-- Tab: Overblik -->
@@ -4707,24 +4707,66 @@ async function hentTilbudListe() {
       return;
     }
 
-    const statusFarve = { udkast: '#6b7280', sendt: '#2563eb', accepteret: '#16a34a', afvist: '#dc2626' };
-    const statusTekst = { udkast: 'Udkast', sendt: 'Sendt', accepteret: 'Accepteret', afvist: 'Afvist' };
+    // Badge: tæl accepterede tilbud
+    const antalAccepteret = data.filter(t => t.status === 'accepteret').length;
+    const badge = document.getElementById('tilbudBadge');
+    if (badge) {
+      if (antalAccepteret > 0) {
+        badge.textContent = `${antalAccepteret} ✓`;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
 
-    liste.innerHTML = data.map(t => `
-      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer" onclick="hentOgVisTilbud('${t.id}')">
+    liste.innerHTML = data.map(t => {
+      const er_accepteret = t.status === 'accepteret';
+      const er_afvist     = t.status === 'afvist';
+      const godkendt_dato = t.godkendt_dato
+        ? new Date(t.godkendt_dato).toLocaleDateString('da-DK', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+        : null;
+
+      const kortRef = t.id ? t.id.slice(0,8).toUpperCase() : '';
+
+      if (er_accepteret) {
+        return `
+        <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:12px;padding:1rem 1.25rem;cursor:pointer;position:relative;overflow:hidden" onclick="hentOgVisTilbud('${t.id}')">
+          <div style="position:absolute;top:0;left:0;width:4px;height:100%;background:#16a34a;border-radius:12px 0 0 12px"></div>
+          <div style="display:flex;align-items:center;gap:1rem;padding-left:.5rem">
+            <div style="font-size:1.75rem;flex-shrink:0">🎉</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.15rem">
+                <span style="font-size:.88rem;font-weight:800;color:#15803d">${t.titel || 'Tilbud'}</span>
+                <span style="background:#16a34a;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .5rem;border-radius:4px;text-transform:uppercase;letter-spacing:.5px">Accepteret</span>
+              </div>
+              <div style="font-size:.75rem;color:#166534">${t.kunde_navn} · ${t.kunde_email}</div>
+              ${godkendt_dato ? `<div style="font-size:.7rem;color:#4ade80;margin-top:.15rem">Godkendt ${godkendt_dato} · Ref: ${kortRef}</div>` : ''}
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:1.05rem;font-weight:900;color:#15803d">${t.total_pris ? t.total_pris.toLocaleString('da-DK') + ' kr.' : '—'}</div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      const statusFarve = { udkast: '#6b7280', sendt: '#2563eb', afvist: '#dc2626' };
+      const statusTekst = { udkast: 'Udkast', sendt: 'Sendt', afvist: 'Afvist' };
+      return `
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer${er_afvist ? ';opacity:.6' : ''}" onclick="hentOgVisTilbud('${t.id}')">
         <div style="flex:1">
           <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.15rem">${t.titel || 'Tilbud'}</div>
           <div style="font-size:.75rem;color:var(--muted)">${t.kunde_navn} · ${t.kunde_email}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:.9rem;font-weight:700;color:var(--accent)">${t.total_pris ? (t.total_pris).toLocaleString('da-DK') + ' kr.' : '—'}</div>
+          <div style="font-size:.9rem;font-weight:700;color:var(--accent)">${t.total_pris ? t.total_pris.toLocaleString('da-DK') + ' kr.' : '—'}</div>
           <div style="font-size:.7rem;font-weight:600;color:${statusFarve[t.status] || '#6b7280'};margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${statusTekst[t.status] || t.status}</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:.35rem">
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();opdaterTilbudStatus('${t.id}','accepteret')" title="Marker accepteret">✓</button>
           <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();opdaterTilbudStatus('${t.id}','afvist')" title="Marker afvist">✕</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } catch(e) {
     liste.innerHTML = `<div style="color:var(--red);font-size:.82rem;padding:1rem">Fejl: ${e.message}</div>`;
   }

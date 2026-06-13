@@ -5212,7 +5212,7 @@ def hent_tilbud_liste(klient_id):
     if not db:
         return jsonify([])
     try:
-        res = db.table('tilbud').select('id,kunde_navn,kunde_email,titel,total_pris,status,oprettet').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        res = db.table('tilbud').select('id,kunde_navn,kunde_email,titel,total_pris,status,oprettet,godkendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify(res.data or [])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
