@@ -103,6 +103,50 @@
     .stat-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; font-weight: 500; }
     .stat-sub { font-size: .7rem; color: var(--muted); margin-top: .15rem; }
 
+    /* ── ROI CARD ── */
+    .roi-card {
+      background: linear-gradient(135deg, #0a1918 0%, #1a3a2e 100%);
+      border-radius: 16px; padding: 1.75rem; margin-bottom: 1.25rem; color: #fff;
+      position: relative; overflow: hidden;
+    }
+    .roi-card::before {
+      content: ''; position: absolute; top: -40px; right: -40px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: rgba(74,103,65,.2);
+    }
+    .roi-grid { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: center; }
+    .roi-main-num { font-size: 2.8rem; font-weight: 900; letter-spacing: -2px; line-height: 1; }
+    .roi-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: .55; margin-bottom: .4rem; }
+    .roi-sub { font-size: .82rem; opacity: .65; margin-top: .35rem; line-height: 1.5; }
+    .roi-badge {
+      background: rgba(74,103,65,.35); border: 1px solid rgba(74,103,65,.5);
+      border-radius: 12px; padding: 1rem 1.25rem; text-align: center; min-width: 120px;
+    }
+    .roi-badge-num { font-size: 2rem; font-weight: 900; color: #86efac; letter-spacing: -1px; }
+    .roi-badge-label { font-size: .7rem; opacity: .7; margin-top: .2rem; }
+    .roi-stats { display: flex; gap: 1.5rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,.1); flex-wrap: wrap; }
+    .roi-stat { }
+    .roi-stat-num { font-size: 1.25rem; font-weight: 800; }
+    .roi-stat-label { font-size: .7rem; opacity: .5; margin-top: .1rem; }
+
+    /* ── AKTIVITETSFEED ── */
+    .activity-item {
+      display: flex; align-items: flex-start; gap: .85rem;
+      padding: .85rem 1.25rem; border-bottom: 1px solid var(--border);
+      transition: background .12s;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-item:hover { background: #faf9f6; }
+    .activity-icon {
+      width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; font-weight: 700;
+    }
+    .activity-body { flex: 1; min-width: 0; }
+    .activity-title { font-size: .85rem; font-weight: 600; color: var(--dark); }
+    .activity-sub { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .activity-time { font-size: .68rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
     /* ── WELCOME ── */
     .welcome-card {
       background: var(--dark); color: #fff;
@@ -333,11 +377,42 @@
 
     <!-- OVERBLIK -->
     <div id="view-overblik">
-      <div class="welcome-card">
-        <div class="welcome-title" id="welcomeTitle">Hej! 👋</div>
-        <div class="welcome-sub" id="welcomeSub">Her kan du følge med i hvad dine NexOlsen-agenter laver for dig.</div>
+
+      <!-- ROI CARD -->
+      <div class="roi-card" id="roiCard" style="display:none">
+        <div class="roi-grid">
+          <div>
+            <div class="roi-label">Din AI har tjent dig — denne måned</div>
+            <div class="roi-main-num" id="roiBeloeb">—</div>
+            <div class="roi-sub" id="roiSub">Indlæser...</div>
+          </div>
+          <div class="roi-badge">
+            <div class="roi-badge-num" id="roiFaktor">—</div>
+            <div class="roi-badge-label">× mere end<br>abonnementet</div>
+          </div>
+        </div>
+        <div class="roi-stats">
+          <div class="roi-stat">
+            <div class="roi-stat-num" id="roiLeads">—</div>
+            <div class="roi-stat-label">Leads denne måned</div>
+          </div>
+          <div class="roi-stat">
+            <div class="roi-stat-num" id="roiBookinger">—</div>
+            <div class="roi-stat-label">Bookinger</div>
+          </div>
+          <div class="roi-stat">
+            <div class="roi-stat-num" id="roiTilbudAccepteret">—</div>
+            <div class="roi-stat-label">Tilbud accepteret</div>
+          </div>
+          <div class="roi-stat">
+            <div class="roi-stat-num" id="roiTilbudAfventer">—</div>
+            <div class="roi-stat-label">Afventer svar</div>
+          </div>
+        </div>
       </div>
-      <div class="stats-row">
+
+      <!-- STATS (vises mens ROI hentes) -->
+      <div class="stats-row" id="ovStatsRow">
         <div class="stat-card">
           <div class="stat-num" id="ovLeads">—</div>
           <div class="stat-label">Leads modtaget</div>
@@ -349,31 +424,26 @@
           <div class="stat-sub">bekræftet automatisk</div>
         </div>
         <div class="stat-card">
-          <div class="stat-num" id="ovAgenter">—</div>
+          <div class="stat-num" id="ovAgenter">3</div>
           <div class="stat-label">Aktive agenter</div>
           <div class="stat-sub">kører 24/7</div>
         </div>
       </div>
 
-      <!-- KONVERTERINGSDATA -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem" id="konvSektion" class="hidden">
-        <div class="card" style="background:linear-gradient(135deg,#0a2463,#1a3a8f);color:#fff;border:none">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:.5rem">Estimeret omsætning — denne måned</div>
-          <div style="font-size:2rem;font-weight:800;letter-spacing:-1px" id="ovOmsætning">—</div>
-          <div style="font-size:.78rem;opacity:.6;margin-top:.25rem">baseret på dine priser × bookinger</div>
-        </div>
-        <div class="card" style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:.5rem">Konverteringsrate</div>
-          <div style="font-size:2rem;font-weight:800;letter-spacing:-1px" id="ovKonvertering">—</div>
-          <div style="font-size:.78rem;opacity:.6;margin-top:.25rem" id="ovKonvSub">leads der blev til bookinger</div>
-        </div>
-      </div>
+      <!-- LIVE AKTIVITETSFEED -->
       <div class="card" style="padding:0;overflow:hidden">
-        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
-          <div class="card-title" style="margin:0">Seneste leads</div>
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="card-title" style="margin:0">Live aktivitet</div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem" id="aktivitetOpdateret"></div>
+          </div>
+          <span id="liveDot" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.7rem;color:var(--green);font-weight:600">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite"></span>Live
+          </span>
         </div>
-        <div id="ovLeadList"><div class="loading">Henter data...</div></div>
+        <div id="aktivitetFeed"><div class="loading">Henter aktivitet...</div></div>
       </div>
+
     </div>
 
     <!-- LEADS -->
@@ -756,6 +826,7 @@ function showView(v) {
   document.getElementById('topbarTitle').textContent = titles[v][0];
   document.getElementById('topbarSub').textContent = titles[v][1];
   closeMobileNav();
+  if (v === 'overblik') loadOverblik();
   if (v === 'rapport' && !rapportData) loadRapport();
   if (v === 'tilbud') loadTilbud();
   if (v === 'abonnement') loadAbonnement();
@@ -779,28 +850,105 @@ async function loadData() {
 
     const navn = data.chatbot?.navn || 'din virksomhed';
     document.getElementById('sidebarName').textContent = navn;
-    document.getElementById('welcomeTitle').textContent = `Hej, ${navn.split(' ')[0]}!`;
-    document.getElementById('welcomeSub').textContent = `Her kan du følge med i hvad dine NexOlsen-agenter laver for dig.`;
     document.title = `NexOlsen – ${navn}`;
 
     const leads = data.leads.length;
     const bookinger = data.bookinger.length;
     document.getElementById('ovLeads').textContent = leads;
     document.getElementById('ovBookinger').textContent = bookinger;
-    document.getElementById('ovAgenter').textContent = '3';
 
-    beregnKonvertering(leads, bookinger, data.chatbot, null);
     renderAgenter();
-    renderOverblikLeads();
     renderLeads();
     renderBookinger();
+    beregnKonvertering(data.leads.length, data.bookinger.length, data.chatbot, null);
 
-    // Badge
+    // Lead badge
     const ulæste = data.leads.filter(l => !kontaktetIds.has(String(l.id))).length;
     const badge = document.getElementById('leadBadge');
     if (ulæste > 0) { badge.textContent = ulæste; badge.classList.remove('hidden'); }
     else badge.classList.add('hidden');
   } catch(e) { console.error(e); }
+}
+
+// ── OVERBLIK: ROI + AKTIVITETSFEED ─────────────────────
+let aktivitetInterval = null;
+
+async function loadOverblik() {
+  if (!CLIENT_ID) return;
+  try {
+    const res = await fetch(`${API}/portal/overblik/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    if (!res.ok) return;
+    const d = await res.json();
+
+    // ROI kort
+    const roi = d.roi || {};
+    if (roi.accepteret_maaned > 0 || roi.accepteret_i_alt > 0) {
+      document.getElementById('roiCard').style.display = 'block';
+      document.getElementById('ovStatsRow').style.display = 'none';
+
+      const beloeb = (roi.accepteret_maaned || 0).toLocaleString('da-DK');
+      document.getElementById('roiBeloeb').textContent = beloeb + ' kr';
+
+      const faktor = roi.roi_faktor || 0;
+      document.getElementById('roiFaktor').textContent = faktor > 0 ? faktor + 'x' : '—';
+
+      const iAlt = (roi.accepteret_i_alt || 0).toLocaleString('da-DK');
+      document.getElementById('roiSub').textContent =
+        `${iAlt} kr accepteret i alt · Abonnement: ${(roi.abo_pris||799).toLocaleString('da-DK')} kr/md`;
+
+      document.getElementById('roiLeads').textContent = roi.leads_maaned ?? '—';
+      document.getElementById('roiBookinger').textContent = roi.bookinger_maaned ?? '—';
+      document.getElementById('roiTilbudAccepteret').textContent = roi.tilbud_accepteret_maaned ?? '—';
+      document.getElementById('roiTilbudAfventer').textContent = roi.tilbud_afventende ?? '—';
+    } else {
+      // Ingen data endnu — vis normale stats
+      document.getElementById('ovLeads').textContent = roi.leads_i_alt ?? '—';
+      document.getElementById('ovBookinger').textContent = roi.bookinger_i_alt ?? '—';
+    }
+
+    // Aktivitetsfeed
+    renderAktivitetFeed(d.aktivitet || []);
+
+    // Opdateringstidspunkt
+    const nu = new Date();
+    document.getElementById('aktivitetOpdateret').textContent =
+      'Sidst opdateret ' + nu.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' });
+
+  } catch(e) { console.error('Overblik fejl:', e); }
+}
+
+function relTid(isoStr) {
+  if (!isoStr) return '';
+  const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
+  if (diff < 60)  return 'Lige nu';
+  if (diff < 3600) return `${Math.floor(diff/60)} min siden`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} t siden`;
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+}
+
+function renderAktivitetFeed(events) {
+  const el = document.getElementById('aktivitetFeed');
+  if (!events.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">◎</div><div class="empty-text">Ingen aktivitet endnu — den dukker op her i realtid når kunder kontakter dig.</div></div>';
+    return;
+  }
+  el.innerHTML = events.map(e => `
+    <div class="activity-item">
+      <div class="activity-icon" style="background:${e.bg};color:${e.farve}">${e.ikon}</div>
+      <div class="activity-body">
+        <div class="activity-title">${e.titel}</div>
+        <div class="activity-sub">${e.sub || ''}</div>
+      </div>
+      <div class="activity-time">${relTid(e.tid)}</div>
+    </div>`).join('');
+}
+
+function startAktivitetPolling() {
+  if (aktivitetInterval) clearInterval(aktivitetInterval);
+  aktivitetInterval = setInterval(loadOverblik, 30000);
 }
 
 function beregnKonvertering(leads, bookinger, cfg, klient) {
@@ -1460,6 +1608,8 @@ async function gemIndstillinger() {
 // Init
 if (CLIENT_ID) {
   loadData().then(() => { loadKomIGang(); });
+  loadOverblik();
+  startAktivitetPolling();
 }
 showView('overblik');
 

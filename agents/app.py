@@ -5238,6 +5238,129 @@ def hent_tilbud_liste(klient_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/portal/overblik/<klient_id>', methods=['GET'])
+@require_token
+def portal_overblik(klient_id):
+    """Klientportal: ROI-data + aktivitetsfeed"""
+    from datetime import datetime, timezone
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not db:
+        return jsonify({'roi': {}, 'aktivitet': []})
+
+    try:
+        # Månedsstart
+        nu = datetime.now(timezone.utc)
+        maaned_start = nu.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+        # Hent abonnement
+        plan_priser = {'starter': 799, 'pro': 1499, 'vaekst': 2499}
+        abo_pris = 799
+        try:
+            k = db.table('klienter').select('plan').eq('id', klient_id).single().execute()
+            abo_pris = plan_priser.get(k.data.get('plan', 'starter'), 799)
+        except: pass
+
+        # Hent accepterede tilbud i alt og denne måned
+        tilbud_res = db.table('tilbud').select('id,total_pris,status,godkendt_dato,oprettet,kunde_navn,titel,sendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        tilbud_alle = tilbud_res.data or []
+
+        accepterede_i_alt = [t for t in tilbud_alle if t.get('status') == 'accepteret']
+        accepterede_måned = [t for t in accepterede_i_alt if t.get('godkendt_dato', '') >= maaned_start]
+        afventende       = [t for t in tilbud_alle if t.get('status') == 'sendt']
+
+        roi_måned  = sum(t.get('total_pris', 0) or 0 for t in accepterede_måned)
+        roi_i_alt  = sum(t.get('total_pris', 0) or 0 for t in accepterede_i_alt)
+        roi_faktor = round(roi_måned / abo_pris, 1) if abo_pris > 0 else 0
+
+        # Leads
+        leads_res = db.table('leads').select('id,navn,oprettet,kilde,email').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
+        leads_alle = leads_res.data or []
+        leads_måned = [l for l in leads_alle if l.get('oprettet', '') >= maaned_start]
+
+        # Bookinger
+        book_res = db.table('bookinger').select('id,navn,oprettet,dato').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
+        book_alle = book_res.data or []
+        book_måned = [b for b in book_alle if b.get('oprettet', '') >= maaned_start]
+
+        # Byg aktivitetsfeed — kombiner events fra alle tabeller
+        events = []
+        for l in leads_alle[:15]:
+            events.append({
+                'type': 'lead',
+                'ikon': '◎',
+                'farve': '#2563eb',
+                'bg': '#eff6ff',
+                'titel': f"Ny lead: {l.get('navn','—')}",
+                'sub': l.get('kilde', 'hjemmeside').capitalize(),
+                'tid': l.get('oprettet', '')
+            })
+        for b in book_alle[:10]:
+            events.append({
+                'type': 'booking',
+                'ikon': '▦',
+                'farve': '#7c3aed',
+                'bg': '#f5f3ff',
+                'titel': f"Ny booking: {b.get('navn','—')}",
+                'sub': f"Dato: {b.get('dato','—')}",
+                'tid': b.get('oprettet', '')
+            })
+        for t in tilbud_alle[:20]:
+            if t.get('status') == 'accepteret':
+                events.append({
+                    'type': 'tilbud_accepteret',
+                    'ikon': '🎉',
+                    'farve': '#15803d',
+                    'bg': '#f0fdf4',
+                    'titel': f"Tilbud accepteret — {int(t.get('total_pris',0) or 0):,} kr".replace(',','.'),
+                    'sub': t.get('kunde_navn', '—'),
+                    'tid': t.get('godkendt_dato', '') or t.get('oprettet', '')
+                })
+            elif t.get('status') == 'sendt' and t.get('sendt_dato'):
+                events.append({
+                    'type': 'tilbud_sendt',
+                    'ikon': '✉',
+                    'farve': '#0369a1',
+                    'bg': '#f0f9ff',
+                    'titel': f"Tilbud sendt: {t.get('titel','Tilbud')}",
+                    'sub': t.get('kunde_navn', '—'),
+                    'tid': t.get('sendt_dato', '')
+                })
+            elif t.get('status') == 'udkast':
+                events.append({
+                    'type': 'tilbud_oprettet',
+                    'ikon': '📄',
+                    'farve': '#6b7280',
+                    'bg': '#f9fafb',
+                    'titel': f"Tilbud oprettet: {t.get('titel','Tilbud')}",
+                    'sub': t.get('kunde_navn', '—'),
+                    'tid': t.get('oprettet', '')
+                })
+
+        events.sort(key=lambda e: e.get('tid', ''), reverse=True)
+
+        return jsonify({
+            'roi': {
+                'abo_pris': abo_pris,
+                'accepteret_maaned': roi_måned,
+                'accepteret_i_alt': roi_i_alt,
+                'roi_faktor': roi_faktor,
+                'leads_maaned': len(leads_måned),
+                'leads_i_alt': len(leads_alle),
+                'bookinger_maaned': len(book_måned),
+                'bookinger_i_alt': len(book_alle),
+                'tilbud_accepteret_maaned': len(accepterede_måned),
+                'tilbud_afventende': len(afventende),
+            },
+            'aktivitet': events[:25]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/portal/tilbud/<klient_id>', methods=['GET'])
 @require_token
 def portal_tilbud_liste(klient_id):
