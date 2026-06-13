@@ -200,6 +200,7 @@ ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
+SERVER_URL = os.environ.get('SERVER_URL', 'https://klaiai.onrender.com')
 db = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
 
@@ -4487,6 +4488,63 @@ Mvh {klient_navn}"""
         print(f"❌ Fejl i anmeldelse_agent: {e}")
 
 
+def kør_tilbud_followup():
+    """Sender automatisk opfølgning på tilbud der ikke er besvaret inden 5 dage"""
+    if not db:
+        return
+    from datetime import datetime, timedelta
+    deadline = (datetime.now() - timedelta(days=5)).isoformat()
+    try:
+        res = db.table('tilbud').select('*').eq('status', 'sendt').eq('followup_sendt', False).lt('sendt_dato', deadline).execute()
+    except Exception as e:
+        print(f'Tilbud followup DB fejl: {e}')
+        return
+
+    for t in (res.data or []):
+        try:
+            k = db.table('klienter').select('navn,hjemmeside').eq('id', t['klient_id']).single().execute()
+            klient = k.data or {}
+            fra_navn = klient.get('navn', 'Virksomheden')
+            kunde_navn  = t.get('kunde_navn', '')
+            kunde_email = t.get('kunde_email', '')
+            titel       = t.get('titel', 'Tilbud')
+            accept_token = t.get('accept_token', '')
+            if not kunde_email or '@' not in kunde_email:
+                continue
+
+            accept_url = f'{SERVER_URL}/tilbud/godkend/{t["id"]}/{accept_token}' if accept_token else ''
+            accept_knap = (
+                f'<div style="text-align:center;margin:24px 0">'
+                f'<a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 32px;border-radius:8px">✓ Godkend tilbud</a>'
+                f'</div>'
+            ) if accept_url else ''
+
+            followup_html = f"""<!DOCTYPE html>
+<html lang="da"><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f7f8fc;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+  <tr><td style="background:#0a1a3a;padding:22px 36px"><div style="font-size:17px;font-weight:700;color:#fff">{fra_navn}</div></td></tr>
+  <tr><td style="padding:32px 36px">
+    <div style="font-size:21px;font-weight:700;color:#111;margin-bottom:14px">Hej {kunde_navn.split()[0] if kunde_navn else 'der'},</div>
+    <div style="font-size:14px;color:#374151;line-height:1.8;margin-bottom:16px">Vi ville blot følge op på tilbuddet vi sendte dig vedrørende <strong>{titel}</strong>.</div>
+    <div style="font-size:14px;color:#374151;line-height:1.8;margin-bottom:16px">Har du haft mulighed for at kigge på det? Vi er klar til at svare på spørgsmål eller justere tilbuddet efter dine ønsker.</div>
+    {accept_knap}
+  </td></tr>
+  <tr><td style="background:#f9fafb;padding:18px 36px;text-align:center;border-top:1px solid #f0f0f0">
+    <div style="font-size:12px;color:#9ca3af">{fra_navn} · Vi ser frem til at høre fra dig</div>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>"""
+
+            send_mail(kunde_email, f'Opfølgning: {titel}', f'Hej {kunde_navn},\n\nVi ville følge op på tilbuddet vi sendte dig.', fra_navn=fra_navn, html_content=followup_html)
+            db.table('tilbud').update({'followup_sendt': True, 'followup_dato': datetime.now().isoformat()}).eq('id', t['id']).execute()
+            print(f'Tilbud followup sendt til {kunde_email}')
+        except Exception as e:
+            print(f'Tilbud followup fejl ({t.get("id")}): {e}')
+
+
 scheduler.add_job(kør_månedlig_rapport, 'cron', day=1, hour=8, minute=0, id='månedlig_rapport')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=9, minute=30, id='ubesvarede_leads')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=17, minute=0, id='ubesvarede_leads_aften')
@@ -4495,6 +4553,7 @@ scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
 scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
 scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerapport', day_of_week='mon')
 scheduler.add_job(kør_billing_agent,    'cron', hour=8,  minute=0, id='billing')
+scheduler.add_job(kør_tilbud_followup, 'cron', hour=10, minute=15, id='tilbud_followup')
 scheduler.add_job(kør_mail_flow_agent,  'interval', hours=1, id='mail_flow')
 scheduler.add_job(kør_anmeldelse_agent, 'cron', hour=10, minute=30, id='anmeldelse')
 scheduler.start()
@@ -5223,40 +5282,52 @@ def send_tilbud(tilbud_id):
         if not kunde_email or '@' not in kunde_email:
             return jsonify({'error': 'Ingen gyldig email på tilbuddet'}), 400
 
-        # Hent klientens navn + hjemmeside til afsender og Trustpilot-link
+        # Hent klientens navn + hjemmeside til afsender og links
         fra_navn = 'NexOlsen'
         klient_hjemmeside = ''
+        klient_email = ''
         try:
-            k = db.table('klienter').select('navn,hjemmeside').eq('id', klient_id).single().execute()
+            k = db.table('klienter').select('navn,hjemmeside,email').eq('id', klient_id).single().execute()
             if k.data:
                 fra_navn = k.data.get('navn', fra_navn)
                 klient_hjemmeside = k.data.get('hjemmeside', '')
+                klient_email = k.data.get('email', '')
         except:
             pass
 
-        # Byg Trustpilot-URL fra hjemmeside-domæne (heuristik)
-        domain = klient_hjemmeside.replace('https://', '').replace('http://', '').replace('www.', '').rstrip('/')
+        # Generer unik accept-token og gem i DB
+        import uuid as _uuid
+        accept_token = str(_uuid.uuid4()).replace('-', '')
+        try:
+            db.table('tilbud').update({'accept_token': accept_token}).eq('id', tilbud_id).execute()
+        except:
+            pass
+
+        accept_url = f'{SERVER_URL}/tilbud/godkend/{tilbud_id}/{accept_token}'
+
+        # Byg Trustpilot-URL fra hjemmeside-domæne
+        domain = klient_hjemmeside.replace('https://','').replace('http://','').replace('www.','').rstrip('/')
         trustpilot_url = f'https://dk.trustpilot.com/review/{domain}' if domain else 'https://dk.trustpilot.com'
 
-        # Fjern konkurrent-sektion fra kunde-email (kun til intern brug)
+        # Fjern konkurrent-sektion fra kunde-email (kun intern brug)
         import re as _re
-        html_til_kunde = _re.sub(
-            r'<!-- KONKURRENT.*?KONKURRENT -->',
-            '', html, flags=_re.DOTALL
-        )
+        html_til_kunde = _re.sub(r'<!-- KONKURRENT.*?KONKURRENT -->', '', html, flags=_re.DOTALL)
 
-        # Indsæt Trustpilot-sektion lige inden footeren
-        trustpilot_blok = f"""
-  <tr><td style="background:#fff;padding:0 40px 32px;text-align:center">
-    <div style="border-top:1px solid #f0f0f0;padding-top:28px">
-      <div style="font-size:20px;margin-bottom:10px">&#11088;</div>
-      <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px">Har du haft en god oplevelse?</div>
-      <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:18px">Vi går meget op i vores kunders tilfredshed.<br>En Trustpilot-anmeldelse ville betyde alverden for os.</div>
-      <a href="{trustpilot_url}" style="display:inline-block;background:#00b67a;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 26px;border-radius:8px;letter-spacing:.2px">Skriv en anmeldelse &#8594;</a>
-    </div>
+        # Indsæt accept-knap + Trustpilot-sektion inden footeren
+        ekstra_blok = f"""
+  <tr><td style="background:#fff;padding:8px 40px 32px;text-align:center">
+    <div style="font-size:15px;color:#374151;margin-bottom:16px;font-weight:600">Klar til at komme i gang?</div>
+    <a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:15px 44px;border-radius:10px;letter-spacing:.3px">✓&nbsp;&nbsp;Godkend tilbud</a>
+    <div style="font-size:11px;color:#9ca3af;margin-top:10px">Klik for at bekræfte og sætte projektet i gang</div>
+  </td></tr>
+  <tr><td style="background:#f9fafb;padding:28px 40px;text-align:center;border-top:1px solid #f0f0f0">
+    <div style="font-size:20px;margin-bottom:10px">&#11088;</div>
+    <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:8px">Har du haft en god oplevelse?</div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:16px">Vi går meget op i vores kunders tilfredshed.<br>En Trustpilot-anmeldelse ville betyde alverden for os.</div>
+    <a href="{trustpilot_url}" style="display:inline-block;background:#00b67a;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px">Skriv en anmeldelse &#8594;</a>
   </td></tr>"""
 
-        html_til_kunde = html_til_kunde.replace('<!-- FOOTER -->', trustpilot_blok + '\n  <!-- FOOTER -->')
+        html_til_kunde = html_til_kunde.replace('<!-- FOOTER -->', ekstra_blok + '\n  <!-- FOOTER -->')
 
         send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe tilbuddet herunder.', fra_navn=fra_navn, html_content=html_til_kunde)
 
@@ -5265,6 +5336,61 @@ def send_tilbud(tilbud_id):
         return jsonify({'ok': True, 'sendt_til': kunde_email})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tilbud/godkend/<tilbud_id>/<token>', methods=['GET'])
+def godkend_tilbud(tilbud_id, token):
+    """Offentligt endpoint — kunden klikker 'Godkend tilbud' i mailen"""
+    if not db:
+        return '<h2>Systemfejl — kontakt os direkte</h2>', 500
+    try:
+        res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
+        t = res.data
+        if not t:
+            return _godkend_side('Tilbud ikke fundet', 'Vi kunne ikke finde dette tilbud. Kontakt os direkte.', fejl=True), 404
+        if t.get('accept_token') != token:
+            return _godkend_side('Ugyldigt link', 'Dette link er ikke gyldigt. Kontakt os direkte.', fejl=True), 403
+        if t.get('status') == 'accepteret':
+            return _godkend_side('Allerede bekræftet', f'Dit tilbud "{t.get("titel","")}" er allerede bekræftet. Vi kontakter dig snarest.', fejl=False), 200
+
+        from datetime import datetime
+        db.table('tilbud').update({
+            'status': 'accepteret',
+            'godkendt_dato': datetime.now().isoformat()
+        }).eq('id', tilbud_id).execute()
+
+        # Notificér klienten
+        try:
+            k = db.table('klienter').select('navn,email').eq('id', t['klient_id']).single().execute()
+            if k.data and k.data.get('email'):
+                send_mail(
+                    k.data['email'],
+                    f'✅ Tilbud accepteret: {t.get("titel","")}',
+                    f'{t.get("kunde_navn","Kunden")} har accepteret tilbuddet "{t.get("titel","")}".',
+                    fra_navn='NexOlsen AI',
+                    html_content=f'<p style="font-family:sans-serif;font-size:15px">&#9989; <strong>{t.get("kunde_navn","Kunden")}</strong> har accepteret tilbuddet <strong>"{t.get("titel","")}"</strong> ({int(t.get("total_pris",0)):,} kr.).<br><br>Log ind i din portal for at se detaljer.</p>'
+                )
+        except:
+            pass
+
+        return _godkend_side('Tilbud bekræftet!', f'Tak, {t.get("kunde_navn","").split()[0]}! Vi har modtaget din bekræftelse og vender tilbage hurtigst muligt for at sætte projektet i gang.', fejl=False), 200
+    except Exception as e:
+        return _godkend_side('Fejl', str(e), fejl=True), 500
+
+
+def _godkend_side(overskrift, besked, fejl=False):
+    farve = '#dc2626' if fejl else '#15803d'
+    ikon  = '❌' if fejl else '✅'
+    return f"""<!DOCTYPE html>
+<html lang="da"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{overskrift}</title></head>
+<body style="margin:0;padding:0;background:#f0fdf4;font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center">
+<div style="text-align:center;max-width:480px;padding:40px 24px">
+  <div style="font-size:64px;margin-bottom:20px">{ikon}</div>
+  <h1 style="font-size:26px;font-weight:900;color:{farve};margin:0 0 14px">{overskrift}</h1>
+  <p style="font-size:15px;color:#374151;line-height:1.8;margin:0">{besked}</p>
+</div>
+</body></html>"""
 
 
 @app.route('/tilbud/status/<tilbud_id>', methods=['PATCH'])
