@@ -4678,10 +4678,24 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     dato       = datetime.now().strftime('%-d. %B %Y')
     gyldigt_til = (datetime.now() + timedelta(days=14)).strftime('%-d. %B %Y')
 
-    subtotal = sum(l.get('total', 0) for l in linjer)
     rabat    = float(rabat or 0)
-    total    = max(0, subtotal - rabat)
     primær_farve = primær_farve or '#0a1a3a'
+
+    # Mixed VAT calculation
+    sum_inkl    = sum(l.get('total', 0) for l in linjer if l.get('moms_inkluderet', False))
+    sum_ekskl   = sum(l.get('total', 0) for l in linjer if not l.get('moms_inkluderet', False))
+    has_inkl    = any(l.get('moms_inkluderet', False) for l in linjer)
+    moms_beloeb = round(sum_ekskl * 0.25, 2)
+
+    if has_inkl:
+        total_foer_rabat = sum_inkl + sum_ekskl + moms_beloeb
+        subtotal         = sum_inkl + sum_ekskl  # for rabat display
+    else:
+        subtotal         = sum_ekskl
+        total_foer_rabat = subtotal  # moms shown separately in template
+        moms_beloeb      = round(subtotal * 0.25, 2)
+
+    total = max(0, total_foer_rabat - rabat)
 
     # ── FÆLLES: win-temaer og konkurrent-info ──────────────
     if win_temaer:
@@ -4708,7 +4722,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
         for l in linjer:
             rækker += (
                 '<tr>'
-                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a1a;font-weight:300">{l.get("beskrivelse","")}</td>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a1a;font-weight:300">{l.get("beskrivelse","")} <span style="font-size:10px;color:#bbb;font-weight:400">{"inkl. moms" if l.get("moms_inkluderet") else "ekskl. moms"}</span></td>'
                 f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:center;white-space:nowrap">{l.get("antal","1")} {l.get("enhed","stk")}</td>'
                 f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:right;white-space:nowrap">{int(l.get("enhedspris",0)):,} kr.</td>'
                 f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#111;text-align:right;white-space:nowrap">{int(l.get("total",0)):,} kr.</td>'
@@ -4722,6 +4736,37 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
                 f'<tr><td colspan="3" style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
                 f'<td style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">&#8722;{int(rabat):,} kr.</td></tr>'
             )
+
+        if has_inkl:
+            ekskl_total_rækker = (
+                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Varer (inkl. moms)</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(sum_inkl):,} kr.</td></tr>' if sum_inkl > 0 else '') +
+                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Arbejde/kørsel (ekskl. moms)</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(sum_ekskl):,} kr.</td></tr>' if sum_ekskl > 0 else '') +
+                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Moms 25% af ydelser</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(moms_beloeb):,} kr.</td></tr>' if moms_beloeb > 0 else '') +
+                rabat_rækker
+            )
+        else:
+            ekskl_total_rækker = (
+                f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Moms 25%</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(moms_beloeb):,} kr.</td></tr>'
+                + rabat_rækker
+            )
+
+        pris_tabel_html = f"""<div style="margin-bottom:40px">
+<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:#bbb;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #111">Indhold &amp; priser</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+  <tr>
+    <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:left">Ydelse</th>
+    <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:center">Antal</th>
+    <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:right">Enhedspris</th>
+    <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:right">Total</th>
+  </tr>
+  {rækker}
+  {ekskl_total_rækker}
+  <tr style="border-top:2px solid #111">
+    <td colspan="3" style="padding:18px 0 6px;font-size:10px;font-weight:300;color:#aaa;text-align:right;text-transform:uppercase;letter-spacing:1.5px">Total inkl. moms</td>
+    <td style="padding:18px 0 6px;font-size:22px;font-weight:900;color:#111;text-align:right;line-height:1">{int(total):,} kr.</td>
+  </tr>
+</table>
+</div>"""
 
         return f"""<!DOCTYPE html>
 <html lang="da"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -4755,31 +4800,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     {win_html}
 
     <!-- Prisliste -->
-    <div style="margin-bottom:40px">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:#bbb;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #111">Indhold &amp; priser</div>
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-        <tr>
-          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:left">Ydelse</th>
-          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:center">Antal</th>
-          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:right">Enhedspris</th>
-          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:right">Total</th>
-        </tr>
-        {rækker}
-        {rabat_rækker}
-        <tr style="border-top:2px solid #111">
-          <td colspan="3" style="padding:18px 0 6px;font-size:10px;font-weight:300;color:#aaa;text-align:right;text-transform:uppercase;letter-spacing:1.5px">Total ekskl. moms</td>
-          <td style="padding:18px 0 6px;font-size:22px;font-weight:900;color:#111;text-align:right;line-height:1">{int(total):,} kr.</td>
-        </tr>
-        <tr>
-          <td colspan="3" style="padding:4px 0;font-size:11px;color:#ccc;text-align:right">Moms 25%</td>
-          <td style="padding:4px 0;font-size:11px;color:#ccc;text-align:right">{int(total*0.25):,} kr.</td>
-        </tr>
-        <tr style="border-top:1px solid #e5e5e5">
-          <td colspan="3" style="padding:12px 0;font-size:9px;font-weight:900;color:#111;text-align:right;text-transform:uppercase;letter-spacing:2px">Total inkl. moms</td>
-          <td style="padding:12px 0;font-size:26px;font-weight:900;color:#111;text-align:right;line-height:1">{int(total*1.25):,} kr.</td>
-        </tr>
-      </table>
-    </div>
+    {pris_tabel_html}
 
     {konkurrent_html}
 
@@ -4816,7 +4837,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     for l in linjer:
         rækker += (
             '<tr>'
-            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a2e">{l.get("beskrivelse","")}</td>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a2e">{l.get("beskrivelse","")} <span style="font-size:10px;color:#9ca3af">{"inkl. moms" if l.get("moms_inkluderet") else "ekskl. moms"}</span></td>'
             f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:center">{l.get("antal","1")} {l.get("enhed","stk")}</td>'
             f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:right">{int(l.get("enhedspris",0)):,} kr.</td>'
             f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#1a1a2e;text-align:right">{int(l.get("total",0)):,} kr.</td>'
@@ -4829,6 +4850,22 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
             f'<td style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(subtotal):,} kr.</td></tr>'
             f'<tr><td colspan="3" style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
             f'<td style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">&#8722;{int(rabat):,} kr.</td></tr>'
+        )
+
+    if has_inkl:
+        std_total_rækker = (
+            (f'<tr style="background:#f9fafb"><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Varer (inkl. moms)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(sum_inkl):,} kr.</td></tr>' if sum_inkl > 0 else '') +
+            (f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Arbejde/kørsel (ekskl. moms)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(sum_ekskl):,} kr.</td></tr>' if sum_ekskl > 0 else '') +
+            (f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms 25% af ydelser</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(moms_beloeb):,} kr.</td></tr>' if moms_beloeb > 0 else '') +
+            rabat_rækker +
+            f'<tr style="background:{accent}"><td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td><td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total):,} kr.</td></tr>'
+        )
+    else:
+        std_total_rækker = (
+            rabat_rækker +
+            f'<tr style="background:#f9fafb"><td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td><td style="padding:14px 16px;font-size:16px;font-weight:900;color:{accent};text-align:right">{int(total):,} kr.</td></tr>'
+            f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms (25%)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(moms_beloeb):,} kr.</td></tr>'
+            f'<tr style="background:{accent}"><td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td><td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total*1.25 if not has_inkl else total):,} kr.</td></tr>'
         )
 
     return f"""<!DOCTYPE html>
@@ -4874,19 +4911,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
           <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:right">Total</th>
         </tr>
         {rækker}
-        {rabat_rækker}
-        <tr style="background:#f9fafb">
-          <td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td>
-          <td style="padding:14px 16px;font-size:16px;font-weight:900;color:{accent};text-align:right">{int(total):,} kr.</td>
-        </tr>
-        <tr>
-          <td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms (25%)</td>
-          <td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(total*0.25):,} kr.</td>
-        </tr>
-        <tr style="background:{accent}">
-          <td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td>
-          <td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total*1.25):,} kr.</td>
-        </tr>
+        {std_total_rækker}
       </table>
     </div>
 
@@ -4937,7 +4962,8 @@ def gem_prispost():
             'beskrivelse': data.get('beskrivelse', ''),
             'enhedspris': float(data.get('enhedspris', 0)),
             'enhed': data.get('enhed', 'stk'),
-            'aktiv': True
+            'aktiv': True,
+            'moms_inkluderet': bool(data.get('moms_inkluderet', False)),
         }
         db.table('priskatalog').insert(post).execute()
         return jsonify({'ok': True, 'id': post['id']})
@@ -5007,9 +5033,10 @@ def generer_tilbud():
         if kat.data:
             linjer = []
             for p in kat.data:
-                linje = f"- {p['navn']}: {int(p['enhedspris']):,} kr. per {p.get('enhed','stk')}"
+                moms_note = 'inkl. moms' if p.get('moms_inkluderet') else 'ekskl. moms'
+                linje = f"- {p['navn']}: {int(p['enhedspris']):,} kr. per {p.get('enhed','stk')} ({moms_note})"
                 if p.get('beskrivelse'):
-                    linje += f" ({p['beskrivelse']})"
+                    linje += f" — {p['beskrivelse']}"
                 linjer.append(linje)
             priskatalog_tekst = '\n'.join(linjer)
     except:
@@ -5224,8 +5251,12 @@ def opdater_tilbud(tilbud_id):
         for l in linjer:
             l['total'] = round(float(l.get('antal', 1)) * float(l.get('enhedspris', 0)), 2)
 
-        subtotal = sum(l.get('total', 0) for l in linjer)
-        total_efter_rabat = max(0, subtotal - rabat)
+        sum_inkl    = sum(l.get('total', 0) for l in linjer if l.get('moms_inkluderet', False))
+        sum_ekskl   = sum(l.get('total', 0) for l in linjer if not l.get('moms_inkluderet', False))
+        has_inkl    = any(l.get('moms_inkluderet', False) for l in linjer)
+        moms_beloeb = round(sum_ekskl * 0.25, 2)
+        total_foer_rabat = sum_inkl + sum_ekskl + moms_beloeb if has_inkl else (sum_ekskl * 1.25)
+        total_efter_rabat = max(0, total_foer_rabat - rabat)
 
         # Fetch klient info for header + branding
         klient_res = db.table('klienter').select('navn,hjemmeside,tilbud_stil,tilbud_farve').eq('id', t['klient_id']).single().execute()

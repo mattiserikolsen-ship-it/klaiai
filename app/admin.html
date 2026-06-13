@@ -1249,6 +1249,7 @@
                     <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);font-size:.72rem">Ydelse / beskrivelse</th>
                     <th style="padding:6px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:.72rem;width:70px">Antal</th>
                     <th style="padding:6px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:.72rem;width:70px">Enhed</th>
+                    <th style="padding:6px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:.72rem;width:72px">Moms</th>
                     <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);font-size:.72rem;width:100px">Enhedspris</th>
                     <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);font-size:.72rem;width:100px">Total</th>
                     <th style="width:32px"></th>
@@ -1354,6 +1355,11 @@
             <div style="grid-column:1/-1">
               <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.25rem">Beskrivelse (valgfrit)</label>
               <input id="pBeskrivelse" class="form-input" placeholder="Kort beskrivelse til AI'en"/>
+            </div>
+            <div style="grid-column:1/-1;display:flex;align-items:center;gap:.5rem;padding:.5rem 0">
+              <input type="checkbox" id="pMomsInkl" style="width:16px;height:16px;cursor:pointer"/>
+              <label for="pMomsInkl" style="font-size:.82rem;font-weight:600;color:var(--text);cursor:pointer">Pris er inkl. moms</label>
+              <span style="font-size:.72rem;color:var(--muted)">(fx produkter/varer — arbejde og kørsel er typisk ekskl.)</span>
             </div>
           </div>
           <div style="display:flex;gap:.65rem;justify-content:flex-end;margin-top:1rem">
@@ -4616,6 +4622,7 @@ function åbnNyPrispost() {
   ['pKategori','pNavn','pBeskrivelse'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('pPris').value = '';
   document.getElementById('pEnhed').value = 'stk';
+  document.getElementById('pMomsInkl').checked = false;
   document.getElementById('prisModal').style.display = 'flex';
 }
 
@@ -4633,7 +4640,8 @@ async function gemPrispost() {
         navn,
         enhedspris: pris,
         enhed: document.getElementById('pEnhed').value,
-        beskrivelse: document.getElementById('pBeskrivelse').value.trim()
+        beskrivelse: document.getElementById('pBeskrivelse').value.trim(),
+        moms_inkluderet: document.getElementById('pMomsInkl').checked,
       })
     });
     if (!res) return;
@@ -4666,7 +4674,10 @@ async function hentPriskatalog() {
               <span style="font-size:.82rem;font-weight:600;color:var(--text)">${p.navn}</span>
               ${p.beskrivelse ? `<span style="font-size:.75rem;color:var(--muted);margin-left:.5rem">${p.beskrivelse}</span>` : ''}
             </div>
-            <div style="font-size:.85rem;font-weight:700;color:var(--accent);flex-shrink:0">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr. / ${p.enhed}</div>
+            <div style="flex-shrink:0;text-align:right">
+              <div style="font-size:.85rem;font-weight:700;color:var(--accent)">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr. / ${p.enhed}</div>
+              <div style="font-size:.68rem;color:var(--muted)">${p.moms_inkluderet ? 'inkl. moms' : 'ekskl. moms'}</div>
+            </div>
             <button onclick="sletPrispost('${p.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:.2rem .4rem;border-radius:4px" title="Slet">✕</button>
           </div>`).join('')}
       </div>`).join('');
@@ -4817,6 +4828,7 @@ function bygEditorTabel() {
       <td style="padding:4px 6px"><input class="form-input" style="font-size:.78rem;padding:.3rem .5rem;width:100%" value="${(l.beskrivelse||'').replace(/"/g,'&quot;')}" oninput="aktivtTilbudLinjer[${i}].beskrivelse=this.value"/></td>
       <td style="padding:4px 6px;width:70px"><input class="form-input" style="font-size:.78rem;padding:.3rem .4rem;text-align:center;width:100%" type="number" min="0.01" step="any" value="${l.antal||1}" oninput="aktivtTilbudLinjer[${i}].antal=parseFloat(this.value)||1;opdaterEditorTotal(${i})"/></td>
       <td style="padding:4px 6px;width:70px"><input class="form-input" style="font-size:.78rem;padding:.3rem .4rem;width:100%" value="${(l.enhed||'stk').replace(/"/g,'&quot;')}" oninput="aktivtTilbudLinjer[${i}].enhed=this.value"/></td>
+      <td style="padding:4px 6px;width:72px;text-align:center"><label style="font-size:.68rem;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center"><input type="checkbox" ${l.moms_inkluderet?'checked':''} onchange="aktivtTilbudLinjer[${i}].moms_inkluderet=this.checked;opdaterEditorSumTotal()"/> inkl.</label></td>
       <td style="padding:4px 6px;width:100px"><input class="form-input" style="font-size:.78rem;padding:.3rem .4rem;text-align:right;width:100%" type="number" min="0" step="any" value="${l.enhedspris||0}" oninput="aktivtTilbudLinjer[${i}].enhedspris=parseFloat(this.value)||0;opdaterEditorTotal(${i})"/></td>
       <td style="padding:4px 8px;width:100px;text-align:right"><span id="editorTotal-${i}" style="font-size:.78rem;font-weight:600;color:var(--accent)">${((parseFloat(l.antal)||1)*(parseFloat(l.enhedspris)||0)).toLocaleString('da-DK')} kr.</span></td>
       <td style="padding:4px 4px;width:32px;text-align:center"><button onclick="sletEditorLinje(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:.2rem">✕</button></td>
@@ -4834,10 +4846,14 @@ function opdaterEditorTotal(i) {
 }
 
 function opdaterEditorSumTotal() {
-  const subtotal = aktivtTilbudLinjer.reduce((s, l) => s + (parseFloat(l.antal)||1)*(parseFloat(l.enhedspris)||0), 0);
-  const rabat = parseFloat(document.getElementById('editorRabat').value) || 0;
-  const total = Math.max(0, subtotal - rabat);
-  document.getElementById('editorSubtotal').textContent = subtotal.toLocaleString('da-DK') + ' kr.';
+  const sum_inkl  = aktivtTilbudLinjer.filter(l => l.moms_inkluderet).reduce((s, l) => s + (parseFloat(l.antal)||1)*(parseFloat(l.enhedspris)||0), 0);
+  const sum_ekskl = aktivtTilbudLinjer.filter(l => !l.moms_inkluderet).reduce((s, l) => s + (parseFloat(l.antal)||1)*(parseFloat(l.enhedspris)||0), 0);
+  const has_inkl  = aktivtTilbudLinjer.some(l => l.moms_inkluderet);
+  const moms      = has_inkl ? sum_ekskl * 0.25 : sum_ekskl * 0.25;
+  const subtotal  = sum_inkl + sum_ekskl;
+  const rabat     = parseFloat(document.getElementById('editorRabat').value) || 0;
+  const total     = Math.max(0, subtotal + moms - rabat);
+  document.getElementById('editorSubtotal').textContent = subtotal.toLocaleString('da-DK') + ' kr. + moms';
   document.getElementById('editorTotalVis').textContent = total.toLocaleString('da-DK') + ' kr.';
 }
 
