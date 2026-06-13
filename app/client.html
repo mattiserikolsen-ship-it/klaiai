@@ -147,6 +147,42 @@
     .activity-sub { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
     .activity-time { font-size: .68rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 
+    /* ── LEAD INDBAKKE ── */
+    .lead-inbox-card {
+      display: flex; align-items: flex-start; gap: .9rem;
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .lead-inbox-card:last-child { border-bottom: none; }
+    .lead-inbox-card:hover { background: #fafaf9; }
+    .lead-inbox-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: #e8f0fe; color: #2563eb;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; flex-shrink: 0;
+    }
+    .lead-inbox-body { flex: 1; min-width: 0; }
+    .lead-inbox-name { font-size: .9rem; font-weight: 700; color: var(--dark); }
+    .lead-inbox-meta { font-size: .78rem; color: var(--muted); margin-top: .1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lead-inbox-besked { font-size: .8rem; color: var(--mid); margin-top: .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lead-inbox-actions { display: flex; gap: .4rem; margin-top: .5rem; flex-wrap: wrap; }
+    .lead-inbox-actions a, .lead-inbox-actions button {
+      display: inline-flex; align-items: center; gap: .25rem;
+      padding: .35rem .75rem; border-radius: 7px; font-size: .75rem; font-weight: 600;
+      text-decoration: none; cursor: pointer; border: none; font-family: inherit;
+      transition: opacity .15s;
+    }
+    .lead-inbox-actions a:hover, .lead-inbox-actions button:hover { opacity: .8; }
+    .lead-inbox-time { font-size: .72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+    .lead-inbox-status {
+      display: inline-block; font-size: .65rem; font-weight: 700; padding: .15rem .45rem;
+      border-radius: 4px; text-transform: uppercase; letter-spacing: .5px; margin-left: .35rem;
+    }
+    @media (max-width: 640px) {
+      .lead-inbox-actions { margin-top: .4rem; }
+      .lead-inbox-card { padding: .85rem 1rem; }
+    }
+
     /* ── WELCOME ── */
     .welcome-card {
       background: var(--dark); color: #fff;
@@ -306,6 +342,24 @@
     }
     .gap-answer-input:focus { border-color:var(--dark); }
 
+    /* ── CRM MODAL ── */
+    .crm-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto; }
+    .crm-overlay.open { display:flex; }
+    .crm-panel { background:#fff;border-radius:16px;width:620px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25); }
+    .crm-header { padding:1.5rem 1.75rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1; }
+    .crm-section { padding:1.25rem 1.75rem;border-bottom:1px solid var(--border); }
+    .crm-section:last-child { border-bottom:none; }
+    .crm-section-title { font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:.85rem; }
+    .crm-row { display:flex;align-items:flex-start;gap:.75rem;padding:.65rem 0;border-bottom:1px solid var(--border); }
+    .crm-row:last-child { border-bottom:none; }
+    .crm-row-icon { width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0; }
+    .crm-row-body { flex:1;min-width:0; }
+    .crm-row-title { font-size:.85rem;font-weight:600;color:var(--dark); }
+    .crm-row-sub { font-size:.75rem;color:var(--muted);margin-top:.1rem; }
+    .crm-stat { text-align:center; }
+    .crm-stat-num { font-size:1.5rem;font-weight:900;color:var(--dark);letter-spacing:-1px; }
+    .crm-stat-label { font-size:.68rem;color:var(--muted);margin-top:.1rem; }
+
     /* ── TILBUD MODAL ── */
     .tilbud-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center; }
     .tilbud-modal-overlay.open { display:flex; }
@@ -417,6 +471,21 @@
     <!-- OVERBLIK -->
     <div id="view-overblik">
 
+      <!-- LEAD INDBAKKE -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.25rem" id="leadIndbakkeCard">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="card-title" style="margin:0">Nye leads</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">De seneste henvendelser — ring eller send tilbud direkte</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span id="leadIndbakkeBadge" class="hidden" style="background:#c0392b;color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:6px"></span>
+            <button onclick="showView('leads')" style="background:transparent;border:1px solid var(--border);color:var(--mid);padding:.35rem .8rem;border-radius:7px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se alle →</button>
+          </div>
+        </div>
+        <div id="leadIndbakke"><div class="loading" style="padding:1.5rem">Henter leads...</div></div>
+      </div>
+
       <!-- ROI CARD -->
       <div class="roi-card" id="roiCard" style="display:none">
         <div class="roi-grid">
@@ -450,7 +519,7 @@
         </div>
       </div>
 
-      <!-- STATS (vises mens ROI hentes) -->
+      <!-- STATS (vises når ingen ROI data) -->
       <div class="stats-row" id="ovStatsRow">
         <div class="stat-card">
           <div class="stat-num" id="ovLeads">—</div>
@@ -504,6 +573,20 @@
           <span id="bookingCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
         <div id="bookingList"><div class="loading">Henter bookinger...</div></div>
+      </div>
+    </div>
+
+    <!-- CRM KUNDE MODAL -->
+    <div class="crm-overlay" id="crmOverlay" onclick="if(event.target===this)lukCRM()">
+      <div class="crm-panel">
+        <div class="crm-header">
+          <div>
+            <div style="font-size:1.05rem;font-weight:800;color:var(--dark)" id="crmNavn">—</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:.1rem" id="crmEmail">—</div>
+          </div>
+          <button onclick="lukCRM()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.4rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;font-weight:600">✕ Luk</button>
+        </div>
+        <div id="crmIndhold"><div class="loading" style="padding:3rem">Henter kundedata...</div></div>
       </div>
     </div>
 
@@ -999,6 +1082,9 @@ async function loadOverblik() {
       document.getElementById('ovBookinger').textContent = roi.bookinger_i_alt ?? '—';
     }
 
+    // Lead indbakke
+    renderLeadIndbakke(d.leads_recent || []);
+
     // Aktivitetsfeed
     renderAktivitetFeed(d.aktivitet || []);
 
@@ -1018,6 +1104,52 @@ function relTid(isoStr) {
   if (diff < 86400) return `${Math.floor(diff/3600)} t siden`;
   const d = new Date(isoStr);
   return d.toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+}
+
+const LEAD_STATUS_MAP = {
+  ny:        { label: 'Ny',        bg: '#f3f4f6', color: '#6b7280' },
+  kontaktet: { label: 'Kontaktet', bg: '#e0f2fe', color: '#0a5c8a' },
+  møde:      { label: 'Møde',      bg: '#ede9fe', color: '#7c3aed' },
+  lukket:    { label: 'Kunde',     bg: '#dcfce7', color: '#16a34a' },
+};
+
+function renderLeadIndbakke(leads) {
+  const el = document.getElementById('leadIndbakke');
+  const badge = document.getElementById('leadIndbakkeBadge');
+  if (!leads.length) {
+    el.innerHTML = '<div style="padding:1.5rem 1.25rem;text-align:center;color:var(--muted);font-size:.85rem">Ingen leads endnu — de dukker op her når kunder kontakter dig.</div>';
+    badge.classList.add('hidden');
+    return;
+  }
+  // Tæl nye (status=ny)
+  const nyeAntal = leads.filter(l => (l.status || 'ny') === 'ny').length;
+  if (nyeAntal > 0) {
+    badge.textContent = nyeAntal + ' ny' + (nyeAntal > 1 ? 'e' : '');
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+  el.innerHTML = leads.map(l => {
+    const initialer = (l.navn || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+    const st = LEAD_STATUS_MAP[l.status] || LEAD_STATUS_MAP.ny;
+    const statusBadge = `<span class="lead-inbox-status" style="background:${st.bg};color:${st.color}">${st.label}</span>`;
+    const ringKnap = l.telefon
+      ? `<a href="tel:${l.telefon}" style="background:#f0fdf4;color:#16a34a">📞 Ring</a>`
+      : '';
+    const tilbudKnap = `<button onclick="showView('tilbud')" style="background:#f0f4ff;color:#2563eb">📄 Send tilbud</button>`;
+    const crmKnap = `<button onclick="åbnCRM('${l.email || ''}','${(l.navn||'').replace(/'/g,"\\'")}');" style="background:var(--bg);color:var(--mid);border:1px solid var(--border)">Historie</button>`;
+    const kontakt = l.telefon ? `📞 ${l.telefon}` : (l.email || '');
+    return `<div class="lead-inbox-card">
+      <div class="lead-inbox-avatar">${initialer}</div>
+      <div class="lead-inbox-body">
+        <div class="lead-inbox-name">${l.navn || '—'}${statusBadge}</div>
+        <div class="lead-inbox-meta">${kontakt}</div>
+        ${l.besked ? `<div class="lead-inbox-besked">"${l.besked}"</div>` : ''}
+        <div class="lead-inbox-actions">${ringKnap}${tilbudKnap}${crmKnap}</div>
+      </div>
+      <div class="lead-inbox-time">${relTid(l.oprettet)}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderAktivitetFeed(events) {
@@ -1097,7 +1229,7 @@ function leadHTML(l, kort = false) {
     <div class="lead-avatar">${initials}</div>
     <div class="lead-body">
       <div class="lead-name">
-        ${l.navn || '—'}
+        <span onclick="if('${l.email}')åbnCRM('${l.email}','${(l.navn||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${l.navn || '—'}</span>
         ${erKontaktet ? `<span class="badge badge-green">✓ Kontaktet</span>` : ''}
       </div>
       <div class="lead-contact">${[l.email, l.telefon, l.virksomhed].filter(Boolean).join(' · ')}</div>
@@ -1304,7 +1436,7 @@ function renderTilbud() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:.2rem">${t.titel || 'Tilbud'}</div>
-          <div style="font-size:.78rem;color:var(--muted)">${t.kunde_navn || '—'}${t.kunde_email ? ' · ' + t.kunde_email : ''}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
+          <div style="font-size:.78rem;color:var(--muted)"><span onclick="if('${t.kunde_email}')åbnCRM('${t.kunde_email}','${(t.kunde_navn||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${t.kunde_navn || '—'}</span>${t.kunde_email ? ' · ' + t.kunde_email : ''}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
           ${t.status === 'accepteret' && godkendtDato ? `<div style="font-size:.75rem;color:#15803d;margin-top:.3rem;font-weight:600">✓ Accepteret ${godkendtDato}</div>` : ''}
           ${sendtDato && t.status !== 'accepteret' ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Sendt ${sendtDato}</div>` : ''}
         </div>
@@ -1589,6 +1721,112 @@ async function markerGapLøst(idx, gapId) {
     gapsData = gapsData.filter((_, i) => i !== idx);
     setTimeout(() => renderGaps(), 600);
   } catch(e) {}
+}
+
+// ── CRM / KUNDEHISTORIK ────────────────────────────────────────────
+function åbnCRM(email, navn) {
+  document.getElementById('crmNavn').textContent = navn || email;
+  document.getElementById('crmEmail').textContent = email;
+  document.getElementById('crmIndhold').innerHTML = '<div class="loading" style="padding:3rem">Henter kundedata...</div>';
+  document.getElementById('crmOverlay').classList.add('open');
+  hentCRMData(email);
+}
+
+function lukCRM() {
+  document.getElementById('crmOverlay').classList.remove('open');
+}
+
+async function hentCRMData(email) {
+  try {
+    const encoded = encodeURIComponent(email);
+    const res = await fetch(`${API}/portal/kunde/${CLIENT_ID}/${encoded}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    if (!res.ok) { document.getElementById('crmIndhold').innerHTML = '<div class="empty" style="padding:2rem">Kunne ikke hente data.</div>'; return; }
+    const d = await res.json();
+    renderCRM(d);
+  } catch(e) {
+    document.getElementById('crmIndhold').innerHTML = '<div class="empty" style="padding:2rem">Netværksfejl.</div>';
+  }
+}
+
+function renderCRM(d) {
+  const leads = d.leads || [];
+  const tilbud = d.tilbud || [];
+  const bookinger = d.bookinger || [];
+  const accepteret = d.total_tilbud_accepteret || 0;
+
+  document.getElementById('crmNavn').textContent = d.navn || d.email;
+
+  let html = '';
+
+  // Stats øverst
+  html += `<div class="crm-section">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem">
+      <div class="crm-stat"><div class="crm-stat-num">${leads.length}</div><div class="crm-stat-label">Leads</div></div>
+      <div class="crm-stat"><div class="crm-stat-num">${tilbud.length}</div><div class="crm-stat-label">Tilbud</div></div>
+      <div class="crm-stat"><div class="crm-stat-num">${bookinger.length}</div><div class="crm-stat-label">Bookinger</div></div>
+      <div class="crm-stat"><div class="crm-stat-num" style="color:var(--green)">${accepteret > 0 ? accepteret.toLocaleString('da-DK') + ' kr' : '—'}</div><div class="crm-stat-label">Accepteret</div></div>
+    </div>
+  </div>`;
+
+  // Tilbud
+  if (tilbud.length) {
+    html += `<div class="crm-section"><div class="crm-section-title">Tilbud</div>`;
+    tilbud.forEach(t => {
+      const statusFarve = { accepteret: ['#15803d','#f0fdf4'], sendt: ['#1d4ed8','#eff6ff'], udkast: ['#6b7280','#f3f4f6'], afvist: ['#991b1b','#fef2f2'] };
+      const [fc, bc] = statusFarve[t.status] || ['#6b7280','#f3f4f6'];
+      const dato = t.oprettet ? new Date(t.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', year:'numeric' }) : '';
+      const pris = t.total_pris ? t.total_pris.toLocaleString('da-DK') + ' kr' : '';
+      html += `<div class="crm-row">
+        <div class="crm-row-icon" style="background:${bc};color:${fc}">📄</div>
+        <div class="crm-row-body">
+          <div class="crm-row-title">${t.titel || 'Tilbud'}${pris ? ' — ' + pris : ''}</div>
+          <div class="crm-row-sub">${dato} · <span style="color:${fc};font-weight:600">${t.status}</span></div>
+        </div>
+        <button onclick="åbnTilbud('${t.id}')" style="font-size:.72rem;padding:.3rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap">Se →</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Leads
+  if (leads.length) {
+    html += `<div class="crm-section"><div class="crm-section-title">Leads</div>`;
+    leads.forEach(l => {
+      const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', year:'numeric' }) : '';
+      html += `<div class="crm-row">
+        <div class="crm-row-icon" style="background:#eff6ff;color:#1d4ed8">◎</div>
+        <div class="crm-row-body">
+          <div class="crm-row-title">${l.navn || '—'}</div>
+          <div class="crm-row-sub">${dato}${l.besked ? ' · "' + l.besked.slice(0,80) + (l.besked.length > 80 ? '…' : '') + '"' : ''}</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Bookinger
+  if (bookinger.length) {
+    html += `<div class="crm-section"><div class="crm-section-title">Bookinger</div>`;
+    bookinger.forEach(b => {
+      const dato = b.dato || '';
+      html += `<div class="crm-row">
+        <div class="crm-row-icon" style="background:#f5f3ff;color:#7c3aed">▦</div>
+        <div class="crm-row-body">
+          <div class="crm-row-title">${b.navn || '—'}${b.ydelse ? ' · ' + b.ydelse : ''}</div>
+          <div class="crm-row-sub">${dato}${b.tid ? ' kl. ' + b.tid : ''}</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (!leads.length && !tilbud.length && !bookinger.length) {
+    html += `<div class="crm-section"><div class="empty" style="padding:2rem">Ingen historik fundet for denne email.</div></div>`;
+  }
+
+  document.getElementById('crmIndhold').innerHTML = html;
 }
 
 // ── RAPPORT ────────────────────────────────────────────

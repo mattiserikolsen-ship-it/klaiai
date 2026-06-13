@@ -196,6 +196,7 @@ CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
+GATEWAYAPI_TOKEN = os.environ.get('GATEWAYAPI_TOKEN', '')
 
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
@@ -387,6 +388,19 @@ Interesse: {lead_besked}
 Log ind på admin-panelet for at se detaljer:
 https://klaiai.onrender.com/app/admin.html"""
         send_mail(ADMIN_EMAIL, emne_admin, tekst_admin, 'NexOlsen')
+
+    # Send SMS-notifikation til klient
+    if GATEWAYAPI_TOKEN:
+        try:
+            k_sms = db.table('klienter').select('telefon,sms_aktiv').eq('id', klient_id).single().execute()
+            if k_sms.data and k_sms.data.get('sms_aktiv') and k_sms.data.get('telefon'):
+                sms = f"Nyt lead: {lead_navn}"
+                if lead_tlf: sms += f" · {lead_tlf}"
+                elif lead_email: sms += f" · {lead_email}"
+                if lead_besked: sms += f"\n{lead_besked[:60]}"
+                send_sms(k_sms.data['telefon'], sms)
+        except Exception as _e:
+            print(f"SMS-notif fejl: {_e}")
 
     # Send automatisk bekræftelses-email til leaden
     if SENDGRID_API_KEY and lead_email and '@' in lead_email:
@@ -801,6 +815,34 @@ def send_mail(til, emne, tekst, fra_navn, html_content=None):
         return False
 
 
+def send_sms(til_nummer, besked):
+    """Sender SMS via GatewayAPI (dansk SMS-gateway, ingen ekstra pakker)."""
+    if not GATEWAYAPI_TOKEN or not til_nummer:
+        return False
+    try:
+        nummer = ''.join(c for c in str(til_nummer) if c.isdigit())
+        if len(nummer) == 8:
+            nummer = '45' + nummer
+        if len(nummer) < 10:
+            return False
+        import requests as _req
+        resp = _req.post(
+            'https://gatewayapi.com/rest/mtsms',
+            auth=(GATEWAYAPI_TOKEN, ''),
+            json={
+                'sender': 'NexOlsen',
+                'message': besked[:160],
+                'recipients': [{'msisdn': int(nummer)}]
+            },
+            timeout=10
+        )
+        print(f"SMS sendt til {nummer}: {resp.status_code}")
+        return resp.status_code in [200, 201, 202]
+    except Exception as e:
+        print(f"SMS fejl: {e}")
+        return False
+
+
 # ── BOOKING ENDPOINTS ──────────────────────────────────
 
 @app.route('/booking-link/<klient_id>', methods=['GET'])
@@ -943,6 +985,21 @@ Vi glæder os til at se dig. Har du spørgsmål, er du altid velkommen til at ko
 Med venlig hilsen
 {klient_navn}"""
         send_mail(booking['email'], emne, tekst, klient_navn)
+
+    # Send SMS-notifikation til klient
+    if GATEWAYAPI_TOKEN:
+        try:
+            k_sms = db.table('klienter').select('telefon,sms_aktiv').eq('id', klient_id).single().execute()
+            if k_sms.data and k_sms.data.get('sms_aktiv') and k_sms.data.get('telefon'):
+                dato_vis = booking.get('dato', '')
+                tid_vis = booking.get('tid', '')
+                navn_vis = booking.get('navn', '—')
+                tlf_vis = booking.get('telefon', '')
+                sms = f"Ny booking: {navn_vis} · {dato_vis} {tid_vis}"
+                if tlf_vis: sms += f" · {tlf_vis}"
+                send_sms(k_sms.data['telefon'], sms)
+        except Exception as _e:
+            print(f"SMS-booking fejl: {_e}")
 
     return jsonify({'success': True, 'booking': booking.get('navn')})
 
@@ -4488,59 +4545,151 @@ Mvh {klient_navn}"""
         print(f"❌ Fejl i anmeldelse_agent: {e}")
 
 
+def _byg_followup_html(fra_navn, klient_hjemmeside, kunde_navn, titel, accept_knap, trin, total_pris=0):
+    """Bygger en professionel opfølgnings-email — 3 varianter baseret på trin (1/2/3)"""
+    fornavn = kunde_navn.split()[0] if kunde_navn else 'der'
+    pris_str = f'{int(total_pris):,} kr.'.replace(',', '.') if total_pris else ''
+
+    if trin == 1:
+        emne_linje = f'Har du haft mulighed for at kigge på tilbuddet, {fornavn}?'
+        indhold = f"""
+    <div style="font-size:22px;font-weight:800;color:#111;letter-spacing:-.5px;margin-bottom:18px;line-height:1.3">Hej {fornavn},<br>nåede tilbuddet frem?</div>
+    <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
+      Vi sendte dig et tilbud på <strong>{titel}</strong> for et par dage siden, og ville høre om du har haft mulighed for at kigge på det.
+    </div>
+    <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
+      Har du spørgsmål til prisen, tidsplanen eller indholdet, er du meget velkommen til at svare direkte på denne mail — vi justerer gerne.
+    </div>
+    {f'<div style="background:#f8faff;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#374151"><strong>Tilbudets total:</strong> {pris_str}</div>' if pris_str else ''}"""
+    elif trin == 2:
+        emne_linje = f'{fornavn} — tilbuddet gælder stadig, og vi er klar'
+        indhold = f"""
+    <div style="font-size:22px;font-weight:800;color:#111;letter-spacing:-.5px;margin-bottom:18px;line-height:1.3">Tilbuddet gælder stadig, {fornavn}</div>
+    <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
+      Vi vil ikke forstyrre dig — men vi er nødt til at minde dig om at vores tilbud på <strong>{titel}</strong> stadig er åbent og klar til at gå i gang.
+    </div>
+    <div style="background:#f0fdf4;border-radius:10px;padding:18px 20px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:8px">Hvorfor vælge os?</div>
+      <div style="font-size:13px;color:#166534;line-height:1.7">
+        ✓ &nbsp;Professionel udførelse med garanti<br>
+        ✓ &nbsp;Hurtig opstart — vi er klar inden for kort tid<br>
+        ✓ &nbsp;Alt inkluderet i tilbuddet, ingen skjulte priser
+      </div>
+    </div>
+    <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
+      Klik nedenfor for at godkende — så kontakter vi dig med det samme for at aftale opstart.
+    </div>"""
+    else:
+        emne_linje = f'Sidste chance, {fornavn} — vi lukker tilbuddet om lidt'
+        indhold = f"""
+    <div style="font-size:22px;font-weight:800;color:#111;letter-spacing:-.5px;margin-bottom:18px;line-height:1.3">Hej {fornavn},<br>dette er vores sidste besked</div>
+    <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
+      Vi har sendt dig et tilbud på <strong>{titel}</strong>, og vi har forsøgt at følge op et par gange.
+    </div>
+    <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
+      Vi forstår at tidspunktet måske ikke er det rette nu — og det er fuldstændig okay. Tilbuddet er stadig gyldigt hvis du ønsker at gå videre.
+    </div>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:#92400e">
+      <strong>Bemærk:</strong> Vi vil ikke sende dig flere mails om dette tilbud herefter. Du er altid velkommen til at kontakte os direkte.
+    </div>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="da"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:40px 20px">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px">
+
+  <!-- HEADER -->
+  <tr><td style="background:linear-gradient(135deg,#0a1a3a 0%,#1e3a6e 100%);border-radius:14px 14px 0 0;padding:28px 40px">
+    <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-.3px">{fra_navn}</div>
+    {f'<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px">{klient_hjemmeside}</div>' if klient_hjemmeside else ''}
+    <div style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px">Opfølgning · {titel}</div>
+  </td></tr>
+
+  <!-- BODY -->
+  <tr><td style="background:#ffffff;padding:36px 40px">
+    {indhold}
+    {accept_knap}
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#f8f9fa;border-radius:0 0 14px 14px;padding:20px 40px;text-align:center;border-top:1px solid #e9ecef">
+    <div style="font-size:12px;color:#9ca3af;line-height:1.7">
+      Du modtager denne mail fordi du har modtaget et tilbud fra {fra_navn}.<br>
+      Svar blot på denne mail hvis du har spørgsmål.
+    </div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>""", emne_linje
+
+
 def kør_tilbud_followup():
-    """Sender automatisk opfølgning på tilbud der ikke er besvaret inden 5 dage"""
+    """3-trins automatisk opfølgningssekvens på ubesvarede tilbud"""
     if not db:
         return
     from datetime import datetime, timedelta
-    deadline = (datetime.now() - timedelta(days=5)).isoformat()
+    nu = datetime.now()
     try:
-        res = db.table('tilbud').select('*').eq('status', 'sendt').eq('followup_sendt', False).lt('sendt_dato', deadline).execute()
+        res = db.table('tilbud').select('*').eq('status', 'sendt').execute()
     except Exception as e:
         print(f'Tilbud followup DB fejl: {e}')
         return
 
     for t in (res.data or []):
         try:
+            kunde_email = t.get('kunde_email', '')
+            if not kunde_email or '@' not in kunde_email:
+                continue
+            sendt_dato_str = t.get('sendt_dato') or t.get('oprettet', '')
+            if not sendt_dato_str:
+                continue
+
+            # Parse dato
+            try:
+                sendt = datetime.fromisoformat(sendt_dato_str.replace('Z', '+00:00')).replace(tzinfo=None)
+            except:
+                continue
+
+            dage_siden = (nu - sendt).days
+            followup_nr = t.get('followup_nr', 0) or 0  # 0=ingen sendt, 1=første sendt, osv
+
+            # Trin 1: dag 3 · Trin 2: dag 7 · Trin 3: dag 14
+            skema = {1: 3, 2: 7, 3: 14}
+            næste_trin = followup_nr + 1
+            if næste_trin not in skema:
+                continue
+            if dage_siden < skema[næste_trin]:
+                continue
+
             k = db.table('klienter').select('navn,hjemmeside').eq('id', t['klient_id']).single().execute()
             klient = k.data or {}
             fra_navn = klient.get('navn', 'Virksomheden')
+            klient_hjemmeside = klient.get('hjemmeside', '')
             kunde_navn  = t.get('kunde_navn', '')
-            kunde_email = t.get('kunde_email', '')
             titel       = t.get('titel', 'Tilbud')
+            total_pris  = t.get('total_pris', 0) or 0
             accept_token = t.get('accept_token', '')
-            if not kunde_email or '@' not in kunde_email:
-                continue
 
             accept_url = f'{SERVER_URL}/tilbud/godkend/{t["id"]}/{accept_token}' if accept_token else ''
             accept_knap = (
-                f'<div style="text-align:center;margin:24px 0">'
-                f'<a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 32px;border-radius:8px">✓ Godkend tilbud</a>'
+                f'<div style="text-align:center;margin:28px 0">'
+                f'<a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 40px;border-radius:10px;letter-spacing:.3px">&#10003;&nbsp; Godkend tilbud</a>'
+                f'<div style="font-size:11px;color:#9ca3af;margin-top:10px">Klik for at acceptere tilbuddet digitalt og bindende</div>'
                 f'</div>'
             ) if accept_url else ''
 
-            followup_html = f"""<!DOCTYPE html>
-<html lang="da"><head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:0;background:#f7f8fc;font-family:'Helvetica Neue',Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">
-  <tr><td style="background:#0a1a3a;padding:22px 36px"><div style="font-size:17px;font-weight:700;color:#fff">{fra_navn}</div></td></tr>
-  <tr><td style="padding:32px 36px">
-    <div style="font-size:21px;font-weight:700;color:#111;margin-bottom:14px">Hej {kunde_navn.split()[0] if kunde_navn else 'der'},</div>
-    <div style="font-size:14px;color:#374151;line-height:1.8;margin-bottom:16px">Vi ville blot følge op på tilbuddet vi sendte dig vedrørende <strong>{titel}</strong>.</div>
-    <div style="font-size:14px;color:#374151;line-height:1.8;margin-bottom:16px">Har du haft mulighed for at kigge på det? Vi er klar til at svare på spørgsmål eller justere tilbuddet efter dine ønsker.</div>
-    {accept_knap}
-  </td></tr>
-  <tr><td style="background:#f9fafb;padding:18px 36px;text-align:center;border-top:1px solid #f0f0f0">
-    <div style="font-size:12px;color:#9ca3af">{fra_navn} · Vi ser frem til at høre fra dig</div>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>"""
+            html, emne = _byg_followup_html(fra_navn, klient_hjemmeside, kunde_navn, titel, accept_knap, næste_trin, total_pris)
 
-            send_mail(kunde_email, f'Opfølgning: {titel}', f'Hej {kunde_navn},\n\nVi ville følge op på tilbuddet vi sendte dig.', fra_navn=fra_navn, html_content=followup_html)
-            db.table('tilbud').update({'followup_sendt': True, 'followup_dato': datetime.now().isoformat()}).eq('id', t['id']).execute()
-            print(f'Tilbud followup sendt til {kunde_email}')
+            send_mail(kunde_email, emne, f'Opfølgning på dit tilbud fra {fra_navn}', fra_navn=fra_navn, html_content=html)
+            db.table('tilbud').update({
+                'followup_sendt': True,
+                'followup_dato': nu.isoformat(),
+                'followup_nr': næste_trin
+            }).eq('id', t['id']).execute()
+            print(f'Tilbud followup trin {næste_trin} sendt til {kunde_email}')
         except Exception as e:
             print(f'Tilbud followup fejl ({t.get("id")}): {e}')
 
@@ -5277,7 +5426,7 @@ def portal_overblik(klient_id):
         roi_faktor = round(roi_måned / abo_pris, 1) if abo_pris > 0 else 0
 
         # Leads
-        leads_res = db.table('leads').select('id,navn,oprettet,kilde,email').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
+        leads_res = db.table('leads').select('id,navn,telefon,email,besked,status,oprettet,kilde').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
         leads_alle = leads_res.data or []
         leads_måned = [l for l in leads_alle if l.get('oprettet', '') >= maaned_start]
 
@@ -5342,7 +5491,20 @@ def portal_overblik(klient_id):
 
         events.sort(key=lambda e: e.get('tid', ''), reverse=True)
 
+        leads_recent = []
+        for l in leads_alle[:6]:
+            leads_recent.append({
+                'id': l.get('id', ''),
+                'navn': l.get('navn', '—'),
+                'telefon': l.get('telefon', ''),
+                'email': l.get('email', ''),
+                'besked': (l.get('besked') or '')[:80],
+                'status': l.get('status', 'ny'),
+                'oprettet': l.get('oprettet', '')
+            })
+
         return jsonify({
+            'leads_recent': leads_recent,
             'roi': {
                 'abo_pris': abo_pris,
                 'accepteret_maaned': roi_måned,
@@ -5828,6 +5990,44 @@ def opdater_tilbud_status(tilbud_id):
     try:
         db.table('tilbud').update({'status': ny_status}).eq('id', tilbud_id).execute()
         return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/portal/kunde/<klient_id>/<kunde_email_encoded>', methods=['GET'])
+@require_token
+def portal_kunde_historik(klient_id, kunde_email_encoded):
+    """Klientportal: al historik for én kunde (leads + tilbud + bookinger)"""
+    import urllib.parse
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not db:
+        return jsonify({})
+
+    kunde_email = urllib.parse.unquote(kunde_email_encoded)
+    try:
+        leads_res = db.table('leads').select('*').eq('klient_id', klient_id).eq('email', kunde_email).order('oprettet', desc=True).execute()
+        tilbud_res = db.table('tilbud').select('id,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato').eq('klient_id', klient_id).eq('kunde_email', kunde_email).order('oprettet', desc=True).execute()
+        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).eq('email', kunde_email).order('oprettet', desc=True).execute()
+
+        leads = leads_res.data or []
+        tilbud = tilbud_res.data or []
+        bookinger = book_res.data or []
+
+        # Navn fra første fund
+        navn = (leads[0].get('navn') if leads else None) or (tilbud[0].get('kunde_navn') if tilbud else None) or kunde_email
+
+        return jsonify({
+            'navn': navn,
+            'email': kunde_email,
+            'leads': leads,
+            'tilbud': tilbud,
+            'bookinger': bookinger,
+            'total_tilbud_accepteret': sum(t.get('total_pris', 0) or 0 for t in tilbud if t.get('status') == 'accepteret')
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
