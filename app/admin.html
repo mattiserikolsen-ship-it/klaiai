@@ -901,6 +901,7 @@
         <div class="tab" data-tab="leadmails" onclick="switchTab('leadmails')">📧 Leadmails <span id="mailBadge" class="hidden" style="background:var(--red);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
         <div class="tab" data-tab="insights" onclick="switchTab('insights')" style="color:var(--purple)">🧠 AI Insights</div>
         <div class="tab" data-tab="live" onclick="switchTab('live')" style="color:#059669">📡 Live</div>
+        <div class="tab" data-tab="tilbud" onclick="switchTab('tilbud')" style="color:#7c3aed">📄 Tilbud-AI</div>
       </div>
 
       <!-- Tab: Overblik -->
@@ -1164,6 +1165,77 @@
         <div class="card" style="padding:1.1rem">
           <div style="font-size:.82rem;font-weight:700;margin-bottom:.85rem">⚡ Agent aktivitet</div>
           <div id="cockpitLog" style="font-size:.78rem;color:var(--muted)">Indlæser...</div>
+        </div>
+      </div>
+
+      <!-- Tab: Tilbud-AI -->
+      <div id="tab-tilbud" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div>
+            <div style="font-size:.88rem;font-weight:700;margin-bottom:.2rem">📄 Tilbud-AI</div>
+            <div style="font-size:.75rem;color:var(--muted)">Generer professionelle tilbud med AI og konkurrentanalyse</div>
+          </div>
+          <button class="btn btn-generate btn-sm" onclick="åbnNytTilbud()">+ Nyt tilbud</button>
+        </div>
+
+        <!-- Tilbud liste -->
+        <div id="tilbudListe" style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.5rem">
+          <div style="color:var(--muted);font-size:.82rem;text-align:center;padding:2rem">Henter tilbud...</div>
+        </div>
+
+        <!-- Preview panel -->
+        <div id="tilbudPreviewPanel" class="hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div style="font-size:.85rem;font-weight:700">Forhåndsvisning</div>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-secondary btn-sm" onclick="lukTilbudPreview()">✕ Luk</button>
+              <button class="btn btn-success btn-sm" id="sendTilbudBtn" onclick="sendAktivtTilbud()">✉ Send til kunde</button>
+            </div>
+          </div>
+          <div id="tilbudPreviewIframe" style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;height:600px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <!-- Tilbud modal -->
+      <div id="tilbudModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:16px;padding:2rem;width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+          <div style="font-size:1rem;font-weight:800;color:var(--text);margin-bottom:1.5rem">✨ Generer nyt tilbud med AI</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Kundenavn *</label>
+              <input id="tKundeNavn" class="form-input" placeholder="Fx. Lars Nielsen"/>
+            </div>
+            <div>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Kunde email *</label>
+              <input id="tKundeEmail" class="form-input" type="email" placeholder="lars@firma.dk"/>
+            </div>
+          </div>
+
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Beskriv opgaven / kundens behov *</label>
+            <textarea id="tOpgave" class="form-input" rows="4" placeholder="Fx: Kunden ønsker installation af 5x3m pool med varmepumpe og filtersystem. Har en have på ca. 200m² i Horsens. Budget ca. 80.000 kr..."></textarea>
+          </div>
+
+          <div style="margin-bottom:1rem">
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Ekstra noter (valgfrit)</label>
+            <input id="tNoter" class="form-input" placeholder="Fx: Kunden har haft kontakt tidligere, særlige ønsker..."/>
+          </div>
+
+          <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;padding:12px 14px;margin-bottom:1.25rem;display:flex;align-items:flex-start;gap:.75rem">
+            <input type="checkbox" id="tKonkurrent" style="width:16px;height:16px;margin-top:2px;flex-shrink:0;cursor:pointer" checked/>
+            <div>
+              <label for="tKonkurrent" style="font-size:.82rem;font-weight:700;color:#3b4eb8;cursor:pointer">🔍 Kør konkurrentanalyse</label>
+              <div style="font-size:.75rem;color:#6b7280;margin-top:2px">AI søger på markedet og analyserer konkurrenters priser og positionering — tager ca. 10 sek. ekstra</div>
+            </div>
+          </div>
+
+          <div id="tilbudGenStatus" style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem;display:none">⏳ Genererer tilbud...</div>
+
+          <div style="display:flex;gap:.75rem;justify-content:flex-end">
+            <button class="btn btn-secondary" onclick="lukTilbudModal()">Annuller</button>
+            <button class="btn btn-generate" onclick="genererTilbud()">✨ Generer tilbud</button>
+          </div>
         </div>
       </div>
 
@@ -1967,7 +2039,7 @@ function showView(v) {
 }
 
 function switchTab(t) {
-  ['overview','products','agents','tasks','chatbot-test','chat','leadmails','insights','live'].forEach(id => {
+  ['overview','products','agents','tasks','chatbot-test','chat','leadmails','insights','live','tilbud'].forEach(id => {
     document.getElementById('tab-'+id)?.classList.add('hidden');
   });
   document.getElementById('tab-'+t)?.classList.remove('hidden');
@@ -1982,6 +2054,7 @@ function switchTab(t) {
   if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
   if (t === 'live' && currentClient) loadCockpit();
+  if (t === 'tilbud' && currentClient) hentTilbudListe();
 }
 
 // ── LEAD MAILS ────────────────────────────────────────
@@ -4268,7 +4341,185 @@ function tidsAgo(isoStr) {
   } catch(e) { return ''; }
 }
 
-/// ── INIT: Load klienter fra Supabase ──────────────────
+/// ══════════════════════════════════════════════════════
+// TILBUD-AI
+// ══════════════════════════════════════════════════════
+let aktivtTilbudId = null;
+
+function åbnNytTilbud() {
+  document.getElementById('tKundeNavn').value = '';
+  document.getElementById('tKundeEmail').value = '';
+  document.getElementById('tOpgave').value = '';
+  document.getElementById('tNoter').value = '';
+  document.getElementById('tKonkurrent').checked = true;
+  document.getElementById('tilbudGenStatus').style.display = 'none';
+  document.getElementById('tilbudModal').style.display = 'flex';
+}
+
+function lukTilbudModal() {
+  document.getElementById('tilbudModal').style.display = 'none';
+}
+
+function lukTilbudPreview() {
+  document.getElementById('tilbudPreviewPanel').classList.add('hidden');
+  aktivtTilbudId = null;
+}
+
+async function genererTilbud() {
+  const kundeNavn  = document.getElementById('tKundeNavn').value.trim();
+  const kundeEmail = document.getElementById('tKundeEmail').value.trim();
+  const opgave     = document.getElementById('tOpgave').value.trim();
+  const noter      = document.getElementById('tNoter').value.trim();
+  const konkurrent = document.getElementById('tKonkurrent').checked;
+
+  if (!kundeNavn || !kundeEmail || !opgave) {
+    alert('Udfyld kundenavn, email og opgavebeskrivelse');
+    return;
+  }
+
+  const statusEl = document.getElementById('tilbudGenStatus');
+  statusEl.style.display = 'block';
+  statusEl.textContent = konkurrent
+    ? '⏳ Genererer tilbud og analyserer markedet... (15-20 sek.)'
+    : '⏳ Genererer tilbud... (5-10 sek.)';
+
+  try {
+    const res = await apiFetch(AGENT_URL + '/tilbud/generer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        klient_id: currentClient.id,
+        kunde_navn: kundeNavn,
+        kunde_email: kundeEmail,
+        opgave,
+        noter,
+        konkurrent_analyse: konkurrent
+      })
+    });
+    if (!res) return;
+    const data = await res.json();
+    if (!data.ok) { alert(data.error || 'Fejl ved generering'); statusEl.style.display = 'none'; return; }
+
+    lukTilbudModal();
+    visTilbudPreview(data.tilbud_id, data.html, data.konkurrent_analyse);
+    hentTilbudListe();
+  } catch(e) {
+    alert('Fejl: ' + e.message);
+    statusEl.style.display = 'none';
+  }
+}
+
+function visTilbudPreview(id, html, konkurrentAnalyse) {
+  aktivtTilbudId = id;
+  const panel = document.getElementById('tilbudPreviewPanel');
+  const iframe = document.getElementById('tilbudPreviewIframe');
+  iframe.innerHTML = html;
+  panel.classList.remove('hidden');
+
+  // Vis konkurrentanalyse separat hvis den findes
+  let konEl = document.getElementById('konkurrentAnalysePanel');
+  if (konkurrentAnalyse) {
+    if (!konEl) {
+      konEl = document.createElement('div');
+      konEl.id = 'konkurrentAnalysePanel';
+      panel.insertBefore(konEl, iframe);
+    }
+    konEl.innerHTML = `
+      <div style="background:#fff8ed;border:1px solid #fde68a;border-radius:10px;padding:14px 18px;margin-bottom:.75rem">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#b45309;margin-bottom:6px">🔍 Konkurrentanalyse (intern — sendes ikke til kunde)</div>
+        <div style="font-size:.82rem;color:#78350f;line-height:1.6">${konkurrentAnalyse}</div>
+      </div>`;
+  } else if (konEl) {
+    konEl.innerHTML = '';
+  }
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function sendAktivtTilbud() {
+  if (!aktivtTilbudId) return;
+  const btn = document.getElementById('sendTilbudBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Sender...';
+  try {
+    const res = await apiFetch(`${AGENT_URL}/tilbud/send/${aktivtTilbudId}`, { method: 'POST' });
+    if (!res) return;
+    const data = await res.json();
+    if (data.ok) {
+      btn.textContent = `✅ Sendt til ${data.sendt_til}`;
+      hentTilbudListe();
+      setTimeout(() => { btn.textContent = '✉ Send til kunde'; btn.disabled = false; }, 4000);
+    } else {
+      alert(data.error || 'Kunne ikke sende');
+      btn.textContent = '✉ Send til kunde';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    alert(e.message);
+    btn.textContent = '✉ Send til kunde';
+    btn.disabled = false;
+  }
+}
+
+async function hentTilbudListe() {
+  if (!currentClient) return;
+  const liste = document.getElementById('tilbudListe');
+  if (!liste) return;
+  try {
+    const res = await apiFetch(`${AGENT_URL}/tilbud/liste/${currentClient.id}`);
+    if (!res) return;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      liste.innerHTML = '<div style="color:var(--muted);font-size:.82rem;text-align:center;padding:2rem">Ingen tilbud endnu — klik "+ Nyt tilbud" for at komme i gang</div>';
+      return;
+    }
+
+    const statusFarve = { udkast: '#6b7280', sendt: '#2563eb', accepteret: '#16a34a', afvist: '#dc2626' };
+    const statusTekst = { udkast: 'Udkast', sendt: 'Sendt', accepteret: 'Accepteret', afvist: 'Afvist' };
+
+    liste.innerHTML = data.map(t => `
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer" onclick="hentOgVisTilbud('${t.id}')">
+        <div style="flex:1">
+          <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.15rem">${t.titel || 'Tilbud'}</div>
+          <div style="font-size:.75rem;color:var(--muted)">${t.kunde_navn} · ${t.kunde_email}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:.9rem;font-weight:700;color:var(--accent)">${t.total_pris ? (t.total_pris).toLocaleString('da-DK') + ' kr.' : '—'}</div>
+          <div style="font-size:.7rem;font-weight:600;color:${statusFarve[t.status] || '#6b7280'};margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${statusTekst[t.status] || t.status}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.35rem">
+          <button class="btn btn-success btn-sm" onclick="event.stopPropagation();opdaterTilbudStatus('${t.id}','accepteret')" title="Marker accepteret">✓</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();opdaterTilbudStatus('${t.id}','afvist')" title="Marker afvist">✕</button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    liste.innerHTML = `<div style="color:var(--red);font-size:.82rem;padding:1rem">Fejl: ${e.message}</div>`;
+  }
+}
+
+async function hentOgVisTilbud(id) {
+  try {
+    const res = await apiFetch(`${AGENT_URL}/tilbud/${id}`);
+    if (!res) return;
+    const data = await res.json();
+    visTilbudPreview(data.id, data.html_indhold, data.konkurrent_analyse);
+  } catch(e) {
+    alert('Kunne ikke hente tilbud');
+  }
+}
+
+async function opdaterTilbudStatus(id, status) {
+  try {
+    await apiFetch(`${AGENT_URL}/tilbud/status/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    hentTilbudListe();
+  } catch(e) {}
+}
+
+// ── INIT: Load klienter fra Supabase ──────────────────
 async function initAdmin() {
   // Lokal fil uden token → vis login
   if (window.location.protocol === 'file:') {

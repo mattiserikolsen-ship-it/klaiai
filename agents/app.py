@@ -4545,6 +4545,394 @@ def crm_opdater_lead(lead_id):
         return jsonify({'error': str(e)}), 500
 
 
+# ══════════════════════════════════════════════════════════════
+#  TILBUDS-AI
+# ══════════════════════════════════════════════════════════════
+
+def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
+                      titel, intro, linjer, betingelser, win_temaer, konkurrent_opsummering):
+    """Genererer et professionelt HTML-tilbud"""
+    from datetime import datetime, timedelta
+    dato = datetime.now().strftime('%-d. %B %Y')
+    gyldigt_til = (datetime.now() + timedelta(days=14)).strftime('%-d. %B %Y')
+
+    total = sum(l.get('total', 0) for l in linjer)
+
+    linje_rækker = ''
+    for l in linjer:
+        linje_rækker += f"""
+        <tr>
+          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a2e">{l.get('beskrivelse','')}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:center">{l.get('antal','1')} {l.get('enhed','stk')}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:right">{int(l.get('enhedspris',0)):,} kr.</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#1a1a2e;text-align:right">{int(l.get('total',0)):,} kr.</td>
+        </tr>"""
+
+    win_html = ''
+    if win_temaer:
+        punkter = ''.join(f'<li style="margin-bottom:6px">{w}</li>' for w in win_temaer)
+        win_html = f"""
+        <div style="background:#f0f4ff;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#3b4eb8;margin-bottom:10px">Hvorfor vælge os</div>
+          <ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.7">{punkter}</ul>
+        </div>"""
+
+    konkurrent_html = ''
+    if konkurrent_opsummering:
+        konkurrent_html = f"""
+        <div style="background:#fff8ed;border-left:3px solid #f59e0b;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:24px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#b45309;margin-bottom:8px">Markedsindsigt</div>
+          <div style="font-size:12px;color:#78350f;line-height:1.6">{konkurrent_opsummering}</div>
+        </div>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="da">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tilbud — {titel}</title></head>
+<body style="margin:0;padding:0;background:#f7f8fc;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f8fc;padding:40px 20px">
+<tr><td align="center">
+<table width="680" cellpadding="0" cellspacing="0" style="max-width:680px">
+
+  <!-- HEADER -->
+  <tr><td style="background:linear-gradient(135deg,#0a1a3a 0%,#1e3a6e 100%);border-radius:16px 16px 0 0;padding:36px 40px">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td>
+        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.5px">{klient_navn}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">{klient_hjemmeside}</div>
+      </td>
+      <td style="text-align:right;vertical-align:top">
+        <div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px">Tilbud</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">{dato}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">Gyldigt til {gyldigt_til}</div>
+      </td>
+    </tr></table>
+    <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:20px;font-weight:700;color:#fff;line-height:1.3">{titel}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:6px">Til: {kunde_navn} · {kunde_email}</div>
+    </div>
+  </td></tr>
+
+  <!-- BODY -->
+  <tr><td style="background:#fff;padding:36px 40px">
+
+    <!-- INTRO -->
+    <div style="font-size:14px;color:#374151;line-height:1.8;margin-bottom:28px">{intro}</div>
+
+    <!-- WIN TEMAER -->
+    {win_html}
+
+    <!-- PRIS TABEL -->
+    <div style="margin-bottom:28px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:12px">Indhold & priser</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+        <tr style="background:#f9fafb">
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:left">Ydelse</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:center">Antal</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:right">Enhedspris</th>
+          <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:right">Total</th>
+        </tr>
+        {linje_rækker}
+        <tr style="background:#f9fafb">
+          <td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td>
+          <td style="padding:14px 16px;font-size:16px;font-weight:900;color:#0a1a3a;text-align:right">{int(total):,} kr.</td>
+        </tr>
+        <tr>
+          <td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms (25%)</td>
+          <td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(total*0.25):,} kr.</td>
+        </tr>
+        <tr style="background:#0a1a3a">
+          <td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td>
+          <td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total*1.25):,} kr.</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- KONKURRENT INDSIGT (kun til intern brug — ikke i kunde-mail) -->
+    {konkurrent_html}
+
+    <!-- BETINGELSER -->
+    <div style="background:#f9fafb;border-radius:10px;padding:16px 20px;margin-bottom:28px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:8px">Betingelser</div>
+      <div style="font-size:12px;color:#6b7280;line-height:1.6">{betingelser}</div>
+    </div>
+
+    <!-- CTA -->
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:14px;color:#374151;margin-bottom:16px">Har du spørgsmål? Kontakt os gerne.</div>
+      <div style="font-size:13px;font-weight:600;color:#0a1a3a">{klient_navn}</div>
+    </div>
+
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#f0f4f8;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center">
+    <div style="font-size:11px;color:#9ca3af">Tilbud genereret af NexOlsen AI · Tilbuddet er gyldigt i 14 dage fra udstedelsesdato</div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>"""
+
+
+@app.route('/tilbud/generer', methods=['POST'])
+@require_admin
+def generer_tilbud():
+    """Genererer et AI-tilbud med valgfri konkurrentanalyse"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    data = request.json or {}
+    klient_id   = data.get('klient_id', '')
+    kunde_navn  = data.get('kunde_navn', '')
+    kunde_email = data.get('kunde_email', '')
+    opgave      = data.get('opgave', '')
+    noter       = data.get('noter', '')
+    kør_konkurrent = data.get('konkurrent_analyse', False)
+
+    # Hent klient info
+    klient_navn = 'Virksomheden'
+    klient_hjemmeside = ''
+    klient_ydelser = ''
+    klient_andet = ''
+    try:
+        k = db.table('klienter').select('navn, hjemmeside').eq('id', klient_id).single().execute()
+        if k.data:
+            klient_navn = k.data.get('navn', klient_navn)
+            klient_hjemmeside = k.data.get('hjemmeside', '')
+        cfg = db.table('chatbot_config').select('ydelser, priser, andet, kontakt').eq('klient_id', klient_id).single().execute()
+        if cfg.data:
+            klient_ydelser = cfg.data.get('ydelser', '')
+            klient_andet   = cfg.data.get('andet', '')
+    except:
+        pass
+
+    # Claude genererer tilbud-indhold
+    prompt = f"""Du er en erfaren dansk salgskonsulent. Generer et professionelt tilbud på dansk for virksomheden "{klient_navn}".
+
+KLIENTOPLYSNINGER:
+- Virksomhed: {klient_navn}
+- Hjemmeside: {klient_hjemmeside}
+- Ydelser de tilbyder: {klient_ydelser}
+- Andet info: {klient_andet}
+
+TILBUD TIL:
+- Kundenavn: {kunde_navn}
+- Kundens opgave/behov: {opgave}
+- Ekstra noter: {noter}
+
+Returner KUN valid JSON (ingen markdown, ingen forklaring) med denne præcise struktur:
+{{
+  "titel": "kort og præcis tilbudstitel",
+  "intro": "2-3 sætninger der adresserer kundens specifikke behov og skaber tillid. Personlig og specifik.",
+  "linjer": [
+    {{"beskrivelse": "ydelse 1", "antal": 1, "enhed": "stk", "enhedspris": 15000, "total": 15000}},
+    {{"beskrivelse": "ydelse 2", "antal": 3, "enhed": "timer", "enhedspris": 850, "total": 2550}}
+  ],
+  "betingelser": "Betalingsbetingelser: 50% ved ordreafgivelse, 50% ved levering. Levering inden 14 arbejdsdage. Priser ekskl. moms.",
+  "win_temaer": [
+    "konkret fordel 1 baseret på klientens ydelser",
+    "konkret fordel 2",
+    "konkret fordel 3"
+  ]
+}}
+
+Prissæt realistisk ud fra dansk markedspris for den type opgave. Win-temaer skal være specifikke og relevante — ikke generiske."""
+
+    try:
+        resp = ai.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=1500,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        raw = resp.content[0].text.strip()
+        # Rens JSON
+        if '```' in raw:
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        tilbud_data = json.loads(raw)
+    except Exception as e:
+        return jsonify({'error': f'AI-generering fejlede: {str(e)}'}), 500
+
+    # Konkurrentanalyse (hvis aktiveret)
+    konkurrent_opsummering = ''
+    if kør_konkurrent:
+        try:
+            konkurrent_opsummering = _kør_konkurrentanalyse(klient_navn, klient_ydelser, opgave)
+        except:
+            konkurrent_opsummering = ''
+
+    # Byg HTML
+    html = _byg_tilbud_html(
+        klient_navn=klient_navn,
+        klient_hjemmeside=klient_hjemmeside,
+        kunde_navn=kunde_navn,
+        kunde_email=kunde_email,
+        titel=tilbud_data.get('titel', 'Tilbud'),
+        intro=tilbud_data.get('intro', ''),
+        linjer=tilbud_data.get('linjer', []),
+        betingelser=tilbud_data.get('betingelser', ''),
+        win_temaer=tilbud_data.get('win_temaer', []),
+        konkurrent_opsummering=konkurrent_opsummering
+    )
+
+    total = sum(l.get('total', 0) for l in tilbud_data.get('linjer', []))
+
+    # Gem i Supabase
+    tilbud_id = None
+    try:
+        import uuid as _uuid
+        tilbud_id = str(_uuid.uuid4())
+        db.table('tilbud').insert({
+            'id': tilbud_id,
+            'klient_id': klient_id,
+            'kunde_navn': kunde_navn,
+            'kunde_email': kunde_email,
+            'titel': tilbud_data.get('titel', 'Tilbud'),
+            'html_indhold': html,
+            'total_pris': int(total),
+            'status': 'udkast',
+            'konkurrent_analyse': konkurrent_opsummering
+        }).execute()
+    except Exception as e:
+        print(f"Tilbud gem fejl: {e}")
+
+    return jsonify({
+        'ok': True,
+        'tilbud_id': tilbud_id,
+        'titel': tilbud_data.get('titel'),
+        'html': html,
+        'total': int(total),
+        'linjer': tilbud_data.get('linjer', []),
+        'konkurrent_analyse': konkurrent_opsummering
+    })
+
+
+def _kør_konkurrentanalyse(klient_navn, ydelser, opgave):
+    """Henter og analyserer konkurrentdata fra nettet"""
+    søgeresultater = []
+
+    # Søg på Trustpilot
+    trustpilot_sider = [
+        'https://www.trustpilot.com/search?query=' + http_requests.utils.quote(ydelser[:50] + ' danmark')
+    ]
+
+    # Prøv at hente data fra konkurrenters Trustpilot-sider via Google
+    try:
+        søg_url = f"https://www.google.dk/search?q={http_requests.utils.quote(ydelser[:40] + ' tilbud pris Danmark konkurrenter')}&num=5"
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'}
+        r = http_requests.get(søg_url, headers=headers, timeout=8)
+        if r.status_code == 200:
+            soup = BeautifulSoup(r.text, 'html.parser')
+            for snippet in soup.select('.VwiC3b, .s3v9rd, .st')[:5]:
+                tekst = snippet.get_text(strip=True)
+                if tekst and len(tekst) > 30:
+                    søgeresultater.append(tekst[:200])
+    except:
+        pass
+
+    # Claude analyserer og genererer konkurrent-indsigt
+    analyse_prompt = f"""Du er en dansk markedsanalytiker. Analyser konkurrencesituationen for en virksomhed inden for: {ydelser}
+
+Opgave der skal laves: {opgave}
+
+Søgeresultater fra nettet (kan være begrænsede):
+{chr(10).join(søgeresultater) if søgeresultater else 'Ingen direkte søgeresultater — brug din viden om det danske marked.'}
+
+Skriv 2-3 korte sætninger (max 80 ord total) der beskriver:
+- Hvad markedsprisen typisk er for denne type opgave i Danmark
+- Hvad konkurrenter typisk tilbyder/ikke tilbyder
+- En konkret positioneringsfordel {klient_navn} kan fremhæve
+
+Vær specifik og faktabaseret. Skriv på dansk. Kun den rå tekst, ingen overskrifter."""
+
+    resp = ai.messages.create(
+        model='claude-haiku-4-5-20251001',
+        max_tokens=200,
+        messages=[{'role': 'user', 'content': analyse_prompt}]
+    )
+    return resp.content[0].text.strip()
+
+
+@app.route('/tilbud/liste/<klient_id>', methods=['GET'])
+@require_admin
+def hent_tilbud_liste(klient_id):
+    """Henter alle tilbud for en klient"""
+    if not db:
+        return jsonify([])
+    try:
+        res = db.table('tilbud').select('id,kunde_navn,kunde_email,titel,total_pris,status,oprettet').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        return jsonify(res.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tilbud/<tilbud_id>', methods=['GET'])
+@require_admin
+def hent_tilbud(tilbud_id):
+    """Henter et specifikt tilbud"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
+        return jsonify(res.data or {})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tilbud/send/<tilbud_id>', methods=['POST'])
+@require_admin
+def send_tilbud(tilbud_id):
+    """Sender tilbud til kunden via email"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
+        tilbud = res.data
+        if not tilbud:
+            return jsonify({'error': 'Tilbud ikke fundet'}), 404
+
+        kunde_email = tilbud.get('kunde_email', '')
+        kunde_navn  = tilbud.get('kunde_navn', '')
+        titel       = tilbud.get('titel', 'Tilbud')
+        html        = tilbud.get('html_indhold', '')
+
+        if not kunde_email or '@' not in kunde_email:
+            return jsonify({'error': 'Ingen gyldig email på tilbuddet'}), 400
+
+        # Fjern konkurrent-sektion fra kunde-email (kun til intern brug)
+        import re as _re
+        html_til_kunde = _re.sub(
+            r'<!-- KONKURRENT.*?KONKURRENT -->',
+            '', html, flags=_re.DOTALL
+        )
+
+        send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe vedhæftede tilbud.', klient_navn=None, html_content=html_til_kunde)
+
+        db.table('tilbud').update({'status': 'sendt', 'sendt_dato': datetime.now().isoformat()}).eq('id', tilbud_id).execute()
+
+        return jsonify({'ok': True, 'sendt_til': kunde_email})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tilbud/status/<tilbud_id>', methods=['PATCH'])
+@require_admin
+def opdater_tilbud_status(tilbud_id):
+    """Opdaterer status på et tilbud"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    data = request.json or {}
+    ny_status = data.get('status', '')
+    if ny_status not in ('udkast', 'sendt', 'accepteret', 'afvist'):
+        return jsonify({'error': 'Ugyldig status'}), 400
+    try:
+        db.table('tilbud').update({'status': ny_status}).eq('id', tilbud_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
     print(f"🤖 NexOlsen Agent Server kører på port {port}")
