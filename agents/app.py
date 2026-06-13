@@ -5317,8 +5317,11 @@ def send_tilbud(tilbud_id):
         ekstra_blok = f"""
   <tr><td style="background:#fff;padding:8px 40px 32px;text-align:center">
     <div style="font-size:15px;color:#374151;margin-bottom:16px;font-weight:600">Klar til at komme i gang?</div>
-    <a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:15px 44px;border-radius:10px;letter-spacing:.3px">✓&nbsp;&nbsp;Godkend tilbud</a>
-    <div style="font-size:11px;color:#9ca3af;margin-top:10px">Klik for at bekræfte og sætte projektet i gang</div>
+    <a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:15px 44px;border-radius:10px;letter-spacing:.3px">&#10003;&nbsp;&nbsp;Godkend tilbud</a>
+    <div style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.7">
+      Ved at klikke bekræfter du at acceptere dette tilbud bindende i henhold til dansk Aftaleloven.<br>
+      Du modtager straks en skriftlig bekræftelse på denne email-adresse.
+    </div>
   </td></tr>
   <tr><td style="background:#f9fafb;padding:28px 40px;text-align:center;border-top:1px solid #f0f0f0">
     <div style="font-size:20px;margin-bottom:10px">&#11088;</div>
@@ -5351,44 +5354,161 @@ def godkend_tilbud(tilbud_id, token):
         if t.get('accept_token') != token:
             return _godkend_side('Ugyldigt link', 'Dette link er ikke gyldigt. Kontakt os direkte.', fejl=True), 403
         if t.get('status') == 'accepteret':
-            return _godkend_side('Allerede bekræftet', f'Dit tilbud "{t.get("titel","")}" er allerede bekræftet. Vi kontakter dig snarest.', fejl=False), 200
+            godkendt_dato = t.get('godkendt_dato', '')[:19].replace('T', ' kl. ') if t.get('godkendt_dato') else '—'
+            return _godkend_side('Allerede bekræftet',
+                f'Dit tilbud "{t.get("titel","")}" er allerede godkendt den {godkendt_dato}. '
+                f'Du har modtaget en bekræftelse på {t.get("kunde_email","din email")}.',
+                fejl=False), 200
 
         from datetime import datetime
+        ip_adresse = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        godkendt_dato = datetime.now()
+
         db.table('tilbud').update({
             'status': 'accepteret',
-            'godkendt_dato': datetime.now().isoformat()
+            'godkendt_dato': godkendt_dato.isoformat(),
+            'godkendt_ip': ip_adresse
         }).eq('id', tilbud_id).execute()
 
-        # Notificér klienten
+        kunde_navn  = t.get('kunde_navn', '')
+        kunde_email = t.get('kunde_email', '')
+        titel       = t.get('titel', 'Tilbud')
+        total_pris  = int(t.get('total_pris', 0))
+        ref_nr      = tilbud_id[:8].upper()
+        dato_str    = godkendt_dato.strftime('%-d. %B %Y kl. %H:%M')
+
+        # Hent klient info til kontaktoplysninger
+        klient_navn    = ''
+        klient_email   = ''
+        klient_telefon = ''
         try:
-            k = db.table('klienter').select('navn,email').eq('id', t['klient_id']).single().execute()
-            if k.data and k.data.get('email'):
-                send_mail(
-                    k.data['email'],
-                    f'✅ Tilbud accepteret: {t.get("titel","")}',
-                    f'{t.get("kunde_navn","Kunden")} har accepteret tilbuddet "{t.get("titel","")}".',
-                    fra_navn='NexOlsen AI',
-                    html_content=f'<p style="font-family:sans-serif;font-size:15px">&#9989; <strong>{t.get("kunde_navn","Kunden")}</strong> har accepteret tilbuddet <strong>"{t.get("titel","")}"</strong> ({int(t.get("total_pris",0)):,} kr.).<br><br>Log ind i din portal for at se detaljer.</p>'
-                )
+            k = db.table('klienter').select('navn,email,telefon').eq('id', t['klient_id']).single().execute()
+            if k.data:
+                klient_navn    = k.data.get('navn', '')
+                klient_email   = k.data.get('email', '')
+                klient_telefon = k.data.get('telefon', '')
         except:
             pass
 
-        return _godkend_side('Tilbud bekræftet!', f'Tak, {t.get("kunde_navn","").split()[0]}! Vi har modtaget din bekræftelse og vender tilbage hurtigst muligt for at sætte projektet i gang.', fejl=False), 200
+        # Send juridisk bekræftelsesmail til KUNDEN
+        bekræftelse_html = f"""<!DOCTYPE html>
+<html lang="da"><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f0fdf4;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+
+  <tr><td style="background:#15803d;padding:24px 36px">
+    <div style="font-size:24px;font-weight:900;color:#fff">&#10003; Tilbud godkendt</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:4px">Skriftlig bekræftelse i henhold til dansk Aftaleloven</div>
+  </td></tr>
+
+  <tr><td style="padding:32px 36px">
+    <div style="font-size:15px;color:#374151;line-height:1.8;margin-bottom:24px">
+      Hej <strong>{kunde_navn}</strong>,<br><br>
+      Dette er din officielle bekræftelse på at du har accepteret følgende tilbud:
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #d1fae5;border-radius:10px;overflow:hidden;margin-bottom:24px">
+      <tr style="background:#f0fdf4">
+        <td colspan="2" style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#15803d">Tilbudsdetaljer</td>
+      </tr>
+      <tr style="border-top:1px solid #d1fae5">
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280;width:40%">Tilbud</td>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#111">{titel}</td>
+      </tr>
+      <tr style="border-top:1px solid #f0f0f0">
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280">Beløb</td>
+        <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#15803d">{total_pris:,} kr. ekskl. moms</td>
+      </tr>
+      <tr style="border-top:1px solid #f0f0f0">
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280">Referencenr.</td>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#111;font-family:monospace">{ref_nr}</td>
+      </tr>
+      <tr style="border-top:1px solid #f0f0f0">
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280">Accepteret den</td>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#111">{dato_str}</td>
+      </tr>
+      <tr style="border-top:1px solid #f0f0f0">
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280">Din email</td>
+        <td style="padding:10px 16px;font-size:13px;color:#111">{kunde_email}</td>
+      </tr>
+    </table>
+
+    <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin-bottom:24px">
+      <div style="font-size:12px;color:#92400e;line-height:1.7">
+        <strong>Juridisk note:</strong> Din accept er registreret elektronisk og er bindende i henhold til dansk Aftaleloven §1 og E-handelsloven. Denne email tjener som dit skriftlige bevis på accept. Gem den til fremtidig reference.
+      </div>
+    </div>
+
+    <div style="font-size:14px;color:#374151;line-height:1.8">
+      <strong>{klient_navn}</strong> vil kontakte dig hurtigst muligt for at aftale de næste skridt.
+      {'<br>Email: ' + klient_email if klient_email else ''}
+      {'<br>Telefon: ' + klient_telefon if klient_telefon else ''}
+    </div>
+  </td></tr>
+
+  <tr><td style="background:#f9fafb;padding:18px 36px;text-align:center;border-top:1px solid #f0f0f0">
+    <div style="font-size:11px;color:#9ca3af">Reference: {ref_nr} &middot; Genereret af NexOlsen AI</div>
+  </td></tr>
+
+</table></td></tr></table>
+</body></html>"""
+
+        try:
+            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'NexOlsen', html_content=bekræftelse_html)
+        except Exception as e:
+            print(f'Bekræftelsesmail fejl: {e}')
+
+        # Notificér klienten (virksomheden)
+        try:
+            if klient_email:
+                notif_html = (
+                    f'<div style="font-family:sans-serif;padding:20px">'
+                    f'<h2 style="color:#15803d">&#9989; Tilbud accepteret!</h2>'
+                    f'<p><strong>{kunde_navn}</strong> har accepteret tilbuddet <strong>"{titel}"</strong>.</p>'
+                    f'<table style="border-collapse:collapse;width:100%;max-width:400px">'
+                    f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Beløb</td><td style="padding:8px;font-weight:700;border-bottom:1px solid #eee">{total_pris:,} kr.</td></tr>'
+                    f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Tidspunkt</td><td style="padding:8px;border-bottom:1px solid #eee">{dato_str}</td></tr>'
+                    f'<tr><td style="padding:8px;color:#666">Reference</td><td style="padding:8px;font-family:monospace">{ref_nr}</td></tr>'
+                    f'</table></div>'
+                )
+                send_mail(klient_email, f'✅ Tilbud accepteret: {titel}', f'{kunde_navn} har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).', fra_navn='NexOlsen AI', html_content=notif_html)
+        except:
+            pass
+
+        return _godkend_side(
+            'Tilbud godkendt!',
+            f'Tak, {kunde_navn.split()[0] if kunde_navn else ""}! Vi har modtaget din accept og sender dig straks en bekræftelse på {kunde_email}. {klient_navn} kontakter dig snarest for at sætte projektet i gang.',
+            ref_nr=ref_nr,
+            dato_str=dato_str,
+            fejl=False
+        ), 200
     except Exception as e:
         return _godkend_side('Fejl', str(e), fejl=True), 500
 
 
-def _godkend_side(overskrift, besked, fejl=False):
+def _godkend_side(overskrift, besked, fejl=False, ref_nr='', dato_str=''):
     farve = '#dc2626' if fejl else '#15803d'
+    bg    = '#fff5f5' if fejl else '#f0fdf4'
     ikon  = '❌' if fejl else '✅'
+    ekstra = ''
+    if not fejl and ref_nr:
+        ekstra = f"""
+  <div style="margin-top:24px;background:#fff;border:1px solid #d1fae5;border-radius:10px;padding:16px 20px;text-align:left;display:inline-block;min-width:260px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#15803d;margin-bottom:10px">Din accept er registreret</div>
+    <div style="font-size:13px;color:#374151;margin-bottom:6px">&#128337; {dato_str}</div>
+    <div style="font-size:13px;color:#374151">&#128196; Reference: <strong style="font-family:monospace">{ref_nr}</strong></div>
+  </div>
+  <div style="margin-top:16px;font-size:12px;color:#9ca3af">En bekræftelse er sendt til din email</div>"""
     return f"""<!DOCTYPE html>
 <html lang="da"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{overskrift}</title></head>
-<body style="margin:0;padding:0;background:#f0fdf4;font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center">
-<div style="text-align:center;max-width:480px;padding:40px 24px">
-  <div style="font-size:64px;margin-bottom:20px">{ikon}</div>
-  <h1 style="font-size:26px;font-weight:900;color:{farve};margin:0 0 14px">{overskrift}</h1>
+<body style="margin:0;padding:0;background:{bg};font-family:'Helvetica Neue',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center">
+<div style="text-align:center;max-width:520px;padding:40px 24px">
+  <div style="font-size:72px;margin-bottom:16px">{ikon}</div>
+  <h1 style="font-size:28px;font-weight:900;color:{farve};margin:0 0 12px">{overskrift}</h1>
   <p style="font-size:15px;color:#374151;line-height:1.8;margin:0">{besked}</p>
+  {ekstra}
 </div>
 </body></html>"""
 
