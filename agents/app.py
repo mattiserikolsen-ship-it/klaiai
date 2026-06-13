@@ -43,23 +43,61 @@ STRIPE_PRISER = {
     'vaekst':  {'price_id': os.environ.get('STRIPE_PRICE_VAEKST', ''),  'navn': 'Vækst',  'pris': 2499, 'produkter': ['chatbot', 'lead', 'booking', 'rapport', 'mail']},
 }
 
-# ── TOKEN STORE (in-memory) ────────────────────────────
+# ── TOKEN STORE (Supabase-persistent) ─────────────────
 import time as _time
-TOKEN_EXPIRY = 8 * 3600  # 8 timer
+TOKEN_EXPIRY = 30 * 24 * 3600  # 30 dage
 
+# In-memory cache for hurtig opslag (fyldes fra Supabase)
 active_tokens = {}   # token -> {'role': 'admin'/'client', 'klient_id': ..., 'created_at': float}
 
+def _gem_token(token, info):
+    """Gem token i RAM + Supabase"""
+    active_tokens[token] = info
+    if db:
+        try:
+            db.table('admin_sessions').upsert({
+                'token': token,
+                'role': info.get('role', ''),
+                'klient_id': info.get('klient_id'),
+                'created_at': _time.time(),
+                'expires_at': _time.time() + TOKEN_EXPIRY
+            }).execute()
+        except:
+            pass
+
 def _token_ok(token, role=None):
-    """Returnerer True hvis token eksisterer og ikke er udløbet"""
+    """Returnerer True hvis token er gyldigt (tjekker RAM + Supabase)"""
+    if not token:
+        return False
+    # Tjek RAM-cache først
     info = active_tokens.get(token)
-    if not info:
-        return False
-    if _time.time() - info.get('created_at', 0) > TOKEN_EXPIRY:
-        active_tokens.pop(token, None)
-        return False
-    if role and info.get('role') != role:
-        return False
-    return True
+    if info:
+        if _time.time() - info.get('created_at', 0) > TOKEN_EXPIRY:
+            active_tokens.pop(token, None)
+            return False
+        if role and info.get('role') != role:
+            return False
+        return True
+    # Ikke i RAM — hent fra Supabase
+    if db:
+        try:
+            res = db.table('admin_sessions').select('*').eq('token', token).single().execute()
+            if res.data:
+                sess = res.data
+                if sess.get('expires_at', 0) < _time.time():
+                    return False
+                # Læg i RAM-cache
+                active_tokens[token] = {
+                    'role': sess.get('role', ''),
+                    'klient_id': sess.get('klient_id'),
+                    'created_at': sess.get('created_at', _time.time())
+                }
+                if role and sess.get('role') != role:
+                    return False
+                return True
+        except:
+            pass
+    return False
 
 def _ryd_tokens():
     """Fjern udløbne tokens"""
@@ -67,6 +105,11 @@ def _ryd_tokens():
     udlob = [t for t, info in list(active_tokens.items()) if nu - info.get('created_at', 0) > TOKEN_EXPIRY]
     for t in udlob:
         active_tokens.pop(t, None)
+    if db:
+        try:
+            db.table('admin_sessions').delete().lt('expires_at', nu).execute()
+        except:
+            pass
 demo_sessions = {}   # demo_id -> {'klient_config': {...}, 'url': '...', 'created_at': ...}
 prospekter    = {}   # prospekt_id -> {'url', 'navn', 'beskrivelse', 'har_chatbot', 'email_udkast', 'status'}
 
@@ -2941,7 +2984,7 @@ def login():
     # Admin login
     if email == admin_email and password == admin_pw:
         token = secrets.token_hex(32)
-        active_tokens[token] = {'role': 'admin', 'created_at': _time.time()}
+        _gem_token(token, {'role': 'admin', 'created_at': _time.time()})
         return jsonify({'token': token, 'role': 'admin'})
 
     # Klient login — tjek Supabase
@@ -2973,7 +3016,7 @@ def login():
                             pass
                 if pw_ok:
                     token = secrets.token_hex(32)
-                    active_tokens[token] = {'role': 'client', 'klient_id': klient['id'], 'created_at': _time.time()}
+                    _gem_token(token, {'role': 'client', 'klient_id': klient['id'], 'created_at': _time.time()})
                     return jsonify({'token': token, 'role': 'client', 'klient_id': klient['id']})
         except:
             pass
