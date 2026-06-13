@@ -1009,7 +1009,10 @@ function renderTilbud() {
         <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
           <div style="font-weight:800;font-size:1rem;color:var(--dark)">${pris}</div>
           ${statusBadge}
-          <button onclick="åbnTilbud('${t.id}')" style="margin-top:.2rem;background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
+          <div style="display:flex;gap:.4rem;margin-top:.2rem">
+            <button onclick="åbnTilbud('${t.id}')" style="background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
+            <button onclick="downloadTilbudPdf('${t.id}')" title="Download PDF" style="background:#f0efec;color:var(--dark);border:1px solid var(--border);border-radius:7px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">⬇ PDF</button>
+          </div>
           <div style="font-size:.68rem;color:var(--muted)">${dato}</div>
         </div>
       </div>
@@ -1020,6 +1023,11 @@ function renderTilbud() {
 function åbnTilbud(tilbudId) {
   const token = localStorage.getItem('klaiai_token') || '';
   window.open(`${API}/portal/tilbud/vis/${tilbudId}?token=${encodeURIComponent(token)}`, '_blank');
+}
+
+function downloadTilbudPdf(tilbudId) {
+  const token = localStorage.getItem('klaiai_token') || '';
+  window.open(`${API}/portal/tilbud/vis/${tilbudId}?token=${encodeURIComponent(token)}&pdf=1`, '_blank');
 }
 
 // ── RAPPORT ────────────────────────────────────────────

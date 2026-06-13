@@ -5267,20 +5267,78 @@ def hent_tilbud(tilbud_id):
 def portal_vis_tilbud(tilbud_id):
     """Klientportal: vis tilbud HTML direkte i browser (token via query param)"""
     token = request.args.get('token', '').strip()
+    auto_print = request.args.get('pdf') == '1'
     if not _token_ok(token):
         return '<html><body style="font-family:sans-serif;padding:2rem;color:#c0392b">Adgang krævet — log ind igen.</body></html>', 401
     if not db:
         return '<html><body style="font-family:sans-serif;padding:2rem">Database ikke tilgængelig.</body></html>', 500
     try:
-        res = db.table('tilbud').select('html_indhold,klient_id').eq('id', tilbud_id).single().execute()
+        res = db.table('tilbud').select('html_indhold,klient_id,titel,kunde_navn').eq('id', tilbud_id).single().execute()
         t = res.data
         if not t:
             return '<html><body style="font-family:sans-serif;padding:2rem">Tilbud ikke fundet.</body></html>', 404
-        # Klient-token må kun se egne tilbud
         info = active_tokens.get(token, {})
         if info.get('role') == 'client' and info.get('klient_id') != t['klient_id']:
             return '<html><body style="font-family:sans-serif;padding:2rem;color:#c0392b">Ingen adgang til dette tilbud.</body></html>', 403
-        return Response(t['html_indhold'], mimetype='text/html')
+
+        titel = t.get('titel', 'Tilbud')
+        kunde = t.get('kunde_navn', '')
+
+        toolbar = f"""
+<style>
+  #nexo-toolbar {{
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #1a1918; color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 1.5rem; height: 52px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    box-shadow: 0 2px 12px rgba(0,0,0,.3);
+  }}
+  #nexo-toolbar .tb-left {{ font-size: .82rem; color: rgba(255,255,255,.55); }}
+  #nexo-toolbar .tb-left strong {{ color: #fff; font-size: .9rem; }}
+  #nexo-toolbar .tb-btns {{ display: flex; gap: .6rem; }}
+  #nexo-toolbar button {{
+    font-family: inherit; font-size: .8rem; font-weight: 600;
+    padding: .45rem 1.1rem; border-radius: 7px; cursor: pointer; border: none;
+  }}
+  #nexo-toolbar .btn-back {{
+    background: rgba(255,255,255,.1); color: rgba(255,255,255,.7);
+  }}
+  #nexo-toolbar .btn-back:hover {{ background: rgba(255,255,255,.18); color: #fff; }}
+  #nexo-toolbar .btn-pdf {{
+    background: #fff; color: #1a1918;
+  }}
+  #nexo-toolbar .btn-pdf:hover {{ background: #f0f0f0; }}
+  body {{ padding-top: 52px !important; }}
+  @media print {{
+    #nexo-toolbar {{ display: none !important; }}
+    body {{ padding-top: 0 !important; }}
+    @page {{ margin: 10mm 12mm; }}
+    table {{ page-break-inside: avoid; }}
+  }}
+</style>
+<div id="nexo-toolbar">
+  <div class="tb-left">
+    <strong>{titel}</strong>
+    {(' &middot; ' + kunde) if kunde else ''}
+  </div>
+  <div class="tb-btns">
+    <button class="btn-back" onclick="window.close()">← Luk</button>
+    <button class="btn-pdf" onclick="window.print()">⬇ Download som PDF</button>
+  </div>
+</div>
+{'<script>window.addEventListener("load",function(){{window.print();}});</script>' if auto_print else ''}
+"""
+        # Inject toolbar right after <body>
+        html = t['html_indhold']
+        if '<body' in html:
+            insert_at = html.index('<body')
+            body_end = html.index('>', insert_at) + 1
+            html = html[:body_end] + toolbar + html[body_end:]
+        else:
+            html = toolbar + html
+
+        return Response(html, mimetype='text/html')
     except Exception as e:
         return f'<html><body style="font-family:sans-serif;padding:2rem">Fejl: {str(e)}</body></html>', 500
 
