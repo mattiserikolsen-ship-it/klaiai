@@ -1235,6 +1235,7 @@
             <div style="display:flex;gap:.5rem">
               <button class="btn btn-secondary btn-sm" onclick="lukTilbudPreview()">✕ Luk</button>
               <button class="btn btn-secondary btn-sm" id="redigerTilbudBtn" onclick="toggleTilbudEditor()">✏️ Rediger linjer</button>
+              <button class="btn btn-secondary btn-sm" onclick="downloadAdminTilbudPdf()">⬇ Download PDF</button>
               <button class="btn btn-success btn-sm" id="sendTilbudBtn" onclick="sendAktivtTilbud()">✉ Send til kunde</button>
             </div>
           </div>
@@ -4529,6 +4530,12 @@ function lukTilbudModal() {
 function lukTilbudPreview() {
   document.getElementById('tilbudPreviewPanel').classList.add('hidden');
   aktivtTilbudId = null;
+}
+
+function downloadAdminTilbudPdf() {
+  if (!aktivtTilbudId) return;
+  const token = localStorage.getItem('klaiai_token');
+  window.open(`${AGENT_URL}/portal/tilbud/vis/${aktivtTilbudId}?token=${encodeURIComponent(token)}&pdf=1`, '_blank');
 }
 
 async function genererTilbud() {
