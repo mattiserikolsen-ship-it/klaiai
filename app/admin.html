@@ -1178,7 +1178,22 @@
           <button class="btn btn-generate btn-sm" onclick="åbnNytTilbud()">+ Nyt tilbud</button>
         </div>
 
+        <!-- Priskatalog -->
+        <div style="margin-bottom:1.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div>
+              <div style="font-size:.82rem;font-weight:700">Priskatalog</div>
+              <div style="font-size:.72rem;color:var(--muted)">AI bruger disse præcise priser i alle tilbud</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="åbnNyPrispost()">+ Tilføj ydelse</button>
+          </div>
+          <div id="priskatalogListe" style="display:flex;flex-direction:column;gap:.4rem"></div>
+        </div>
+
+        <div style="height:1px;background:var(--border);margin-bottom:1.25rem"></div>
+
         <!-- Tilbud liste -->
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:.75rem">Genererede tilbud</div>
         <div id="tilbudListe" style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.5rem">
           <div style="color:var(--muted);font-size:.82rem;text-align:center;padding:2rem">Henter tilbud...</div>
         </div>
@@ -1235,6 +1250,47 @@
           <div style="display:flex;gap:.75rem;justify-content:flex-end">
             <button class="btn btn-secondary" onclick="lukTilbudModal()">Annuller</button>
             <button class="btn btn-generate" onclick="genererTilbud()">✨ Generer tilbud</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Priskatalog modal -->
+      <div id="prisModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1001;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:16px;padding:1.75rem;width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+          <div style="font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:1.25rem">Tilføj ydelse til priskatalog</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:.65rem">
+            <div style="grid-column:1/-1">
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.25rem">Kategori</label>
+              <input id="pKategori" class="form-input" placeholder="Fx. Installation, Service, Produkter"/>
+            </div>
+            <div style="grid-column:1/-1">
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.25rem">Ydelsesnavn *</label>
+              <input id="pNavn" class="form-input" placeholder="Fx. Montering af varmepumpe"/>
+            </div>
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.25rem">Enhedspris (ekskl. moms) *</label>
+              <input id="pPris" class="form-input" type="number" placeholder="12500"/>
+            </div>
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.25rem">Enhed</label>
+              <select id="pEnhed" class="form-input">
+                <option>stk</option>
+                <option>time</option>
+                <option>dag</option>
+                <option>meter</option>
+                <option>m²</option>
+                <option>projekt</option>
+                <option>måned</option>
+              </select>
+            </div>
+            <div style="grid-column:1/-1">
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.25rem">Beskrivelse (valgfrit)</label>
+              <input id="pBeskrivelse" class="form-input" placeholder="Kort beskrivelse til AI'en"/>
+            </div>
+          </div>
+          <div style="display:flex;gap:.65rem;justify-content:flex-end;margin-top:1rem">
+            <button class="btn btn-secondary" onclick="document.getElementById('prisModal').style.display='none'">Annuller</button>
+            <button class="btn btn-primary" onclick="gemPrispost()">Gem ydelse</button>
           </div>
         </div>
       </div>
@@ -2054,7 +2110,7 @@ function switchTab(t) {
   if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
   if (t === 'live' && currentClient) loadCockpit();
-  if (t === 'tilbud' && currentClient) hentTilbudListe();
+  if (t === 'tilbud' && currentClient) { hentPriskatalog(); hentTilbudListe(); }
 }
 
 // ── LEAD MAILS ────────────────────────────────────────
@@ -4459,6 +4515,78 @@ async function sendAktivtTilbud() {
     btn.textContent = '✉ Send til kunde';
     btn.disabled = false;
   }
+}
+
+// ── PRISKATALOG ──────────────────────────────────────
+function åbnNyPrispost() {
+  ['pKategori','pNavn','pBeskrivelse'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pPris').value = '';
+  document.getElementById('pEnhed').value = 'stk';
+  document.getElementById('prisModal').style.display = 'flex';
+}
+
+async function gemPrispost() {
+  const navn = document.getElementById('pNavn').value.trim();
+  const pris = parseFloat(document.getElementById('pPris').value);
+  if (!navn || !pris) { alert('Udfyld ydelsesnavn og pris'); return; }
+  try {
+    const res = await apiFetch(AGENT_URL + '/priskatalog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        klient_id: currentClient.id,
+        kategori: document.getElementById('pKategori').value.trim() || 'Generelt',
+        navn,
+        enhedspris: pris,
+        enhed: document.getElementById('pEnhed').value,
+        beskrivelse: document.getElementById('pBeskrivelse').value.trim()
+      })
+    });
+    if (!res) return;
+    document.getElementById('prisModal').style.display = 'none';
+    hentPriskatalog();
+  } catch(e) { alert(e.message); }
+}
+
+async function hentPriskatalog() {
+  if (!currentClient) return;
+  const liste = document.getElementById('priskatalogListe');
+  if (!liste) return;
+  try {
+    const res = await apiFetch(`${AGENT_URL}/priskatalog/${currentClient.id}`);
+    if (!res) return;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      liste.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.5rem 0">Ingen ydelser endnu — klik "+ Tilføj ydelse" for at opbygge priskataloget</div>';
+      return;
+    }
+    // Grupper efter kategori
+    const grupper = {};
+    data.forEach(p => { if (!grupper[p.kategori]) grupper[p.kategori] = []; grupper[p.kategori].push(p); });
+    liste.innerHTML = Object.entries(grupper).map(([kat, poster]) => `
+      <div style="margin-bottom:.5rem">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:.3rem">${kat}</div>
+        ${poster.map(p => `
+          <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.6rem .9rem;display:flex;align-items:center;gap:.75rem;margin-bottom:.3rem">
+            <div style="flex:1">
+              <span style="font-size:.82rem;font-weight:600;color:var(--text)">${p.navn}</span>
+              ${p.beskrivelse ? `<span style="font-size:.75rem;color:var(--muted);margin-left:.5rem">${p.beskrivelse}</span>` : ''}
+            </div>
+            <div style="font-size:.85rem;font-weight:700;color:var(--accent);flex-shrink:0">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr. / ${p.enhed}</div>
+            <button onclick="sletPrispost('${p.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:.2rem .4rem;border-radius:4px" title="Slet">✕</button>
+          </div>`).join('')}
+      </div>`).join('');
+  } catch(e) {
+    liste.innerHTML = '<div style="font-size:.78rem;color:var(--red)">Fejl ved hentning af katalog</div>';
+  }
+}
+
+async function sletPrispost(id) {
+  if (!confirm('Slet denne ydelse fra priskataloget?')) return;
+  try {
+    await apiFetch(`${AGENT_URL}/priskatalog/${id}`, { method: 'DELETE' });
+    hentPriskatalog();
+  } catch(e) {}
 }
 
 async function hentTilbudListe() {

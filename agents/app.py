@@ -4675,6 +4675,59 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
 </body></html>"""
 
 
+@app.route('/priskatalog/<klient_id>', methods=['GET'])
+@require_admin
+def hent_priskatalog(klient_id):
+    if not db: return jsonify([])
+    try:
+        res = db.table('priskatalog').select('*').eq('klient_id', klient_id).order('kategori').order('navn').execute()
+        return jsonify(res.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/priskatalog', methods=['POST'])
+@require_admin
+def gem_prispost():
+    if not db: return jsonify({'error': 'Ingen database'}), 500
+    data = request.json or {}
+    import uuid as _uuid
+    try:
+        post = {
+            'id': str(_uuid.uuid4()),
+            'klient_id': data['klient_id'],
+            'kategori': data.get('kategori', 'Generelt'),
+            'navn': data['navn'],
+            'beskrivelse': data.get('beskrivelse', ''),
+            'enhedspris': float(data.get('enhedspris', 0)),
+            'enhed': data.get('enhed', 'stk'),
+            'aktiv': True
+        }
+        db.table('priskatalog').insert(post).execute()
+        return jsonify({'ok': True, 'id': post['id']})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/priskatalog/<post_id>', methods=['PATCH'])
+@require_admin
+def opdater_prispost(post_id):
+    if not db: return jsonify({'error': 'Ingen database'}), 500
+    data = request.json or {}
+    try:
+        db.table('priskatalog').update(data).eq('id', post_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/priskatalog/<post_id>', methods=['DELETE'])
+@require_admin
+def slet_prispost(post_id):
+    if not db: return jsonify({'error': 'Ingen database'}), 500
+    try:
+        db.table('priskatalog').delete().eq('id', post_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/tilbud/generer', methods=['POST'])
 @require_admin
 def generer_tilbud():
@@ -4706,6 +4759,28 @@ def generer_tilbud():
     except:
         pass
 
+    # Hent priskatalog
+    priskatalog_tekst = ''
+    try:
+        kat = db.table('priskatalog').select('*').eq('klient_id', klient_id).eq('aktiv', True).order('kategori').execute()
+        if kat.data:
+            linjer = []
+            for p in kat.data:
+                linje = f"- {p['navn']}: {int(p['enhedspris']):,} kr. per {p.get('enhed','stk')}"
+                if p.get('beskrivelse'):
+                    linje += f" ({p['beskrivelse']})"
+                linjer.append(linje)
+            priskatalog_tekst = '\n'.join(linjer)
+    except:
+        pass
+
+    katalog_sektion = f"""
+PRISKATALOG (brug disse EKSAKTE priser — afveg ikke):
+{priskatalog_tekst}
+""" if priskatalog_tekst else """
+(Intet priskatalog opsat — prissæt ud fra dansk markedspris for opgaven)
+"""
+
     # Claude genererer tilbud-indhold
     prompt = f"""Du er en erfaren dansk salgskonsulent. Generer et professionelt tilbud på dansk for virksomheden "{klient_navn}".
 
@@ -4714,7 +4789,7 @@ KLIENTOPLYSNINGER:
 - Hjemmeside: {klient_hjemmeside}
 - Ydelser de tilbyder: {klient_ydelser}
 - Andet info: {klient_andet}
-
+{katalog_sektion}
 TILBUD TIL:
 - Kundenavn: {kunde_navn}
 - Kundens opgave/behov: {opgave}
@@ -4736,7 +4811,7 @@ Returner KUN valid JSON (ingen markdown, ingen forklaring) med denne præcise st
   ]
 }}
 
-Prissæt realistisk ud fra dansk markedspris for den type opgave. Win-temaer skal være specifikke og relevante — ikke generiske."""
+Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korrekt (antal × enhedspris). Win-temaer skal være specifikke og relevante — ikke generiske."""
 
     try:
         resp = ai.messages.create(
