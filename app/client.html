@@ -1006,14 +1006,20 @@ function renderTilbud() {
           ${t.status === 'accepteret' && godkendtDato ? `<div style="font-size:.75rem;color:#15803d;margin-top:.3rem;font-weight:600">✓ Accepteret ${godkendtDato}</div>` : ''}
           ${sendtDato && t.status !== 'accepteret' ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Sendt ${sendtDato}</div>` : ''}
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-weight:800;font-size:1rem;color:var(--dark);margin-bottom:.35rem">${pris}</div>
+        <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
+          <div style="font-weight:800;font-size:1rem;color:var(--dark)">${pris}</div>
           ${statusBadge}
-          <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem">${dato}</div>
+          <button onclick="åbnTilbud('${t.id}')" style="margin-top:.2rem;background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
+          <div style="font-size:.68rem;color:var(--muted)">${dato}</div>
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function åbnTilbud(tilbudId) {
+  const token = localStorage.getItem('klaiai_token') || '';
+  window.open(`${API}/portal/tilbud/vis/${tilbudId}?token=${encodeURIComponent(token)}`, '_blank');
 }
 
 // ── RAPPORT ────────────────────────────────────────────

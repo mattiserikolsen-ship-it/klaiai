@@ -5263,6 +5263,28 @@ def hent_tilbud(tilbud_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/portal/tilbud/vis/<tilbud_id>', methods=['GET'])
+def portal_vis_tilbud(tilbud_id):
+    """Klientportal: vis tilbud HTML direkte i browser (token via query param)"""
+    token = request.args.get('token', '').strip()
+    if not _token_ok(token):
+        return '<html><body style="font-family:sans-serif;padding:2rem;color:#c0392b">Adgang krævet — log ind igen.</body></html>', 401
+    if not db:
+        return '<html><body style="font-family:sans-serif;padding:2rem">Database ikke tilgængelig.</body></html>', 500
+    try:
+        res = db.table('tilbud').select('html_indhold,klient_id').eq('id', tilbud_id).single().execute()
+        t = res.data
+        if not t:
+            return '<html><body style="font-family:sans-serif;padding:2rem">Tilbud ikke fundet.</body></html>', 404
+        # Klient-token må kun se egne tilbud
+        info = active_tokens.get(token, {})
+        if info.get('role') == 'client' and info.get('klient_id') != t['klient_id']:
+            return '<html><body style="font-family:sans-serif;padding:2rem;color:#c0392b">Ingen adgang til dette tilbud.</body></html>', 403
+        return Response(t['html_indhold'], mimetype='text/html')
+    except Exception as e:
+        return f'<html><body style="font-family:sans-serif;padding:2rem">Fejl: {str(e)}</body></html>', 500
+
+
 @app.route('/tilbud/<tilbud_id>', methods=['PATCH'])
 @require_admin
 def opdater_tilbud(tilbud_id):
