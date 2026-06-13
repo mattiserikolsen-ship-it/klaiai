@@ -5218,9 +5218,19 @@ def send_tilbud(tilbud_id):
         kunde_navn  = tilbud.get('kunde_navn', '')
         titel       = tilbud.get('titel', 'Tilbud')
         html        = tilbud.get('html_indhold', '')
+        klient_id   = tilbud.get('klient_id', '')
 
         if not kunde_email or '@' not in kunde_email:
             return jsonify({'error': 'Ingen gyldig email på tilbuddet'}), 400
+
+        # Hent klientens navn til afsender-felt
+        fra_navn = 'NexOlsen'
+        try:
+            k = db.table('klienter').select('navn').eq('id', klient_id).single().execute()
+            if k.data:
+                fra_navn = k.data.get('navn', fra_navn)
+        except:
+            pass
 
         # Fjern konkurrent-sektion fra kunde-email (kun til intern brug)
         import re as _re
@@ -5229,7 +5239,7 @@ def send_tilbud(tilbud_id):
             '', html, flags=_re.DOTALL
         )
 
-        send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe vedhæftede tilbud.', fra_navn=klient_navn, html_content=html_til_kunde)
+        send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe tilbuddet herunder.', fra_navn=fra_navn, html_content=html_til_kunde)
 
         db.table('tilbud').update({'status': 'sendt', 'sendt_dato': datetime.now().isoformat()}).eq('id', tilbud_id).execute()
 
