@@ -5145,6 +5145,63 @@ def slet_prispost(post_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/priskatalog/upload-pdf', methods=['POST'])
+@require_admin
+def upload_priskatalog_pdf():
+    """Udtræk ydelser og priser fra en PDF-prisliste via Claude"""
+    import pdfplumber, io
+    klient_id = request.form.get('klient_id', '')
+    if not klient_id:
+        return jsonify({'error': 'klient_id mangler'}), 400
+    if 'fil' not in request.files:
+        return jsonify({'error': 'Ingen fil uploadet'}), 400
+    fil = request.files['fil']
+    if not fil.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Kun PDF-filer understøttes'}), 400
+    try:
+        pdf_bytes = fil.read()
+        tekst = ''
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for side in pdf.pages[:10]:
+                tekst += (side.extract_text() or '') + '\n'
+        if not tekst.strip():
+            return jsonify({'error': 'Kunne ikke læse tekst fra PDF'}), 400
+        # Brug Claude til at parse ydelser og priser
+        svar = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=2000,
+            messages=[{
+                'role': 'user',
+                'content': f"""Udtræk alle ydelser og priser fra denne prisliste og returnér dem som JSON-array.
+
+Format: [{{"navn": "...", "enhedspris": 1234, "enhed": "stk", "kategori": "...", "beskrivelse": "..."}}]
+
+Regler:
+- enhedspris skal være et tal (ingen kr. eller komma — brug punktum)
+- enhed: typisk "stk", "time", "m²", "m" eller "dag"
+- kategori: grup ydelserne logisk (fx "Installation", "Service", "Materialer")
+- beskrivelse: kort forklaring hvis relevant, ellers tom streng
+- Returner KUN JSON-arrayet, ingen forklaring
+
+Prisliste:
+{tekst[:3000]}"""
+            }]
+        )
+        import json as _json
+        raw = svar.content[0].text.strip()
+        # Fjern markdown code blocks hvis Claude pakker det ind
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        poster = _json.loads(raw.strip())
+        if not isinstance(poster, list):
+            return jsonify({'error': 'Uventet svar fra AI'}), 500
+        return jsonify({'poster': poster, 'antal': len(poster)})
+    except Exception as e:
+        print(f"PDF upload fejl: {e}")
+        return jsonify({'error': f'Fejl ved behandling: {str(e)}'}), 500
+
 @app.route('/tilbud/generer', methods=['POST'])
 @require_token
 def generer_tilbud():
@@ -5167,6 +5224,7 @@ def generer_tilbud():
     opgave          = data.get('opgave', '')
     noter           = data.get('noter', '')
     kør_konkurrent  = data.get('konkurrent_analyse', False)
+    valgte_ydelser  = data.get('valgte_ydelser', [])
 
     # Hent klient info
     klient_navn = 'Virksomheden'
@@ -5212,6 +5270,11 @@ PRISKATALOG (brug disse EKSAKTE priser — afveg ikke):
 (Intet priskatalog opsat — prissæt ud fra dansk markedspris for opgaven)
 """
 
+    valgte_tekst = ''
+    if valgte_ydelser:
+        linjer = [f"- {y['navn']}: {int(y['enhedspris']):,} kr. per {y.get('enhed','stk')}" for y in valgte_ydelser]
+        valgte_tekst = "\n\nKUNDEN HAR VALGT DISSE SPECIFIKKE YDELSER (inkludér dem alle i tilbuddet med disse PRÆCISE priser):\n" + '\n'.join(linjer)
+
     # Claude genererer tilbud-indhold
     prompt = f"""Du er en erfaren dansk salgskonsulent. Generer et professionelt tilbud på dansk for virksomheden "{klient_navn}".
 
@@ -5224,6 +5287,7 @@ KLIENTOPLYSNINGER:
 TILBUD TIL:
 - Kundenavn: {kunde_navn}
 - Kundens opgave/behov: {opgave}
+{valgte_tekst}
 - Ekstra noter: {noter}
 
 Returner KUN valid JSON (ingen markdown, ingen forklaring) med denne præcise struktur:

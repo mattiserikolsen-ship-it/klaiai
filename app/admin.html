@@ -1214,6 +1214,7 @@
             </div>
             <div style="display:flex;gap:.5rem">
               <button class="btn btn-secondary btn-sm" onclick="åbnMasseimport()" title="Importér mange varer fra Excel/CSV på én gang">📋 Masseimport</button>
+              <button class="btn btn-secondary btn-sm" onclick="åbnPdfImport()" title="Upload en PDF-prisliste og lad AI udtrække ydelser og priser">📄 PDF-import</button>
               <button class="btn btn-secondary btn-sm" onclick="åbnNyPrispost()">+ Tilføj ydelse</button>
             </div>
           </div>
@@ -1323,6 +1324,11 @@
             <input id="tNoter" class="form-input" placeholder="Fx: Kunden har haft kontakt tidligere, særlige ønsker..."/>
           </div>
 
+          <div id="tKatalogSektion" style="margin-bottom:.75rem;display:none">
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.4rem">Vælg ydelser fra priskatalog <span style="font-weight:400;color:#9ca3af">(valgfrit — AI tilpasser tilbuddet)</span></label>
+            <div id="tKatalogChips" style="display:flex;flex-wrap:wrap;gap:.35rem"></div>
+          </div>
+
           <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;padding:12px 14px;margin-bottom:1.25rem;display:flex;align-items:flex-start;gap:.75rem">
             <input type="checkbox" id="tKonkurrent" style="width:16px;height:16px;margin-top:2px;flex-shrink:0;cursor:pointer" checked/>
             <div>
@@ -1336,6 +1342,44 @@
           <div style="display:flex;gap:.75rem;justify-content:flex-end">
             <button class="btn btn-secondary" onclick="lukTilbudModal()">Annuller</button>
             <button class="btn btn-generate" onclick="genererTilbud()">✨ Generer tilbud</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF Import modal -->
+      <div id="pdfImportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1002;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:16px;padding:1.75rem;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+          <div style="font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:.4rem">📄 Importér prisliste fra PDF</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.25rem">Upload din eksisterende prisliste som PDF — AI udtrækker automatisk alle ydelser og priser</div>
+
+          <div id="pdfUploadSektion">
+            <div style="border:2px dashed var(--border);border-radius:12px;padding:2rem;text-align:center;margin-bottom:1rem;cursor:pointer" onclick="document.getElementById('pdfFilInput').click()">
+              <div style="font-size:2rem;margin-bottom:.5rem">📄</div>
+              <div style="font-size:.85rem;font-weight:600;color:var(--text)">Klik for at vælge PDF</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.25rem" id="pdfFilNavn">eller træk og slip her</div>
+            </div>
+            <input type="file" id="pdfFilInput" accept=".pdf" style="display:none" onchange="pdfFilValgt(this)"/>
+            <div id="pdfUploadStatus" style="font-size:.8rem;color:var(--muted);text-align:center;display:none">⏳ Analyserer PDF med AI...</div>
+          </div>
+
+          <div id="pdfPreviewSektion" style="display:none">
+            <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.5rem" id="pdfPreviewTitel"></div>
+            <div style="overflow-x:auto;margin-bottom:1rem">
+              <table style="width:100%;font-size:.78rem;border-collapse:collapse" id="pdfPreviewTabel">
+                <thead><tr style="background:#f3f4f6">
+                  <th style="padding:5px 8px;text-align:left;font-weight:600">Ydelse</th>
+                  <th style="padding:5px 8px;text-align:right;font-weight:600">Pris</th>
+                  <th style="padding:5px 8px;text-align:left;font-weight:600">Enhed</th>
+                  <th style="padding:5px 8px;text-align:left;font-weight:600">Kategori</th>
+                </tr></thead>
+                <tbody id="pdfPreviewBody"></tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <button class="btn btn-generate" onclick="bekræftPdfImport()">✅ Gem alle til katalog</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('pdfPreviewSektion').style.display='none';document.getElementById('pdfUploadSektion').style.display='block'">← Vælg anden fil</button>
+              <button class="btn btn-ghost" onclick="lukPdfImport()">Annuller</button>
+            </div>
           </div>
         </div>
       </div>
@@ -4548,6 +4592,22 @@ function åbnNytTilbud() {
   document.getElementById('tKonkurrent').checked = true;
   document.getElementById('tilbudGenStatus').style.display = 'none';
   document.getElementById('tilbudModal').style.display = 'flex';
+  // Indlæs priskatalog til hurtigvalg
+  if (currentClient) {
+    apiFetch(`${AGENT_URL}/priskatalog/${currentClient.id}`).then(r => r?.json()).then(data => {
+      const chips = document.getElementById('tKatalogChips');
+      const sektion = document.getElementById('tKatalogSektion');
+      if (!data || !data.length) { sektion.style.display = 'none'; return; }
+      sektion.style.display = 'block';
+      chips.innerHTML = data.map(p => `
+        <label style="display:inline-flex;align-items:center;gap:.3rem;background:#f3f4f6;border:1px solid var(--border);border-radius:6px;padding:.25rem .6rem;cursor:pointer;font-size:.75rem;font-weight:500;transition:all .15s"
+               onmouseover="this.style.background='#e0e7ff'" onmouseout="if(!this.querySelector('input').checked)this.style.background='#f3f4f6'">
+          <input type="checkbox" value="${p.id}" data-navn="${p.navn.replace(/"/g,'&quot;')}" data-pris="${p.enhedspris}" data-enhed="${p.enhed||'stk'}" data-moms="${p.moms_inkluderet}" style="width:13px;height:13px;cursor:pointer"
+            onchange="this.closest('label').style.background=this.checked?'#e0e7ff':'#f3f4f6';this.closest('label').style.borderColor=this.checked?'#6366f1':'var(--border)'"/>
+          ${p.navn} — ${parseInt(p.enhedspris).toLocaleString('da-DK')} kr.
+        </label>`).join('');
+    }).catch(() => {});
+  }
 }
 
 function lukTilbudModal() {
@@ -4597,7 +4657,13 @@ async function genererTilbud() {
         kunde_postnummer: kundePostnummer,
         opgave,
         noter,
-        konkurrent_analyse: konkurrent
+        konkurrent_analyse: konkurrent,
+        valgte_ydelser: Array.from(document.querySelectorAll('#tKatalogChips input:checked')).map(cb => ({
+          navn: cb.dataset.navn,
+          enhedspris: parseFloat(cb.dataset.pris),
+          enhed: cb.dataset.enhed,
+          moms_inkluderet: cb.dataset.moms === 'true'
+        }))
       })
     });
     if (!res) return;
@@ -4725,15 +4791,16 @@ async function hentPriskatalog() {
       <div style="margin-bottom:.5rem">
         <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:.3rem">${kat}</div>
         ${poster.map(p => `
-          <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.6rem .9rem;display:flex;align-items:center;gap:.75rem;margin-bottom:.3rem">
+          <div data-prispost-id="${p.id}" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.6rem .9rem;display:flex;align-items:center;gap:.75rem;margin-bottom:.3rem">
             <div style="flex:1">
-              <span style="font-size:.82rem;font-weight:600;color:var(--text)">${p.navn}</span>
-              ${p.beskrivelse ? `<span style="font-size:.75rem;color:var(--muted);margin-left:.5rem">${p.beskrivelse}</span>` : ''}
+              <span data-felt="navn" style="font-size:.82rem;font-weight:600;color:var(--text)">${p.navn}</span>
+              ${p.beskrivelse ? `<span data-felt="beskrivelse" style="font-size:.75rem;color:var(--muted);margin-left:.5rem">${p.beskrivelse}</span>` : '<span data-felt="beskrivelse" style="display:none"></span>'}
             </div>
             <div style="flex-shrink:0;text-align:right">
-              <div style="font-size:.85rem;font-weight:700;color:var(--accent)">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr. / ${p.enhed}</div>
-              <div style="font-size:.68rem;color:var(--muted)">${p.moms_inkluderet ? 'inkl. moms' : 'ekskl. moms'}</div>
+              <div data-felt="pris" data-raw="${p.enhedspris}" style="font-size:.85rem;font-weight:700;color:var(--accent)">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr. / <span data-felt="enhed" data-raw="${p.enhed}">${p.enhed}</span></div>
+              <div data-felt="moms" data-raw="${p.moms_inkluderet}" style="font-size:.68rem;color:var(--muted)">${p.moms_inkluderet ? 'inkl. moms' : 'ekskl. moms'}</div>
             </div>
+            <button onclick="redigerPrispost('${p.id}', this)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:.2rem .4rem;border-radius:4px" title="Rediger">✏️</button>
             <button onclick="sletPrispost('${p.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:.2rem .4rem;border-radius:4px" title="Slet">✕</button>
           </div>`).join('')}
       </div>`).join('');
@@ -4748,6 +4815,51 @@ async function sletPrispost(id) {
     await apiFetch(`${AGENT_URL}/priskatalog/${id}`, { method: 'DELETE' });
     hentPriskatalog();
   } catch(e) {}
+}
+
+function redigerPrispost(id, btn) {
+  // Find container-div'en for denne post
+  const div = btn.closest('[data-prispost-id]');
+  if (!div) return;
+  const navn = div.querySelector('[data-felt="navn"]').textContent.trim();
+  const pris = div.querySelector('[data-felt="pris"]').dataset.raw || '';
+  const enhed = div.querySelector('[data-felt="enhed"]').dataset.raw || 'stk';
+  const moms = div.querySelector('[data-felt="moms"]').dataset.raw === 'true';
+  const beskrivelse = div.querySelector('[data-felt="beskrivelse"]')?.textContent.trim() || '';
+
+  div.innerHTML = `
+    <div style="flex:1;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <input type="text" value="${navn.replace(/"/g,'&quot;')}" id="re_navn_${id}" style="flex:2;min-width:120px;padding:.3rem .5rem;border:1px solid #c7d2fe;border-radius:6px;font-size:.82rem;font-family:inherit"/>
+      <input type="number" value="${pris}" id="re_pris_${id}" style="width:90px;padding:.3rem .5rem;border:1px solid #c7d2fe;border-radius:6px;font-size:.82rem;font-family:inherit" placeholder="Pris"/>
+      <select id="re_enhed_${id}" style="padding:.3rem .5rem;border:1px solid #c7d2fe;border-radius:6px;font-size:.82rem;font-family:inherit">
+        ${['stk','time','m²','m','dag','sæt','m³'].map(e => `<option${e===enhed?' selected':''}>${e}</option>`).join('')}
+      </select>
+      <label style="font-size:.75rem;font-weight:500;display:flex;align-items:center;gap:.3rem;cursor:pointer">
+        <input type="checkbox" id="re_moms_${id}" ${moms?'checked':''}/>moms inkl.
+      </label>
+    </div>
+    <div style="display:flex;gap:.4rem">
+      <button onclick="gemRedigeretPrispost('${id}', this)" style="background:#e0e7ff;color:#3b4eb8;border:none;border-radius:6px;padding:.3rem .7rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">Gem</button>
+      <button onclick="hentPriskatalog()" style="background:#f3f4f6;color:#6b7280;border:none;border-radius:6px;padding:.3rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Annuller</button>
+    </div>`;
+}
+
+async function gemRedigeretPrispost(id, btn) {
+  const navn = document.getElementById('re_navn_'+id)?.value.trim();
+  const pris = parseFloat(document.getElementById('re_pris_'+id)?.value);
+  const enhed = document.getElementById('re_enhed_'+id)?.value;
+  const moms = document.getElementById('re_moms_'+id)?.checked;
+  if (!navn || !pris) { alert('Udfyld navn og pris'); return; }
+  btn.textContent = '...';
+  btn.disabled = true;
+  try {
+    await apiFetch(`${AGENT_URL}/priskatalog/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn, enhedspris: pris, enhed, moms_inkluderet: moms })
+    });
+    hentPriskatalog();
+  } catch(e) { alert('Fejl ved gem'); btn.disabled = false; btn.textContent = 'Gem'; }
 }
 
 async function hentTilbudListe() {
@@ -5005,6 +5117,102 @@ async function gemRedigeretTilbud() {
     btn.textContent = '💾 Gem og opdater tilbud';
     btn.disabled = false;
   }
+}
+
+// ── PDF IMPORT ──────────────────────────────────────
+let pdfImportPoster = [];
+
+function åbnPdfImport() {
+  document.getElementById('pdfFilInput').value = '';
+  document.getElementById('pdfFilNavn').textContent = 'eller træk og slip her';
+  document.getElementById('pdfUploadStatus').style.display = 'none';
+  document.getElementById('pdfUploadSektion').style.display = 'block';
+  document.getElementById('pdfPreviewSektion').style.display = 'none';
+  pdfImportPoster = [];
+  document.getElementById('pdfImportModal').style.display = 'flex';
+}
+
+function lukPdfImport() {
+  document.getElementById('pdfImportModal').style.display = 'none';
+}
+
+function pdfFilValgt(input) {
+  const fil = input.files[0];
+  if (!fil) return;
+  document.getElementById('pdfFilNavn').textContent = fil.name;
+  uploadPdfPrisliste(fil);
+}
+
+async function uploadPdfPrisliste(fil) {
+  const statusEl = document.getElementById('pdfUploadStatus');
+  const uploadSek = document.getElementById('pdfUploadSektion');
+  statusEl.style.display = 'block';
+  statusEl.textContent = '⏳ Analyserer PDF med AI... (10-20 sek.)';
+
+  const formData = new FormData();
+  formData.append('fil', fil);
+  formData.append('klient_id', currentClient.id);
+
+  try {
+    const token = localStorage.getItem('klaiai_token');
+    const res = await fetch(`${AGENT_URL}/priskatalog/upload-pdf`, {
+      method: 'POST',
+      headers: token && token !== 'local-admin' ? { 'Authorization': 'Bearer ' + token } : {},
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      statusEl.textContent = '❌ ' + (data.error || 'Fejl ved upload');
+      return;
+    }
+    pdfImportPoster = data.poster || [];
+    if (!pdfImportPoster.length) {
+      statusEl.textContent = '⚠️ Ingen ydelser fundet i PDF — prøv en anden fil';
+      return;
+    }
+    // Vis preview
+    document.getElementById('pdfPreviewTitel').textContent = `${pdfImportPoster.length} ydelser fundet — kontrollér og gem`;
+    document.getElementById('pdfPreviewBody').innerHTML = pdfImportPoster.map((p, i) => `
+      <tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:4px 8px">${p.navn}</td>
+        <td style="padding:4px 8px;text-align:right">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr.</td>
+        <td style="padding:4px 8px">${p.enhed||'stk'}</td>
+        <td style="padding:4px 8px">${p.kategori||'Generelt'}</td>
+      </tr>`).join('');
+    uploadSek.style.display = 'none';
+    document.getElementById('pdfPreviewSektion').style.display = 'block';
+  } catch(e) {
+    statusEl.textContent = '❌ Netværksfejl — prøv igen';
+  }
+}
+
+async function bekræftPdfImport() {
+  if (!pdfImportPoster.length || !currentClient) return;
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Gemmer...';
+  let gemt = 0;
+  for (const p of pdfImportPoster) {
+    try {
+      await apiFetch(`${AGENT_URL}/priskatalog`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          klient_id: currentClient.id,
+          navn: p.navn,
+          enhedspris: parseFloat(p.enhedspris) || 0,
+          enhed: p.enhed || 'stk',
+          kategori: p.kategori || 'Generelt',
+          beskrivelse: p.beskrivelse || '',
+          moms_inkluderet: false
+        })
+      });
+      gemt++;
+    } catch(e) {}
+  }
+  lukPdfImport();
+  hentPriskatalog();
+  alert(`✅ ${gemt} ydelser gemt til priskataloget`);
 }
 
 // ── MASSEIMPORT ──────────────────────────────────────

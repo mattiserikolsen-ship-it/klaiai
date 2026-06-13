@@ -627,6 +627,11 @@
           <input id="ntNoter" placeholder="Særlige ønsker, tidligere kontakt..."/>
         </div>
 
+        <div id="ntKatalogSektion" style="margin-bottom:.75rem;display:none">
+          <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Vælg ydelser fra katalog</label>
+          <div id="ntKatalogChips" style="display:flex;flex-wrap:wrap;gap:.35rem"></div>
+        </div>
+
         <div style="margin-bottom:1rem">
           <label>Forbehold (valgfrit)</label>
           <textarea id="ntForbehold" rows="2" placeholder="Fx: Tilbuddet forudsætter normal adgangsforhold..."></textarea>
@@ -1463,6 +1468,21 @@ function åbnNytTilbudModal() {
   document.getElementById('ntGenBtn').disabled = false;
   document.getElementById('ntGenBtn').textContent = '✨ Generer tilbud';
   document.getElementById('nytTilbudOverlay').classList.add('open');
+  // Indlæs priskatalog
+  fetch(`${API}/priskatalog/${CLIENT_ID}`, {
+    headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+  }).then(r => r.json()).then(data => {
+    const chips = document.getElementById('ntKatalogChips');
+    const sektion = document.getElementById('ntKatalogSektion');
+    if (!chips || !data || !data.length) return;
+    sektion.style.display = 'block';
+    chips.innerHTML = data.map(p => `
+      <label style="display:inline-flex;align-items:center;gap:.3rem;background:#f3f4f6;border:1px solid var(--border);border-radius:6px;padding:.25rem .6rem;cursor:pointer;font-size:.75rem;font-weight:500">
+        <input type="checkbox" value="${p.id}" data-navn="${p.navn.replace(/"/g,'&quot;')}" data-pris="${p.enhedspris}" data-enhed="${p.enhed||'stk'}" data-moms="${p.moms_inkluderet}" style="width:13px;height:13px;cursor:pointer"
+          onchange="this.closest('label').style.background=this.checked?'#e8eeff':'#f3f4f6'"/>
+        ${p.navn} — ${parseInt(p.enhedspris).toLocaleString('da-DK')} kr.
+      </label>`).join('');
+  }).catch(() => {});
 }
 
 function lukNytTilbudModal() {
@@ -1498,7 +1518,13 @@ async function genererNytTilbud() {
         forbehold:        document.getElementById('ntForbehold').value.trim(),
         opgave,
         noter:            document.getElementById('ntNoter').value.trim(),
-        konkurrent_analyse: false
+        konkurrent_analyse: false,
+        valgte_ydelser: Array.from(document.querySelectorAll('#ntKatalogChips input:checked')).map(cb => ({
+          navn: cb.dataset.navn,
+          enhedspris: parseFloat(cb.dataset.pris),
+          enhed: cb.dataset.enhed,
+          moms_inkluderet: cb.dataset.moms === 'true'
+        }))
       })
     });
     const data = await res.json();
