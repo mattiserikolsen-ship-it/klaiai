@@ -1819,6 +1819,25 @@ def opdater_klient_aktiv():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/klient/<klient_id>', methods=['PATCH'])
+@require_admin
+def opdater_klient_felt(klient_id):
+    """Opdaterer specifikke felter på en klient (branding, indstillinger mv.)"""
+    if not db:
+        return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    data = request.get_json() or {}
+    # Kun tilladte felter — aldrig id, stripe_*, plan
+    tilladte = {'tilbud_stil', 'tilbud_farve', 'navn', 'hjemmeside', 'email', 'telefon', 'kontaktperson'}
+    opdater  = {k: v for k, v in data.items() if k in tilladte}
+    if not opdater:
+        return jsonify({'error': 'Ingen gyldige felter at opdatere'}), 400
+    try:
+        db.table('klienter').update(opdater).eq('id', klient_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/klient', methods=['POST'])
 @require_admin
 def opret_klient():
@@ -4593,55 +4612,168 @@ def crm_opdater_lead(lead_id):
 # ══════════════════════════════════════════════════════════════
 
 def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
-                      titel, intro, linjer, betingelser, win_temaer, konkurrent_opsummering, rabat=0):
-    """Genererer et professionelt HTML-tilbud"""
+                      titel, intro, linjer, betingelser, win_temaer,
+                      konkurrent_opsummering, rabat=0, tema='standard', primær_farve='#0a1a3a'):
+    """Genererer et professionelt HTML-tilbud — understøtter 3 temaer: standard, eksklusiv, professionel"""
     from datetime import datetime, timedelta
-    dato = datetime.now().strftime('%-d. %B %Y')
+    dato       = datetime.now().strftime('%-d. %B %Y')
     gyldigt_til = (datetime.now() + timedelta(days=14)).strftime('%-d. %B %Y')
 
     subtotal = sum(l.get('total', 0) for l in linjer)
-    rabat = float(rabat or 0)
-    total = max(0, subtotal - rabat)
+    rabat    = float(rabat or 0)
+    total    = max(0, subtotal - rabat)
+    primær_farve = primær_farve or '#0a1a3a'
 
-    linje_rækker = ''
-    for l in linjer:
-        linje_rækker += f"""
-        <tr>
-          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a2e">{l.get('beskrivelse','')}</td>
-          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:center">{l.get('antal','1')} {l.get('enhed','stk')}</td>
-          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:right">{int(l.get('enhedspris',0)):,} kr.</td>
-          <td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#1a1a2e;text-align:right">{int(l.get('total',0)):,} kr.</td>
-        </tr>"""
-
-    win_html = ''
+    # ── FÆLLES: win-temaer og konkurrent-info ──────────────
     if win_temaer:
         punkter = ''.join(f'<li style="margin-bottom:6px">{w}</li>' for w in win_temaer)
-        win_html = f"""
-        <div style="background:#f0f4ff;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#3b4eb8;margin-bottom:10px">Hvorfor vælge os</div>
-          <ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.7">{punkter}</ul>
-        </div>"""
+        win_html = (
+            '<div style="background:#f0f4ff;border-radius:10px;padding:20px 24px;margin-bottom:28px">'
+            '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#3b4eb8;margin-bottom:10px">Hvorfor vælge os</div>'
+            f'<ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.7">{punkter}</ul></div>'
+        )
+    else:
+        win_html = ''
 
-    konkurrent_html = ''
-    if konkurrent_opsummering:
-        konkurrent_html = f"""
-        <div style="background:#fff8ed;border-left:3px solid #f59e0b;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:24px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#b45309;margin-bottom:8px">Markedsindsigt</div>
-          <div style="font-size:12px;color:#78350f;line-height:1.6">{konkurrent_opsummering}</div>
-        </div>"""
+    konkurrent_html = (
+        '<div style="background:#fff8ed;border-left:3px solid #f59e0b;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:28px">'
+        '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#b45309;margin-bottom:8px">Markedsindsigt</div>'
+        f'<div style="font-size:12px;color:#78350f;line-height:1.6">{konkurrent_opsummering}</div></div>'
+    ) if konkurrent_opsummering else ''
 
-    rabat_html = ''
+    # ══════════════════════════════════════════════════════
+    # TEMA: EKSKLUSIV — sort/hvid, minimalistisk
+    # ══════════════════════════════════════════════════════
+    if tema == 'eksklusiv':
+        rækker = ''
+        for l in linjer:
+            rækker += (
+                '<tr>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a1a;font-weight:300">{l.get("beskrivelse","")}</td>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:center;white-space:nowrap">{l.get("antal","1")} {l.get("enhed","stk")}</td>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:right;white-space:nowrap">{int(l.get("enhedspris",0)):,} kr.</td>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#111;text-align:right;white-space:nowrap">{int(l.get("total",0)):,} kr.</td>'
+                '</tr>'
+            )
+        rabat_rækker = ''
+        if rabat > 0:
+            rabat_rækker = (
+                f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Subtotal</td>'
+                f'<td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(subtotal):,} kr.</td></tr>'
+                f'<tr><td colspan="3" style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
+                f'<td style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">&#8722;{int(rabat):,} kr.</td></tr>'
+            )
+
+        return f"""<!DOCTYPE html>
+<html lang="da"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tilbud — {titel}</title></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px">
+<tr><td align="center">
+<table width="680" cellpadding="0" cellspacing="0" style="max-width:680px">
+
+  <!-- HEADER: solid black -->
+  <tr><td style="background:#111;border-radius:16px 16px 0 0;padding:40px 44px">
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td>
+        <div style="font-size:11px;font-weight:900;color:#fff;letter-spacing:4px;text-transform:uppercase">{klient_navn}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px;letter-spacing:1px">{klient_hjemmeside}</div>
+      </td>
+      <td style="text-align:right;vertical-align:top">
+        <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:2px">Tilbud · {dato}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.25);margin-top:5px;letter-spacing:1px">Gyldigt til {gyldigt_til}</div>
+      </td>
+    </tr></table>
+    <div style="margin-top:36px;padding-top:36px;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:26px;font-weight:300;color:#fff;letter-spacing:.5px;line-height:1.3">{titel}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.35);margin-top:10px;letter-spacing:.5px">Til: {kunde_navn} &middot; {kunde_email}</div>
+    </div>
+  </td></tr>
+
+  <!-- BODY -->
+  <tr><td style="background:#fff;padding:44px">
+    <div style="font-size:14px;color:#333;line-height:1.9;margin-bottom:36px;font-weight:300">{intro}</div>
+    {win_html}
+
+    <!-- Prisliste -->
+    <div style="margin-bottom:40px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:#bbb;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #111">Indhold &amp; priser</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        <tr>
+          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:left">Ydelse</th>
+          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:center">Antal</th>
+          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:right">Enhedspris</th>
+          <th style="padding:0 0 12px;font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:1.5px;text-align:right">Total</th>
+        </tr>
+        {rækker}
+        {rabat_rækker}
+        <tr style="border-top:2px solid #111">
+          <td colspan="3" style="padding:18px 0 6px;font-size:10px;font-weight:300;color:#aaa;text-align:right;text-transform:uppercase;letter-spacing:1.5px">Total ekskl. moms</td>
+          <td style="padding:18px 0 6px;font-size:22px;font-weight:900;color:#111;text-align:right;line-height:1">{int(total):,} kr.</td>
+        </tr>
+        <tr>
+          <td colspan="3" style="padding:4px 0;font-size:11px;color:#ccc;text-align:right">Moms 25%</td>
+          <td style="padding:4px 0;font-size:11px;color:#ccc;text-align:right">{int(total*0.25):,} kr.</td>
+        </tr>
+        <tr style="border-top:1px solid #e5e5e5">
+          <td colspan="3" style="padding:12px 0;font-size:9px;font-weight:900;color:#111;text-align:right;text-transform:uppercase;letter-spacing:2px">Total inkl. moms</td>
+          <td style="padding:12px 0;font-size:26px;font-weight:900;color:#111;text-align:right;line-height:1">{int(total*1.25):,} kr.</td>
+        </tr>
+      </table>
+    </div>
+
+    {konkurrent_html}
+
+    <div style="border-top:1px solid #f0f0f0;padding-top:24px;margin-bottom:32px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#bbb;margin-bottom:10px">Betingelser</div>
+      <div style="font-size:12px;color:#888;line-height:1.7;font-weight:300">{betingelser}</div>
+    </div>
+
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:13px;color:#888;margin-bottom:8px;font-weight:300">Spørgsmål? Vi er klar til at hjælpe.</div>
+      <div style="font-size:11px;font-weight:900;color:#111;letter-spacing:2px;text-transform:uppercase">{klient_navn}</div>
+    </div>
+  </td></tr>
+
+  <!-- FOOTER -->
+  <tr><td style="background:#111;border-radius:0 0 16px 16px;padding:18px 44px;text-align:center">
+    <div style="font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px">Tilbud genereret af NexOlsen AI &middot; Gyldigt i 14 dage</div>
+  </td></tr>
+
+</table></td></tr></table>
+</body></html>"""
+
+    # ══════════════════════════════════════════════════════
+    # TEMA: STANDARD + PROFESSIONEL (fælles skabelon)
+    # professionel bruger primær_farve, standard bruger navy
+    # ══════════════════════════════════════════════════════
+    header_bg = (
+        f'background:{primær_farve}' if tema == 'professionel'
+        else 'background:linear-gradient(135deg,#0a1a3a 0%,#1e3a6e 100%)'
+    )
+    accent = primær_farve if tema == 'professionel' else '#0a1a3a'
+
+    rækker = ''
+    for l in linjer:
+        rækker += (
+            '<tr>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a2e">{l.get("beskrivelse","")}</td>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:center">{l.get("antal","1")} {l.get("enhed","stk")}</td>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:right">{int(l.get("enhedspris",0)):,} kr.</td>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#1a1a2e;text-align:right">{int(l.get("total",0)):,} kr.</td>'
+            '</tr>'
+        )
+    rabat_rækker = ''
     if rabat > 0:
-        rabat_html = (
+        rabat_rækker = (
             f'<tr><td colspan="3" style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">Subtotal</td>'
             f'<td style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(subtotal):,} kr.</td></tr>'
             f'<tr><td colspan="3" style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
-            f'<td style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">−{int(rabat):,} kr.</td></tr>'
+            f'<td style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">&#8722;{int(rabat):,} kr.</td></tr>'
         )
 
     return f"""<!DOCTYPE html>
-<html lang="da">
-<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<html lang="da"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tilbud — {titel}</title></head>
 <body style="margin:0;padding:0;background:#f7f8fc;font-family:'Helvetica Neue',Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f8fc;padding:40px 20px">
@@ -4649,7 +4781,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
 <table width="680" cellpadding="0" cellspacing="0" style="max-width:680px">
 
   <!-- HEADER -->
-  <tr><td style="background:linear-gradient(135deg,#0a1a3a 0%,#1e3a6e 100%);border-radius:16px 16px 0 0;padding:36px 40px">
+  <tr><td style="{header_bg};border-radius:16px 16px 0 0;padding:36px 40px">
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td>
         <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.5px">{klient_navn}</div>
@@ -4663,22 +4795,18 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
     </tr></table>
     <div style="margin-top:24px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1)">
       <div style="font-size:20px;font-weight:700;color:#fff;line-height:1.3">{titel}</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:6px">Til: {kunde_navn} · {kunde_email}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:6px">Til: {kunde_navn} &middot; {kunde_email}</div>
     </div>
   </td></tr>
 
   <!-- BODY -->
   <tr><td style="background:#fff;padding:36px 40px">
-
-    <!-- INTRO -->
     <div style="font-size:14px;color:#374151;line-height:1.8;margin-bottom:28px">{intro}</div>
-
-    <!-- WIN TEMAER -->
     {win_html}
 
     <!-- PRIS TABEL -->
     <div style="margin-bottom:28px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:12px">Indhold & priser</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:12px">Indhold &amp; priser</div>
       <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
         <tr style="background:#f9fafb">
           <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:left">Ydelse</th>
@@ -4686,47 +4814,42 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
           <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:right">Enhedspris</th>
           <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:right">Total</th>
         </tr>
-        {linje_rækker}
-        {rabat_html}
+        {rækker}
+        {rabat_rækker}
         <tr style="background:#f9fafb">
           <td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td>
-          <td style="padding:14px 16px;font-size:16px;font-weight:900;color:#0a1a3a;text-align:right">{int(total):,} kr.</td>
+          <td style="padding:14px 16px;font-size:16px;font-weight:900;color:{accent};text-align:right">{int(total):,} kr.</td>
         </tr>
         <tr>
           <td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms (25%)</td>
           <td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(total*0.25):,} kr.</td>
         </tr>
-        <tr style="background:#0a1a3a">
+        <tr style="background:{accent}">
           <td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td>
           <td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total*1.25):,} kr.</td>
         </tr>
       </table>
     </div>
 
-    <!-- KONKURRENT INDSIGT (kun til intern brug — ikke i kunde-mail) -->
     {konkurrent_html}
 
-    <!-- BETINGELSER -->
     <div style="background:#f9fafb;border-radius:10px;padding:16px 20px;margin-bottom:28px">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#9ca3af;margin-bottom:8px">Betingelser</div>
       <div style="font-size:12px;color:#6b7280;line-height:1.6">{betingelser}</div>
     </div>
 
-    <!-- CTA -->
     <div style="text-align:center;padding:8px 0">
       <div style="font-size:14px;color:#374151;margin-bottom:16px">Har du spørgsmål? Kontakt os gerne.</div>
-      <div style="font-size:13px;font-weight:600;color:#0a1a3a">{klient_navn}</div>
+      <div style="font-size:13px;font-weight:600;color:{accent}">{klient_navn}</div>
     </div>
-
   </td></tr>
 
   <!-- FOOTER -->
   <tr><td style="background:#f0f4f8;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center">
-    <div style="font-size:11px;color:#9ca3af">Tilbud genereret af NexOlsen AI · Tilbuddet er gyldigt i 14 dage fra udstedelsesdato</div>
+    <div style="font-size:11px;color:#9ca3af">Tilbud genereret af NexOlsen AI &middot; Tilbuddet er gyldigt i 14 dage fra udstedelsesdato</div>
   </td></tr>
 
-</table>
-</td></tr></table>
+</table></td></tr></table>
 </body></html>"""
 
 
@@ -4802,11 +4925,15 @@ def generer_tilbud():
     klient_hjemmeside = ''
     klient_ydelser = ''
     klient_andet = ''
+    klient_tilbud_stil  = 'standard'
+    klient_tilbud_farve = '#0a1a3a'
     try:
-        k = db.table('klienter').select('navn, hjemmeside').eq('id', klient_id).single().execute()
+        k = db.table('klienter').select('navn, hjemmeside, tilbud_stil, tilbud_farve').eq('id', klient_id).single().execute()
         if k.data:
-            klient_navn = k.data.get('navn', klient_navn)
+            klient_navn       = k.data.get('navn', klient_navn)
             klient_hjemmeside = k.data.get('hjemmeside', '')
+            klient_tilbud_stil  = k.data.get('tilbud_stil', 'standard') or 'standard'
+            klient_tilbud_farve = k.data.get('tilbud_farve', '#0a1a3a') or '#0a1a3a'
         cfg = db.table('chatbot_config').select('ydelser, priser, andet, kontakt').eq('klient_id', klient_id).single().execute()
         if cfg.data:
             klient_ydelser = cfg.data.get('ydelser', '')
@@ -4903,7 +5030,9 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
         linjer=tilbud_data.get('linjer', []),
         betingelser=tilbud_data.get('betingelser', ''),
         win_temaer=tilbud_data.get('win_temaer', []),
-        konkurrent_opsummering=konkurrent_opsummering
+        konkurrent_opsummering=konkurrent_opsummering,
+        tema=klient_tilbud_stil,
+        primær_farve=klient_tilbud_farve
     )
 
     total = sum(l.get('total', 0) for l in tilbud_data.get('linjer', []))
@@ -5039,8 +5168,8 @@ def opdater_tilbud(tilbud_id):
         subtotal = sum(l.get('total', 0) for l in linjer)
         total_efter_rabat = max(0, subtotal - rabat)
 
-        # Fetch klient info for header
-        klient_res = db.table('klienter').select('navn,hjemmeside').eq('id', t['klient_id']).single().execute()
+        # Fetch klient info for header + branding
+        klient_res = db.table('klienter').select('navn,hjemmeside,tilbud_stil,tilbud_farve').eq('id', t['klient_id']).single().execute()
         klient = klient_res.data or {}
 
         # Use stored meta (intro, betingelser, win_temaer)
@@ -5057,7 +5186,9 @@ def opdater_tilbud(tilbud_id):
             betingelser=meta.get('betingelser', ''),
             win_temaer=meta.get('win_temaer', []),
             konkurrent_opsummering=t.get('konkurrent_analyse', ''),
-            rabat=rabat
+            rabat=rabat,
+            tema=klient.get('tilbud_stil', 'standard') or 'standard',
+            primær_farve=klient.get('tilbud_farve', '#0a1a3a') or '#0a1a3a'
         )
 
         db.table('tilbud').update({

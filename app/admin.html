@@ -1178,6 +1178,33 @@
           <button class="btn btn-generate btn-sm" onclick="åbnNytTilbud()">+ Nyt tilbud</button>
         </div>
 
+        <!-- Tilbud branding -->
+        <div style="background:#f9fafb;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+          <div style="font-size:.82rem;font-weight:700;margin-bottom:.75rem">🎨 Tilbudsdesign</div>
+          <div style="display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+            <div>
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Stil</label>
+              <select id="tilbudStil" class="form-input" style="width:180px;font-size:.82rem" onchange="opdaterTilbudStilUI()">
+                <option value="standard">Standard — mørk blå</option>
+                <option value="eksklusiv">Eksklusiv — sort/hvid</option>
+                <option value="professionel">Professionel — egen farve</option>
+              </select>
+            </div>
+            <div id="tilbudFarveSektion" style="opacity:.35;pointer-events:none">
+              <label style="font-size:.72rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">Primær farve</label>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <input type="color" id="tilbudFarveInput" value="#0a1a3a" style="width:36px;height:32px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px" oninput="document.getElementById('tilbudFarveHex').value=this.value"/>
+                <input id="tilbudFarveHex" class="form-input" style="width:88px;font-size:.8rem" value="#0a1a3a" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))document.getElementById('tilbudFarveInput').value=this.value"/>
+              </div>
+            </div>
+            <!-- Live farvebar -->
+            <div style="flex:1;min-width:80px;align-self:flex-end">
+              <div id="tilbudFarvebar" style="height:8px;border-radius:4px;background:#0a1a3a;transition:background .2s"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="align-self:flex-end" id="gemBrandingBtn" onclick="gemTilbudBranding()">Gem design</button>
+          </div>
+        </div>
+
         <!-- Priskatalog -->
         <div style="margin-bottom:1.5rem">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
@@ -2171,7 +2198,7 @@ function switchTab(t) {
   if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
   if (t === 'live' && currentClient) loadCockpit();
-  if (t === 'tilbud' && currentClient) { hentPriskatalog(); hentTilbudListe(); }
+  if (t === 'tilbud' && currentClient) { hentTilbudBranding(); hentPriskatalog(); hentTilbudListe(); }
 }
 
 // ── LEAD MAILS ────────────────────────────────────────
@@ -4712,6 +4739,60 @@ async function opdaterTilbudStatus(id, status) {
     });
     hentTilbudListe();
   } catch(e) {}
+}
+
+// ── TILBUD BRANDING ───────────────────────────────────
+function hentTilbudBranding() {
+  if (!currentClient) return;
+  const stil  = currentClient.tilbud_stil  || 'standard';
+  const farve = currentClient.tilbud_farve || '#0a1a3a';
+  const stilEl = document.getElementById('tilbudStil');
+  if (stilEl) {
+    stilEl.value = stil;
+    document.getElementById('tilbudFarveInput').value = farve;
+    document.getElementById('tilbudFarveHex').value   = farve;
+    opdaterTilbudStilUI();
+  }
+}
+
+function opdaterTilbudStilUI() {
+  const stil  = document.getElementById('tilbudStil').value;
+  const farve = document.getElementById('tilbudFarveInput').value;
+  const farveSektion = document.getElementById('tilbudFarveSektion');
+  const farvebar     = document.getElementById('tilbudFarvebar');
+  if (stil === 'professionel') {
+    farveSektion.style.opacity = '1';
+    farveSektion.style.pointerEvents = '';
+    farvebar.style.background = farve;
+  } else if (stil === 'eksklusiv') {
+    farveSektion.style.opacity = '.35';
+    farveSektion.style.pointerEvents = 'none';
+    farvebar.style.background = '#111';
+  } else {
+    farveSektion.style.opacity = '.35';
+    farveSektion.style.pointerEvents = 'none';
+    farvebar.style.background = '#0a1a3a';
+  }
+}
+
+async function gemTilbudBranding() {
+  const stil  = document.getElementById('tilbudStil').value;
+  const farve = document.getElementById('tilbudFarveInput').value;
+  const btn   = document.getElementById('gemBrandingBtn');
+  btn.disabled = true;
+  try {
+    const res = await apiFetch(`${AGENT_URL}/klient/${currentClient.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tilbud_stil: stil, tilbud_farve: farve })
+    });
+    if (res) {
+      currentClient.tilbud_stil  = stil;
+      currentClient.tilbud_farve = farve;
+      btn.textContent = '✅ Gemt';
+      setTimeout(() => { btn.textContent = 'Gem design'; btn.disabled = false; }, 2000);
+    } else { btn.disabled = false; }
+  } catch(e) { alert(e.message); btn.disabled = false; }
 }
 
 // ── TILBUD EDITOR ─────────────────────────────────────
