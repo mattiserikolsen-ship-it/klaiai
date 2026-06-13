@@ -1185,7 +1185,10 @@
               <div style="font-size:.82rem;font-weight:700">Priskatalog</div>
               <div style="font-size:.72rem;color:var(--muted)">AI bruger disse præcise priser i alle tilbud</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="åbnNyPrispost()">+ Tilføj ydelse</button>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-secondary btn-sm" onclick="åbnMasseimport()" title="Importér mange varer fra Excel/CSV på én gang">📋 Masseimport</button>
+              <button class="btn btn-secondary btn-sm" onclick="åbnNyPrispost()">+ Tilføj ydelse</button>
+            </div>
           </div>
           <div id="priskatalogListe" style="display:flex;flex-direction:column;gap:.4rem"></div>
         </div>
@@ -1204,9 +1207,47 @@
             <div style="font-size:.85rem;font-weight:700">Forhåndsvisning</div>
             <div style="display:flex;gap:.5rem">
               <button class="btn btn-secondary btn-sm" onclick="lukTilbudPreview()">✕ Luk</button>
+              <button class="btn btn-secondary btn-sm" id="redigerTilbudBtn" onclick="toggleTilbudEditor()">✏️ Rediger linjer</button>
               <button class="btn btn-success btn-sm" id="sendTilbudBtn" onclick="sendAktivtTilbud()">✉ Send til kunde</button>
             </div>
           </div>
+
+          <!-- Inline editor -->
+          <div id="tilbudEditorPanel" class="hidden" style="background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:1.25rem;margin-bottom:.75rem">
+            <div style="font-size:.82rem;font-weight:700;color:#374151;margin-bottom:.75rem">✏️ Rediger tilbudslinjer</div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:.8rem" id="editorTabelWrap">
+                <thead>
+                  <tr style="background:#f3f4f6">
+                    <th style="padding:6px 8px;text-align:left;font-weight:600;color:var(--muted);font-size:.72rem">Ydelse / beskrivelse</th>
+                    <th style="padding:6px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:.72rem;width:70px">Antal</th>
+                    <th style="padding:6px 8px;text-align:center;font-weight:600;color:var(--muted);font-size:.72rem;width:70px">Enhed</th>
+                    <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);font-size:.72rem;width:100px">Enhedspris</th>
+                    <th style="padding:6px 8px;text-align:right;font-weight:600;color:var(--muted);font-size:.72rem;width:100px">Total</th>
+                    <th style="width:32px"></th>
+                  </tr>
+                </thead>
+                <tbody id="editorTabel"></tbody>
+              </table>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:.65rem" onclick="tilføjEditorLinje()">+ Tilføj linje</button>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:.75rem;border-top:1px solid #e0e7ff">
+              <div style="display:flex;align-items:center;gap:.75rem">
+                <label style="font-size:.78rem;font-weight:600;color:var(--muted)">Rabat (kr.)</label>
+                <input id="editorRabat" type="number" min="0" placeholder="0" class="form-input" style="width:100px;font-size:.82rem;padding:.35rem .5rem" oninput="opdaterEditorSumTotal()"/>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:.75rem;color:var(--muted)">Subtotal: <span id="editorSubtotal">0 kr.</span></div>
+                <div style="font-size:.9rem;font-weight:800;color:var(--accent)">Total: <span id="editorTotalVis">0 kr.</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;margin-top:.75rem">
+              <button class="btn btn-generate" id="gemTilbudBtn" onclick="gemRedigeretTilbud()">💾 Gem og opdater tilbud</button>
+            </div>
+          </div>
+
           <div id="tilbudPreviewIframe" style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;height:600px;overflow-y:auto"></div>
         </div>
       </div>
@@ -1291,6 +1332,26 @@
           <div style="display:flex;gap:.65rem;justify-content:flex-end;margin-top:1rem">
             <button class="btn btn-secondary" onclick="document.getElementById('prisModal').style.display='none'">Annuller</button>
             <button class="btn btn-primary" onclick="gemPrispost()">Gem ydelse</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Masseimport modal -->
+      <div id="masseImportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1002;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:16px;padding:1.75rem;width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+          <div style="font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:.5rem">📋 Masseimport af ydelser</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">
+            Kopier direkte fra Excel eller Google Sheets og indsæt herunder.<br>
+            <strong>Format pr. linje:</strong> <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">Navn [Tab] Pris [Tab] Enhed [Tab] Kategori</code><br>
+            <span style="color:#9ca3af">Eksempel: <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">Montage af varmepumpe	12500	stk	Installation</code></span>
+          </div>
+          <textarea id="masseImportTekst" class="form-input" rows="8" placeholder="Indsæt rækker fra Excel her...&#10;Navn&#9;Pris&#9;Enhed&#9;Kategori&#10;Montage af varmepumpe&#9;12500&#9;stk&#9;Installation&#10;..." style="font-family:monospace;font-size:.78rem"></textarea>
+          <button class="btn btn-secondary btn-sm" style="margin-top:.65rem" onclick="forhåndsvisMasseimport()">🔍 Forhåndsvis</button>
+          <div id="masseImportPreview" style="margin-top:.75rem;max-height:200px;overflow-y:auto"></div>
+          <div id="masseImportStatus" style="font-size:.8rem;color:var(--green);margin-top:.5rem;font-weight:600"></div>
+          <div style="display:flex;gap:.65rem;justify-content:flex-end;margin-top:1rem">
+            <button class="btn btn-secondary" onclick="document.getElementById('masseImportModal').style.display='none'">Annuller</button>
+            <button class="btn btn-primary" id="masseImportBtn" onclick="udførMasseimport()">📥 Importér alle</button>
           </div>
         </div>
       </div>
@@ -4457,7 +4518,7 @@ async function genererTilbud() {
     if (!data.ok) { alert(data.error || 'Fejl ved generering'); statusEl.style.display = 'none'; return; }
 
     lukTilbudModal();
-    visTilbudPreview(data.tilbud_id, data.html, data.konkurrent_analyse);
+    visTilbudPreview(data.tilbud_id, data.html, data.konkurrent_analyse, data.linjer);
     hentTilbudListe();
   } catch(e) {
     alert('Fejl: ' + e.message);
@@ -4465,11 +4526,17 @@ async function genererTilbud() {
   }
 }
 
-function visTilbudPreview(id, html, konkurrentAnalyse) {
+let aktivtTilbudLinjer = [];
+
+function visTilbudPreview(id, html, konkurrentAnalyse, linjer) {
   aktivtTilbudId = id;
+  aktivtTilbudLinjer = JSON.parse(JSON.stringify(linjer || []));
   const panel = document.getElementById('tilbudPreviewPanel');
   const iframe = document.getElementById('tilbudPreviewIframe');
   iframe.innerHTML = html;
+  // Reset editor
+  document.getElementById('tilbudEditorPanel').classList.add('hidden');
+  document.getElementById('redigerTilbudBtn').textContent = '✏️ Rediger linjer';
   panel.classList.remove('hidden');
 
   // Vis konkurrentanalyse separat hvis den findes
@@ -4630,7 +4697,7 @@ async function hentOgVisTilbud(id) {
     const res = await apiFetch(`${AGENT_URL}/tilbud/${id}`);
     if (!res) return;
     const data = await res.json();
-    visTilbudPreview(data.id, data.html_indhold, data.konkurrent_analyse);
+    visTilbudPreview(data.id, data.html_indhold, data.konkurrent_analyse, data.linjer);
   } catch(e) {
     alert('Kunne ikke hente tilbud');
   }
@@ -4645,6 +4712,195 @@ async function opdaterTilbudStatus(id, status) {
     });
     hentTilbudListe();
   } catch(e) {}
+}
+
+// ── TILBUD EDITOR ─────────────────────────────────────
+function toggleTilbudEditor() {
+  const panel = document.getElementById('tilbudEditorPanel');
+  const btn   = document.getElementById('redigerTilbudBtn');
+  if (panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    btn.textContent = '✕ Luk editor';
+    document.getElementById('editorRabat').value = '';
+    bygEditorTabel();
+  } else {
+    panel.classList.add('hidden');
+    btn.textContent = '✏️ Rediger linjer';
+  }
+}
+
+function bygEditorTabel() {
+  const tbl = document.getElementById('editorTabel');
+  tbl.innerHTML = aktivtTilbudLinjer.map((l, i) => `
+    <tr style="border-bottom:1px solid #f3f4f6">
+      <td style="padding:4px 6px"><input class="form-input" style="font-size:.78rem;padding:.3rem .5rem;width:100%" value="${(l.beskrivelse||'').replace(/"/g,'&quot;')}" oninput="aktivtTilbudLinjer[${i}].beskrivelse=this.value"/></td>
+      <td style="padding:4px 6px;width:70px"><input class="form-input" style="font-size:.78rem;padding:.3rem .4rem;text-align:center;width:100%" type="number" min="0.01" step="any" value="${l.antal||1}" oninput="aktivtTilbudLinjer[${i}].antal=parseFloat(this.value)||1;opdaterEditorTotal(${i})"/></td>
+      <td style="padding:4px 6px;width:70px"><input class="form-input" style="font-size:.78rem;padding:.3rem .4rem;width:100%" value="${(l.enhed||'stk').replace(/"/g,'&quot;')}" oninput="aktivtTilbudLinjer[${i}].enhed=this.value"/></td>
+      <td style="padding:4px 6px;width:100px"><input class="form-input" style="font-size:.78rem;padding:.3rem .4rem;text-align:right;width:100%" type="number" min="0" step="any" value="${l.enhedspris||0}" oninput="aktivtTilbudLinjer[${i}].enhedspris=parseFloat(this.value)||0;opdaterEditorTotal(${i})"/></td>
+      <td style="padding:4px 8px;width:100px;text-align:right"><span id="editorTotal-${i}" style="font-size:.78rem;font-weight:600;color:var(--accent)">${((parseFloat(l.antal)||1)*(parseFloat(l.enhedspris)||0)).toLocaleString('da-DK')} kr.</span></td>
+      <td style="padding:4px 4px;width:32px;text-align:center"><button onclick="sletEditorLinje(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:.2rem">✕</button></td>
+    </tr>`).join('');
+  opdaterEditorSumTotal();
+}
+
+function opdaterEditorTotal(i) {
+  const l = aktivtTilbudLinjer[i];
+  const total = (parseFloat(l.antal)||1) * (parseFloat(l.enhedspris)||0);
+  l.total = total;
+  const el = document.getElementById(`editorTotal-${i}`);
+  if (el) el.textContent = total.toLocaleString('da-DK') + ' kr.';
+  opdaterEditorSumTotal();
+}
+
+function opdaterEditorSumTotal() {
+  const subtotal = aktivtTilbudLinjer.reduce((s, l) => s + (parseFloat(l.antal)||1)*(parseFloat(l.enhedspris)||0), 0);
+  const rabat = parseFloat(document.getElementById('editorRabat').value) || 0;
+  const total = Math.max(0, subtotal - rabat);
+  document.getElementById('editorSubtotal').textContent = subtotal.toLocaleString('da-DK') + ' kr.';
+  document.getElementById('editorTotalVis').textContent = total.toLocaleString('da-DK') + ' kr.';
+}
+
+function sletEditorLinje(i) {
+  aktivtTilbudLinjer.splice(i, 1);
+  bygEditorTabel();
+}
+
+function tilføjEditorLinje() {
+  aktivtTilbudLinjer.push({ beskrivelse: '', antal: 1, enhedspris: 0, enhed: 'stk', total: 0 });
+  bygEditorTabel();
+  // Focus new row's description input
+  const rows = document.querySelectorAll('#editorTabel tr');
+  if (rows.length > 0) {
+    const input = rows[rows.length - 1].querySelector('input');
+    if (input) setTimeout(() => input.focus(), 50);
+  }
+}
+
+async function gemRedigeretTilbud() {
+  if (!aktivtTilbudId) return;
+  const rabat = parseFloat(document.getElementById('editorRabat').value) || 0;
+  const btn = document.getElementById('gemTilbudBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gemmer...';
+  try {
+    const res = await apiFetch(`${AGENT_URL}/tilbud/${aktivtTilbudId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ linjer: aktivtTilbudLinjer, rabat })
+    });
+    if (!res) { btn.disabled = false; btn.textContent = '💾 Gem og opdater tilbud'; return; }
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('tilbudPreviewIframe').innerHTML = data.html;
+      aktivtTilbudLinjer = data.linjer;
+      bygEditorTabel();
+      btn.textContent = '✅ Gemt!';
+      hentTilbudListe();
+      setTimeout(() => { btn.textContent = '💾 Gem og opdater tilbud'; btn.disabled = false; }, 2500);
+    } else {
+      alert(data.error || 'Fejl ved gemning');
+      btn.textContent = '💾 Gem og opdater tilbud';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    alert(e.message);
+    btn.textContent = '💾 Gem og opdater tilbud';
+    btn.disabled = false;
+  }
+}
+
+// ── MASSEIMPORT ──────────────────────────────────────
+let masseImportParsed = [];
+
+function åbnMasseimport() {
+  document.getElementById('masseImportTekst').value = '';
+  document.getElementById('masseImportPreview').innerHTML = '';
+  document.getElementById('masseImportStatus').textContent = '';
+  masseImportParsed = [];
+  document.getElementById('masseImportModal').style.display = 'flex';
+}
+
+function forhåndsvisMasseimport() {
+  const tekst = document.getElementById('masseImportTekst').value.trim();
+  const preview = document.getElementById('masseImportPreview');
+  if (!tekst) { preview.innerHTML = '<div style="font-size:.78rem;color:var(--muted)">Ingen tekst indsat endnu</div>'; return; }
+
+  masseImportParsed = [];
+  const linjer = tekst.split('\n').filter(l => l.trim());
+  linjer.forEach(linje => {
+    // Support tab-separated (Excel default) and semicolon
+    const dele = linje.split(/\t|;/).map(d => d.trim().replace(/^"|"$/g, ''));
+    if (dele.length >= 2) {
+      const navn = dele[0];
+      const pris = parseFloat((dele[1] || '0').replace(',', '.').replace(/[^\d.]/g, ''));
+      const enhed = dele[2] || 'stk';
+      const kategori = dele[3] || 'Generelt';
+      if (navn && !isNaN(pris) && pris > 0) {
+        masseImportParsed.push({ navn, enhedspris: pris, enhed, kategori });
+      }
+    }
+  });
+
+  if (!masseImportParsed.length) {
+    preview.innerHTML = '<div style="font-size:.78rem;color:var(--red);padding:.5rem">Ingen gyldige rækker fundet.<br>Kontrollér at format er: Navn [Tab] Pris [Tab] Enhed [Tab] Kategori</div>';
+    return;
+  }
+
+  preview.innerHTML = `
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">${masseImportParsed.length} ydels${masseImportParsed.length===1?'e':'er'} klar til import:</div>
+    <table style="width:100%;font-size:.75rem;border-collapse:collapse">
+      <thead><tr style="background:#f3f4f6">
+        <th style="padding:4px 8px;text-align:left;font-weight:600">Navn</th>
+        <th style="padding:4px 8px;text-align:right;font-weight:600">Pris</th>
+        <th style="padding:4px 8px;text-align:left;font-weight:600">Enhed</th>
+        <th style="padding:4px 8px;text-align:left;font-weight:600">Kategori</th>
+      </tr></thead>
+      <tbody>${masseImportParsed.map(p => `
+        <tr style="border-bottom:1px solid #f3f4f6">
+          <td style="padding:4px 8px">${p.navn}</td>
+          <td style="padding:4px 8px;text-align:right">${p.enhedspris.toLocaleString('da-DK')} kr.</td>
+          <td style="padding:4px 8px">${p.enhed}</td>
+          <td style="padding:4px 8px">${p.kategori}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function udførMasseimport() {
+  if (!masseImportParsed.length) {
+    alert('Ingen ydelser klar — klik "Forhåndsvis" først');
+    return;
+  }
+  const statusEl = document.getElementById('masseImportStatus');
+  const btn = document.getElementById('masseImportBtn');
+  btn.disabled = true;
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = `Importerer ${masseImportParsed.length} ydelser...`;
+
+  let ok = 0, fejl = 0;
+  for (const p of masseImportParsed) {
+    try {
+      const res = await apiFetch(AGENT_URL + '/priskatalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          klient_id: currentClient.id,
+          kategori: p.kategori,
+          navn: p.navn,
+          enhedspris: p.enhedspris,
+          enhed: p.enhed,
+          beskrivelse: ''
+        })
+      });
+      if (res) ok++; else fejl++;
+    } catch(e) { fejl++; }
+  }
+
+  statusEl.style.color = fejl > 0 ? 'var(--orange, #f59e0b)' : 'var(--green)';
+  statusEl.textContent = `✅ ${ok} ydelser importeret${fejl > 0 ? ` (${fejl} fejlede)` : ''}`;
+  btn.disabled = false;
+  hentPriskatalog();
+  setTimeout(() => { document.getElementById('masseImportModal').style.display = 'none'; masseImportParsed = []; }, 2500);
 }
 
 // ── INIT: Load klienter fra Supabase ──────────────────

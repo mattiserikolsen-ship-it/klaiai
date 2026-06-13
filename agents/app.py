@@ -4593,13 +4593,15 @@ def crm_opdater_lead(lead_id):
 # ══════════════════════════════════════════════════════════════
 
 def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
-                      titel, intro, linjer, betingelser, win_temaer, konkurrent_opsummering):
+                      titel, intro, linjer, betingelser, win_temaer, konkurrent_opsummering, rabat=0):
     """Genererer et professionelt HTML-tilbud"""
     from datetime import datetime, timedelta
     dato = datetime.now().strftime('%-d. %B %Y')
     gyldigt_til = (datetime.now() + timedelta(days=14)).strftime('%-d. %B %Y')
 
-    total = sum(l.get('total', 0) for l in linjer)
+    subtotal = sum(l.get('total', 0) for l in linjer)
+    rabat = float(rabat or 0)
+    total = max(0, subtotal - rabat)
 
     linje_rækker = ''
     for l in linjer:
@@ -4627,6 +4629,15 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#b45309;margin-bottom:8px">Markedsindsigt</div>
           <div style="font-size:12px;color:#78350f;line-height:1.6">{konkurrent_opsummering}</div>
         </div>"""
+
+    rabat_html = ''
+    if rabat > 0:
+        rabat_html = (
+            f'<tr><td colspan="3" style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">Subtotal</td>'
+            f'<td style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(subtotal):,} kr.</td></tr>'
+            f'<tr><td colspan="3" style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
+            f'<td style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">−{int(rabat):,} kr.</td></tr>'
+        )
 
     return f"""<!DOCTYPE html>
 <html lang="da">
@@ -4676,6 +4687,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
           <th style="padding:10px 16px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;text-align:right">Total</th>
         </tr>
         {linje_rækker}
+        {rabat_html}
         <tr style="background:#f9fafb">
           <td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td>
           <td style="padding:14px 16px;font-size:16px;font-weight:900;color:#0a1a3a;text-align:right">{int(total):,} kr.</td>
@@ -4908,6 +4920,12 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
             'kunde_email': kunde_email,
             'titel': tilbud_data.get('titel', 'Tilbud'),
             'html_indhold': html,
+            'linjer': tilbud_data.get('linjer', []),
+            'tilbud_meta': {
+                'intro':      tilbud_data.get('intro', ''),
+                'betingelser': tilbud_data.get('betingelser', ''),
+                'win_temaer': tilbud_data.get('win_temaer', [])
+            },
             'total_pris': int(total),
             'status': 'udkast',
             'konkurrent_analyse': konkurrent_opsummering
@@ -4994,6 +5012,61 @@ def hent_tilbud(tilbud_id):
     try:
         res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
         return jsonify(res.data or {})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/tilbud/<tilbud_id>', methods=['PATCH'])
+@require_admin
+def opdater_tilbud(tilbud_id):
+    """Opdaterer et tilbud med redigerede linjer og rabat"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    data = request.get_json() or {}
+    linjer = data.get('linjer', [])
+    rabat  = float(data.get('rabat', 0) or 0)
+
+    try:
+        res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
+        t = res.data
+        if not t:
+            return jsonify({'error': 'Tilbud ikke fundet'}), 404
+
+        # Recalculate line totals
+        for l in linjer:
+            l['total'] = round(float(l.get('antal', 1)) * float(l.get('enhedspris', 0)), 2)
+
+        subtotal = sum(l.get('total', 0) for l in linjer)
+        total_efter_rabat = max(0, subtotal - rabat)
+
+        # Fetch klient info for header
+        klient_res = db.table('klienter').select('navn,hjemmeside').eq('id', t['klient_id']).single().execute()
+        klient = klient_res.data or {}
+
+        # Use stored meta (intro, betingelser, win_temaer)
+        meta = t.get('tilbud_meta') or {}
+
+        html = _byg_tilbud_html(
+            klient_navn=klient.get('navn', ''),
+            klient_hjemmeside=klient.get('hjemmeside', ''),
+            kunde_navn=t['kunde_navn'],
+            kunde_email=t['kunde_email'],
+            titel=t['titel'],
+            intro=meta.get('intro', ''),
+            linjer=linjer,
+            betingelser=meta.get('betingelser', ''),
+            win_temaer=meta.get('win_temaer', []),
+            konkurrent_opsummering=t.get('konkurrent_analyse', ''),
+            rabat=rabat
+        )
+
+        db.table('tilbud').update({
+            'html_indhold': html,
+            'linjer': linjer,
+            'total_pris': int(total_efter_rabat)
+        }).eq('id', tilbud_id).execute()
+
+        return jsonify({'ok': True, 'html': html, 'total': int(total_efter_rabat), 'linjer': linjer})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
