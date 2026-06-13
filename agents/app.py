@@ -5223,14 +5223,20 @@ def send_tilbud(tilbud_id):
         if not kunde_email or '@' not in kunde_email:
             return jsonify({'error': 'Ingen gyldig email på tilbuddet'}), 400
 
-        # Hent klientens navn til afsender-felt
+        # Hent klientens navn + hjemmeside til afsender og Trustpilot-link
         fra_navn = 'NexOlsen'
+        klient_hjemmeside = ''
         try:
-            k = db.table('klienter').select('navn').eq('id', klient_id).single().execute()
+            k = db.table('klienter').select('navn,hjemmeside').eq('id', klient_id).single().execute()
             if k.data:
                 fra_navn = k.data.get('navn', fra_navn)
+                klient_hjemmeside = k.data.get('hjemmeside', '')
         except:
             pass
+
+        # Byg Trustpilot-URL fra hjemmeside-domæne (heuristik)
+        domain = klient_hjemmeside.replace('https://', '').replace('http://', '').replace('www.', '').rstrip('/')
+        trustpilot_url = f'https://dk.trustpilot.com/review/{domain}' if domain else 'https://dk.trustpilot.com'
 
         # Fjern konkurrent-sektion fra kunde-email (kun til intern brug)
         import re as _re
@@ -5238,6 +5244,19 @@ def send_tilbud(tilbud_id):
             r'<!-- KONKURRENT.*?KONKURRENT -->',
             '', html, flags=_re.DOTALL
         )
+
+        # Indsæt Trustpilot-sektion lige inden footeren
+        trustpilot_blok = f"""
+  <tr><td style="background:#fff;padding:0 40px 32px;text-align:center">
+    <div style="border-top:1px solid #f0f0f0;padding-top:28px">
+      <div style="font-size:20px;margin-bottom:10px">&#11088;</div>
+      <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:8px">Har du haft en god oplevelse?</div>
+      <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:18px">Vi går meget op i vores kunders tilfredshed.<br>En Trustpilot-anmeldelse ville betyde alverden for os.</div>
+      <a href="{trustpilot_url}" style="display:inline-block;background:#00b67a;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:11px 26px;border-radius:8px;letter-spacing:.2px">Skriv en anmeldelse &#8594;</a>
+    </div>
+  </td></tr>"""
+
+        html_til_kunde = html_til_kunde.replace('<!-- FOOTER -->', trustpilot_blok + '\n  <!-- FOOTER -->')
 
         send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe tilbuddet herunder.', fra_navn=fra_navn, html_content=html_til_kunde)
 
