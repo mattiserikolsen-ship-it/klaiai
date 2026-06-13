@@ -3470,7 +3470,7 @@ Skriv i en venlig, professionel tone. Brug markdown-formatering med overskrifter
 
     try:
         resp = client.messages.create(
-            model='claude-opus-4-6',
+            model='claude-opus-4-8',
             max_tokens=2000,
             messages=[{'role': 'user', 'content': prompt}]
         )
@@ -3695,7 +3695,7 @@ Regler:
 - Brug #7c3aed som accentfarve"""
 
                 resp = ai.messages.create(
-                    model='claude-opus-4-6',
+                    model='claude-opus-4-8',
                     max_tokens=500,
                     messages=[{'role': 'user', 'content': prompt}]
                 )
