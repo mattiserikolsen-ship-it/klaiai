@@ -5792,6 +5792,29 @@ def _godkend_side(overskrift, besked, fejl=False, ref_nr='', dato_str=''):
 </body></html>"""
 
 
+@app.route('/portal/tilbud/status/<tilbud_id>', methods=['PATCH'])
+@require_token
+def portal_opdater_tilbud_status(tilbud_id):
+    """Klientportal: opdaterer status (klient-token må kun ændre egne tilbud)"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    data = request.json or {}
+    ny_status = data.get('status', '')
+    if ny_status not in ('udkast', 'sendt', 'accepteret', 'afvist'):
+        return jsonify({'error': 'Ugyldig status'}), 400
+    try:
+        res = db.table('tilbud').select('klient_id').eq('id', tilbud_id).single().execute()
+        if info.get('role') == 'client' and info.get('klient_id') != res.data.get('klient_id'):
+            return jsonify({'error': 'Ingen adgang'}), 403
+        db.table('tilbud').update({'status': ny_status}).eq('id', tilbud_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/tilbud/status/<tilbud_id>', methods=['PATCH'])
 @require_admin
 def opdater_tilbud_status(tilbud_id):
