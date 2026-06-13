@@ -279,6 +279,10 @@
     <div class="nav-item" data-view="bookinger" onclick="showView('bookinger')">
       <span class="ni">▦</span> Bookinger
     </div>
+    <div class="nav-item" data-view="tilbud" onclick="showView('tilbud')">
+      <span class="ni">📄</span> Tilbud
+      <span id="tilbudBadge" class="hidden" style="margin-left:auto;background:#16a34a;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
+    </div>
     <div class="nav-item" data-view="agenter" onclick="showView('agenter')">
       <span class="ni">◈</span> Mine agenter
     </div>
@@ -380,6 +384,34 @@
           <span id="bookingCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
         <div id="bookingList"><div class="loading">Henter bookinger...</div></div>
+      </div>
+    </div>
+
+    <!-- TILBUD -->
+    <div id="view-tilbud" class="hidden">
+      <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem" id="tilbudStats">
+        <div class="stat-card">
+          <div class="stat-num" id="tbTotal">—</div>
+          <div class="stat-label">Tilbud i alt</div>
+          <div class="stat-sub">oprettet</div>
+        </div>
+        <div class="stat-card" style="background:#f0fdf4;border-color:#bbf7d0">
+          <div class="stat-num" id="tbAccepteret" style="color:#15803d">—</div>
+          <div class="stat-label" style="color:#15803d">Accepteret</div>
+          <div class="stat-sub" style="color:#15803d">af kunder</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="tbVærdi">—</div>
+          <div class="stat-label">Samlet accepteret værdi</div>
+          <div class="stat-sub">kr ekskl. afviste</div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div class="card-title" style="margin:0">Alle tilbud</div>
+          <span id="tilbudCount" style="font-size:.78rem;color:var(--muted)"></span>
+        </div>
+        <div id="tilbudList"><div class="loading">Henter tilbud...</div></div>
       </div>
     </div>
 
@@ -635,11 +667,12 @@ function closeMobileNav() {
 }
 
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','leads','bookinger','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
+const views = ['overblik','leads','bookinger','tilbud','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
 const titles = {
   overblik:      ['Overblik',       'Din NexOlsen portal'],
   leads:         ['Leads',          'Kunder der har henvendt sig'],
   bookinger:     ['Bookinger',      'Bekræftede bookinger'],
+  tilbud:        ['Tilbud',         'Tilbud du har sendt til kunder'],
   agenter:       ['Mine agenter',   'AI-agenter der kører for dig'],
   rapport:       ['Rapport',        'Statistik og grafisk overblik'],
   abonnement:    ['Abonnement',     'Din plan og fakturering'],
@@ -658,6 +691,7 @@ function showView(v) {
   document.getElementById('topbarSub').textContent = titles[v][1];
   closeMobileNav();
   if (v === 'rapport' && !rapportData) loadRapport();
+  if (v === 'tilbud') loadTilbud();
   if (v === 'abonnement') loadAbonnement();
   if (v === 'indstillinger') loadIndstillinger();
   if (v === 'kom-i-gang') { genererWidgetKode(); visPlatform('html', document.querySelector('.plat-btn.active') || document.querySelector('.plat-btn')); }
@@ -878,6 +912,88 @@ async function loadLeadsOgBookinger() {
   renderOverblikLeads();
   renderLeads();
   renderBookinger();
+}
+
+// ── TILBUD ─────────────────────────────────────────────
+let tilbudData = null;
+
+async function loadTilbud() {
+  if (!CLIENT_ID) return;
+  const el = document.getElementById('tilbudList');
+  el.innerHTML = '<div class="loading">Henter tilbud...</div>';
+  try {
+    const res = await fetch(`${API}/portal/tilbud/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    if (!res.ok) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Kunne ikke hente tilbud. Prøv igen.</div></div>';
+      return;
+    }
+    tilbudData = await res.json();
+    renderTilbud();
+  } catch(e) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Netværksfejl — prøv igen.</div></div>';
+  }
+}
+
+function renderTilbud() {
+  const el = document.getElementById('tilbudList');
+  if (!tilbudData || !tilbudData.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Ingen tilbud endnu.<br>Dine tilbud dukker op her, når de er sendt til kunder.</div></div>';
+    document.getElementById('tilbudCount').textContent = '';
+    document.getElementById('tbTotal').textContent = '0';
+    document.getElementById('tbAccepteret').textContent = '0';
+    document.getElementById('tbVærdi').textContent = '0 kr';
+    return;
+  }
+
+  const accepterede = tilbudData.filter(t => t.status === 'accepteret');
+  const samletVærdi = accepterede.reduce((s, t) => s + (t.total_pris || 0), 0);
+  document.getElementById('tbTotal').textContent = tilbudData.length;
+  document.getElementById('tbAccepteret').textContent = accepterede.length;
+  document.getElementById('tbVærdi').textContent = samletVærdi.toLocaleString('da-DK') + ' kr';
+  document.getElementById('tilbudCount').textContent = `${tilbudData.length} tilbud`;
+
+  // Badge med accepterede
+  const badge = document.getElementById('tilbudBadge');
+  if (accepterede.length > 0) { badge.textContent = accepterede.length + ' ✓'; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+
+  el.innerHTML = tilbudData.map(t => {
+    const dato = t.oprettet ? new Date(t.oprettet).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    const sendtDato = t.sendt_dato ? new Date(t.sendt_dato).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }) : null;
+    const godkendtDato = t.godkendt_dato ? new Date(t.godkendt_dato).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+    const pris = t.total_pris != null ? t.total_pris.toLocaleString('da-DK') + ' kr' : '—';
+
+    let statusBadge, rowStyle = '';
+    if (t.status === 'accepteret') {
+      statusBadge = `<span style="background:#dcfce7;color:#15803d;font-size:.68rem;font-weight:700;padding:.2rem .6rem;border-radius:5px">🎉 Accepteret</span>`;
+      rowStyle = 'background:#f0fdf4;border-left:3px solid #16a34a;';
+    } else if (t.status === 'afvist') {
+      statusBadge = `<span style="background:#fee2e2;color:#991b1b;font-size:.68rem;font-weight:700;padding:.2rem .6rem;border-radius:5px">Afvist</span>`;
+      rowStyle = 'opacity:.6;';
+    } else if (t.status === 'sendt') {
+      statusBadge = `<span style="background:#dbeafe;color:#1d4ed8;font-size:.68rem;font-weight:700;padding:.2rem .6rem;border-radius:5px">Sendt</span>`;
+    } else {
+      statusBadge = `<span style="background:#f3f4f6;color:#6b7280;font-size:.68rem;font-weight:700;padding:.2rem .6rem;border-radius:5px">Kladde</span>`;
+    }
+
+    return `<div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);${rowStyle}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:.2rem">${t.titel || 'Tilbud'}</div>
+          <div style="font-size:.78rem;color:var(--muted)">${t.kunde_navn || '—'}${t.kunde_email ? ' · ' + t.kunde_email : ''}</div>
+          ${t.status === 'accepteret' && godkendtDato ? `<div style="font-size:.75rem;color:#15803d;margin-top:.3rem;font-weight:600">✓ Accepteret ${godkendtDato}</div>` : ''}
+          ${sendtDato && t.status !== 'accepteret' ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Sendt ${sendtDato}</div>` : ''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:800;font-size:1rem;color:var(--dark);margin-bottom:.35rem">${pris}</div>
+          ${statusBadge}
+          <div style="font-size:.68rem;color:var(--muted);margin-top:.4rem">${dato}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── RAPPORT ────────────────────────────────────────────

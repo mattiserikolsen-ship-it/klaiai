@@ -5218,6 +5218,24 @@ def hent_tilbud_liste(klient_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/portal/tilbud/<klient_id>', methods=['GET'])
+@require_token
+def portal_tilbud_liste(klient_id):
+    """Klientportal: henter tilbud for klienten (klient-token eller admin)"""
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not db:
+        return jsonify([])
+    try:
+        res = db.table('tilbud').select('id,kunde_navn,kunde_email,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        return jsonify(res.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/tilbud/<tilbud_id>', methods=['GET'])
 @require_admin
 def hent_tilbud(tilbud_id):
