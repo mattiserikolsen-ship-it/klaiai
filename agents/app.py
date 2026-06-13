@@ -4997,13 +4997,19 @@ def slet_prispost(post_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/tilbud/generer', methods=['POST'])
-@require_admin
+@require_token
 def generer_tilbud():
     """Genererer et AI-tilbud med valgfri konkurrentanalyse"""
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _tok_info = active_tokens.get(_tok, {})
     data = request.json or {}
     klient_id       = data.get('klient_id', '')
+    # Klient-token må kun generere for sit eget klient_id
+    if _tok_info.get('role') == 'client':
+        klient_id = _tok_info.get('klient_id', klient_id)
     kunde_navn      = data.get('kunde_navn', '')
     kunde_email     = data.get('kunde_email', '')
     kunde_adresse   = data.get('kunde_adresse', '')

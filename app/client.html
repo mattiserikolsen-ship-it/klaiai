@@ -231,6 +231,17 @@
     .btn-primary:hover { opacity:.85; }
     .btn-sm { padding:.4rem .85rem;font-size:.78rem; }
 
+    /* ── TILBUD MODAL ── */
+    .tilbud-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center; }
+    .tilbud-modal-overlay.open { display:flex; }
+    .tilbud-modal { background:#fff;border-radius:16px;padding:2rem;width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2); }
+    .tilbud-modal label { font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px; }
+    .tilbud-modal input, .tilbud-modal textarea, .tilbud-modal select {
+      width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;
+      font-size:.88rem;font-family:inherit;outline:none;box-sizing:border-box;
+    }
+    .tilbud-modal input:focus, .tilbud-modal textarea:focus { border-color:var(--dark); }
+
     /* ── KOM I GANG ── */
     .tjek-item { display:flex;align-items:center;gap:.85rem;padding:.75rem .9rem;border-radius:10px;background:var(--bg);border:1px solid var(--border); }
     .tjek-item.done { background:#f0fdf4;border-color:#bbf7d0; }
@@ -387,6 +398,57 @@
       </div>
     </div>
 
+    <!-- TILBUD MODAL -->
+    <div class="tilbud-modal-overlay" id="nytTilbudOverlay" onclick="if(event.target===this)lukNytTilbudModal()">
+      <div class="tilbud-modal">
+        <div style="font-size:1rem;font-weight:800;color:var(--dark);margin-bottom:1.5rem">✨ Generer nyt tilbud</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+          <div>
+            <label>Kundenavn *</label>
+            <input id="ntKundeNavn" placeholder="Fx. Lars Nielsen"/>
+          </div>
+          <div>
+            <label>Kunde email *</label>
+            <input id="ntKundeEmail" type="email" placeholder="lars@firma.dk"/>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 110px;gap:.75rem;margin-bottom:.75rem">
+          <div>
+            <label>Adresse (valgfrit)</label>
+            <input id="ntKundeAdresse" placeholder="Fx. Vestergade 12"/>
+          </div>
+          <div>
+            <label>Postnummer</label>
+            <input id="ntKundePostnummer" placeholder="8700"/>
+          </div>
+        </div>
+
+        <div style="margin-bottom:.75rem">
+          <label>Beskriv opgaven / kundens behov *</label>
+          <textarea id="ntOpgave" rows="4" placeholder="Fx: Kunden ønsker installation af pool med varmepumpe. Have på ca. 200m² i Horsens..."></textarea>
+        </div>
+
+        <div style="margin-bottom:1rem">
+          <label>Ekstra noter (valgfrit)</label>
+          <input id="ntNoter" placeholder="Særlige ønsker, tidligere kontakt..."/>
+        </div>
+
+        <div style="margin-bottom:1rem">
+          <label>Forbehold (valgfrit)</label>
+          <textarea id="ntForbehold" rows="2" placeholder="Fx: Tilbuddet forudsætter normal adgangsforhold..."></textarea>
+        </div>
+
+        <div id="ntStatus" style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem;display:none">⏳ Genererer tilbud med AI... (5-15 sek.)</div>
+
+        <div style="display:flex;gap:.75rem;justify-content:flex-end">
+          <button onclick="lukNytTilbudModal()" style="background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.6rem 1.2rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Annuller</button>
+          <button id="ntGenBtn" onclick="genererNytTilbud()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.6rem 1.4rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">✨ Generer tilbud</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TILBUD -->
     <div id="view-tilbud" class="hidden">
       <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.25rem" id="tilbudStats">
@@ -409,9 +471,10 @@
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
           <div class="card-title" style="margin:0">Alle tilbud</div>
-          <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0;max-width:300px">
+          <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0;max-width:260px">
             <input id="tilbudSøg" type="search" placeholder="Søg navn, adresse..." style="width:100%;padding:.45rem .8rem;border:1px solid var(--border);border-radius:8px;font-size:.8rem;font-family:inherit;outline:none" oninput="renderTilbud()"/>
           </div>
+          <button onclick="åbnNytTilbudModal()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Nyt tilbud</button>
           <span id="tilbudCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
         <div id="tilbudList"><div class="loading">Henter tilbud...</div></div>
@@ -1018,6 +1081,70 @@ function renderTilbud() {
       </div>
     </div>`;
   }).join('');
+}
+
+function åbnNytTilbudModal() {
+  ['ntKundeNavn','ntKundeEmail','ntKundeAdresse','ntKundePostnummer','ntOpgave','ntNoter','ntForbehold'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ntStatus').style.display = 'none';
+  document.getElementById('ntGenBtn').disabled = false;
+  document.getElementById('ntGenBtn').textContent = '✨ Generer tilbud';
+  document.getElementById('nytTilbudOverlay').classList.add('open');
+}
+
+function lukNytTilbudModal() {
+  document.getElementById('nytTilbudOverlay').classList.remove('open');
+}
+
+async function genererNytTilbud() {
+  const kundeNavn  = document.getElementById('ntKundeNavn').value.trim();
+  const kundeEmail = document.getElementById('ntKundeEmail').value.trim();
+  const opgave     = document.getElementById('ntOpgave').value.trim();
+  if (!kundeNavn || !kundeEmail || !opgave) {
+    alert('Udfyld kundenavn, email og opgavebeskrivelse');
+    return;
+  }
+  const btn = document.getElementById('ntGenBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Genererer...';
+  document.getElementById('ntStatus').style.display = 'block';
+
+  try {
+    const res = await fetch(`${API}/tilbud/generer`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': localStorage.getItem('klaiai_token') || ''
+      },
+      body: JSON.stringify({
+        klient_id:        CLIENT_ID,
+        kunde_navn:       kundeNavn,
+        kunde_email:      kundeEmail,
+        kunde_adresse:    document.getElementById('ntKundeAdresse').value.trim(),
+        kunde_postnummer: document.getElementById('ntKundePostnummer').value.trim(),
+        forbehold:        document.getElementById('ntForbehold').value.trim(),
+        opgave,
+        noter:            document.getElementById('ntNoter').value.trim(),
+        konkurrent_analyse: false
+      })
+    });
+    const data = await res.json();
+    if (!data.ok) { alert(data.error || 'Fejl ved generering'); btn.disabled = false; btn.textContent = '✨ Generer tilbud'; document.getElementById('ntStatus').style.display = 'none'; return; }
+
+    lukNytTilbudModal();
+    // Genindlæs tilbudsliste og vis det nye tilbud
+    tilbudData = null;
+    await loadTilbud();
+    // Åbn det nye tilbud direkte
+    if (data.tilbud_id) åbnTilbud(data.tilbud_id);
+  } catch(e) {
+    alert('Netværksfejl — prøv igen');
+    btn.disabled = false;
+    btn.textContent = '✨ Generer tilbud';
+    document.getElementById('ntStatus').style.display = 'none';
+  }
 }
 
 function åbnTilbud(tilbudId) {
