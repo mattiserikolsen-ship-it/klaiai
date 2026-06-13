@@ -5025,7 +5025,7 @@ def send_tilbud(tilbud_id):
             '', html, flags=_re.DOTALL
         )
 
-        send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe vedhæftede tilbud.', klient_navn=None, html_content=html_til_kunde)
+        send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe vedhæftede tilbud.', fra_navn=klient_navn, html_content=html_til_kunde)
 
         db.table('tilbud').update({'status': 'sendt', 'sendt_dato': datetime.now().isoformat()}).eq('id', tilbud_id).execute()
 
