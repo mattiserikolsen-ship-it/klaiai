@@ -4775,10 +4775,14 @@ def crm_leads():
         return jsonify([]), 200
     try:
         klient_id = request.args.get('klient_id')
-        q = db.table('leads').select('id, klient_id, navn, email, telefon, besked, status, noter, oprettet').order('oprettet', desc=True)
+        q = db.table('leads').select('id, klient_id, navn, email, telefon, besked, status, noter, oprettet, created_at').order('created_at', desc=True)
         if klient_id:
             q = q.eq('klient_id', klient_id)
         leads = q.execute().data or []
+        # Normaliser tidsstempel — brug oprettet hvis det findes, ellers created_at
+        for l in leads:
+            if not l.get('oprettet'):
+                l['oprettet'] = l.get('created_at', '')
 
         # Hent klientnavne
         klient_res = db.table('klienter').select('id, navn').execute()
