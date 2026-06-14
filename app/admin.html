@@ -880,6 +880,7 @@
         <div>
           <div class="detail-name" id="detailName">Firma</div>
           <div class="detail-meta" id="detailMeta"></div>
+          <div id="detailKlientId" style="font-size:.62rem;color:var(--muted);margin-top:.15rem;font-family:monospace;cursor:pointer" title="Klik for at kopiere" onclick="navigator.clipboard.writeText(this.dataset.id);this.textContent='✓ Kopieret!';setTimeout(()=>this.textContent='ID: '+this.dataset.id,1500)"></div>
         </div>
         <div style="margin-left:auto; display:flex; gap:.6rem; align-items:center">
           <span class="badge badge-green" id="detailStatus">Aktiv</span>
@@ -3177,6 +3178,8 @@ function openClient(id) {
   document.getElementById('detailAvatar').textContent = currentClient.name[0];
   document.getElementById('detailName').textContent = currentClient.name;
   document.getElementById('detailMeta').textContent = `${currentClient.email||''}${currentClient.phone?' · '+currentClient.phone:''}${currentClient.website?' · '+currentClient.website:''}`;
+  const idEl = document.getElementById('detailKlientId');
+  if (idEl) { idEl.textContent = 'ID: ' + currentClient.id; idEl.dataset.id = currentClient.id; }
   document.getElementById('detailProductCount').textContent = (currentClient.products||[]).length;
   document.getElementById('detailMonthly').textContent = (parseInt(currentClient.mdpris)||0).toLocaleString('da-DK') + ' kr';
   document.getElementById('detailProgress').textContent = (currentClient.progress||0) + '%';
