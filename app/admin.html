@@ -897,6 +897,7 @@
         <div class="tab" data-tab="agents" onclick="switchTab('agents')">🤖 Agenter</div>
         <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">Opgaver</div>
         <div class="tab" data-tab="chatbot-test" onclick="switchTab('chatbot-test')">💬 Test chatbot</div>
+        <div class="tab" data-tab="leads" onclick="switchTab('leads')">🎯 Leads <span id="leadsBadge" class="hidden" style="background:var(--accent2);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
         <div class="tab" data-tab="chat" onclick="switchTab('chat')">Beskeder</div>
         <div class="tab" data-tab="leadmails" onclick="switchTab('leadmails')">📧 Leadmails <span id="mailBadge" class="hidden" style="background:var(--red);color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;margin-left:.2rem"></span></div>
         <div class="tab" data-tab="insights" onclick="switchTab('insights')" style="color:var(--purple)">🧠 AI Insights</div>
@@ -1105,6 +1106,18 @@
             Tryk <strong>Analysér nu</strong> for at lade Claude gennemgå klientens opsætning
           </div>
         </div>
+      </div>
+
+      <!-- Tab: Leads -->
+      <div id="tab-leads" class="hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div>
+            <div style="font-size:.82rem;font-weight:700">Alle leads</div>
+            <div style="font-size:.72rem;color:var(--muted)">Leads modtaget via chatbot og hjemmeside</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="hentKlientLeads()">↻ Opdater</button>
+        </div>
+        <div id="klientLeadsListe"></div>
       </div>
 
       <!-- Tab: Live Cockpit -->
@@ -2270,7 +2283,7 @@ function showView(v) {
 }
 
 function switchTab(t) {
-  ['overview','products','agents','tasks','chatbot-test','chat','leadmails','insights','live','tilbud'].forEach(id => {
+  ['overview','products','agents','tasks','chatbot-test','leads','chat','leadmails','insights','live','tilbud'].forEach(id => {
     document.getElementById('tab-'+id)?.classList.add('hidden');
   });
   document.getElementById('tab-'+t)?.classList.remove('hidden');
@@ -2282,10 +2295,74 @@ function switchTab(t) {
   if (t === 'tasks' && currentClient) renderTasks();
   if (t === 'chat' && currentClient) renderChat();
   if (t === 'chatbot-test' && currentClient) initTestChat();
+  if (t === 'leads' && currentClient) hentKlientLeads();
   if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
   if (t === 'live' && currentClient) loadCockpit();
   if (t === 'tilbud' && currentClient) { hentTilbudBranding(); hentPriskatalog(); hentTilbudListe(); }
+}
+
+// ── KLIENT LEADS ─────────────────────────────────────
+const LEAD_STATUS_LABELS = { ny: 'Ny', kontaktet: 'Kontaktet', 'møde': 'Møde aftalt', lukket: 'Lukket ✓' };
+const LEAD_STATUS_FARVER = { ny: '#6b7280', kontaktet: '#0a5c8a', 'møde': '#7c3aed', lukket: '#16a34a' };
+const LEAD_STATUS_BGS   = { ny: '#f3f4f6', kontaktet: '#e0f2fe', 'møde': '#ede9fe', lukket: '#dcfce7' };
+
+async function hentKlientLeads() {
+  if (!currentClient) return;
+  const liste = document.getElementById('klientLeadsListe');
+  const badge = document.getElementById('leadsBadge');
+  if (!liste) return;
+  liste.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:1rem">Henter leads...</div>';
+  try {
+    const res = await apiFetch(`${AGENT_URL}/crm/leads?klient_id=${currentClient.id}`);
+    if (!res) return;
+    const leads = await res.json();
+    if (!Array.isArray(leads) || leads.length === 0) {
+      badge.classList.add('hidden');
+      liste.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--muted)">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">◎</div>
+        <div style="font-size:.85rem">Ingen leads endnu — de dukker op her når kunder kontakter via chatbotten</div>
+      </div>`;
+      return;
+    }
+    // Badge
+    const nyeLeads = leads.filter(l => (l.status || 'ny') === 'ny').length;
+    if (nyeLeads > 0) { badge.textContent = nyeLeads; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+
+    liste.innerHTML = leads.map(l => {
+      const st = l.status || 'ny';
+      const stLabel = LEAD_STATUS_LABELS[st] || st;
+      const stFarve = LEAD_STATUS_FARVER[st] || '#6b7280';
+      const stBg    = LEAD_STATUS_BGS[st] || '#f3f4f6';
+      const tid = tidsAgo ? tidsAgo(l.oprettet) : (l.oprettet || '').slice(0,10);
+      return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:.5rem;display:flex;align-items:flex-start;gap:1rem">
+        <div style="width:36px;height:36px;border-radius:50%;background:#e8f0fe;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0">
+          ${(l.navn || '?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem">
+            <span style="font-size:.9rem;font-weight:700;color:var(--text)">${l.navn || 'Ukendt'}</span>
+            <span style="font-size:.65rem;font-weight:700;padding:.1rem .45rem;border-radius:4px;background:${stBg};color:${stFarve}">${stLabel}</span>
+          </div>
+          <div style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">
+            ${l.email ? '✉️ ' + l.email : ''}${l.telefon ? (l.email ? ' · ' : '') + '📞 ' + l.telefon : ''}
+          </div>
+          ${l.besked ? `<div style="font-size:.78rem;color:var(--mid);font-style:italic;border-left:2px solid #e0e7ff;padding-left:.5rem;margin-top:.25rem">"${l.besked.slice(0,120)}${l.besked.length>120?'…':''}"</div>` : ''}
+          ${l.noter ? `<div style="font-size:.72rem;color:var(--accent2);margin-top:.25rem">📝 ${l.noter}</div>` : ''}
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem;white-space:nowrap">${tid}</div>
+          <div style="display:flex;gap:.3rem;justify-content:flex-end;flex-wrap:wrap">
+            ${l.telefon ? `<a href="tel:${l.telefon}" style="background:#f0fdf4;color:#16a34a;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.72rem;font-weight:600;text-decoration:none">📞 Ring</a>` : ''}
+            <button onclick="openCRMLead('${l.id}')" style="background:#f0f4ff;color:#2563eb;border:none;border-radius:6px;padding:.25rem .6rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">Status →</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    liste.innerHTML = '<div style="color:var(--red);font-size:.82rem;padding:1rem">Fejl ved hentning af leads</div>';
+  }
 }
 
 // ── LEAD MAILS ────────────────────────────────────────
