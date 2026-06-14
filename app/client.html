@@ -1222,7 +1222,8 @@ const CRM_STATUS = {
 
 function leadHTML(l, kort = false) {
   const initials = (l.navn || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-  const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+  const datoRaw = l.oprettet || l.created_at || '';
+  const dato = datoRaw ? new Date(datoRaw).toLocaleDateString('da-DK', { day:'numeric', month:'short', year:'numeric' }) : '—';
   const erKontaktet = kontaktetIds.has(String(l.id));
   const kilde = l.kilde === 'chatbot'
     ? `<span class="badge badge-chatbot">Chatbot</span>`

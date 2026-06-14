@@ -380,6 +380,9 @@
     <div class="nav-item" data-view="clients" onclick="showView('clients')">
       <span class="ni">👥</span> Alle klienter
     </div>
+    <div class="nav-item" onclick="syncAlleKlienter()" title="Synkroniser alle klienter til databasen">
+      <span class="ni">↻</span> Synk DB
+    </div>
     <div class="nav-item" data-view="new-client" onclick="showView('new-client')">
       <span class="ni">➕</span> Ny klient
     </div>
@@ -2195,30 +2198,50 @@ const PRODUCTS = {
 
 function saveClients() { localStorage.setItem('klarai_clients', JSON.stringify(clients)); }
 
-async function syncKlientToDB(client) {
-  try {
-    await apiFetch(AGENT_URL + '/klient', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: client.id,
-        navn: client.name,
-        email: client.login_email || client.email || '',
-        kontakt: client.contact || '',
-        telefon: client.phone || '',
-        hjemmeside: client.website || '',
-        beskrivelse: client.desc || '',
-        startpris: client.startpris || 0,
-        mdpris: client.mdpris || 0,
-        status: client.status || 'opsætning',
-        produkter: client.products || [],
-        password: client.login_password || '',
-        google_place_id: client.google_place_id || '',
-        sms_aktiv: !!client.sms_aktiv,
-        booking_url: client.booking_url || ''
-      })
-    });
-  } catch(e) { console.warn('DB sync fejlede:', e); }
+async function syncKlientToDB(client, retry = 3) {
+  for (let i = 0; i < retry; i++) {
+    try {
+      const res = await apiFetch(AGENT_URL + '/klient', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: client.id,
+          navn: client.name,
+          email: client.login_email || client.email || '',
+          kontakt: client.contact || '',
+          telefon: client.phone || '',
+          hjemmeside: client.website || '',
+          beskrivelse: client.desc || '',
+          startpris: client.startpris || 0,
+          mdpris: client.mdpris || 0,
+          status: client.status || 'opsætning',
+          produkter: client.products || [],
+          password: client.login_password || '',
+          google_place_id: client.google_place_id || '',
+          sms_aktiv: !!client.sms_aktiv,
+          booking_url: client.booking_url || ''
+        })
+      });
+      if (res && res.ok) return true;
+    } catch(e) {
+      if (i === retry - 1) console.warn('DB sync fejlede efter ' + retry + ' forsøg:', e);
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+  return false;
+}
+
+async function syncAlleKlienter() {
+  if (!clients.length) { alert('Ingen klienter at synkronisere'); return; }
+  const btn = document.querySelector('[onclick="syncAlleKlienter()"]');
+  if (btn) { btn.style.opacity = '.5'; btn.style.pointerEvents = 'none'; }
+  let ok = 0, fejl = 0;
+  for (const c of clients) {
+    const res = await syncKlientToDB(c);
+    if (res) ok++; else fejl++;
+  }
+  if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+  alert(`✅ ${ok} klienter synkroniseret${fejl > 0 ? ` · ❌ ${fejl} fejlede` : ''}`);
 }
 
 async function syncChatbotConfigToDB(clientId, cfg) {
