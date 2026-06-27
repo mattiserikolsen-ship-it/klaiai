@@ -4094,6 +4094,84 @@ def kør_ugerapport_agent():
     except Exception as e:
         print(f"Ugerapport-agent fejl: {e}")
 
+# ADMIN: Kør denne SQL i Supabase for at oprette tabellen:
+# CREATE TABLE IF NOT EXISTS markeds_priser (
+#   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+#   klient_id text NOT NULL,
+#   branche text,
+#   analyse text,
+#   konkurrenter jsonb DEFAULT '[]',
+#   oprettet timestamptz DEFAULT now(),
+#   opdateret timestamptz DEFAULT now()
+# );
+
+def kør_markeds_overvågning():
+    """📊 Scanner markedspriser for alle aktive klienter ugentligt"""
+    if not db:
+        return
+    print("📊 Markedsovervågning kører...")
+    try:
+        klienter_res = db.table('klienter').select('id, navn, hjemmeside').eq('aktiv', True).execute()
+        for k in (klienter_res.data or []):
+            klient_id = k['id']
+            klient_navn = k.get('navn', '')
+            klient_hjemmeside = k.get('hjemmeside', '')
+            if not klient_hjemmeside:
+                continue
+            try:
+                # Hent klientens ydelser og branche fra chatbot_config
+                cfg = db.table('chatbot_config').select('ydelser, branche, andet').eq('klient_id', klient_id).single().execute()
+                ydelser = ''
+                branche = ''
+                if cfg.data:
+                    ydelser = cfg.data.get('ydelser', '')
+                    branche = cfg.data.get('branche', '') or cfg.data.get('andet', '')
+
+                # Byg søgeforespørgsel baseret på klientens branche
+                søge_emne = branche or ydelser[:60] if (branche or ydelser) else klient_navn
+
+                # Brug Claude til at analysere markedspriser via web_search
+                prompt = f"""Du er en markedsprisanalytiker. Analyser markedspriser for virksomheder der sælger: {søge_emne}
+
+Virksomhed vi analyserer for: {klient_navn} ({klient_hjemmeside})
+
+Giv en kort, konkret analyse på dansk med:
+1. Typiske markedspriser for de vigtigste ydelser i denne branche (konkrete tal)
+2. Prisniveau: er {klient_navn} forventeligt dyr, middel eller billig ift. markedet?
+3. 2-3 konkrete anbefalinger til prissætning
+
+Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
+
+                svar = ai.messages.create(
+                    model='claude-haiku-4-5-20251001',
+                    max_tokens=600,
+                    messages=[{'role': 'user', 'content': prompt}]
+                )
+                analyse_tekst = svar.content[0].text.strip()
+
+                # Gem/opdater i databasen
+                eksisterende = db.table('markeds_priser').select('id').eq('klient_id', klient_id).execute()
+                if eksisterende.data:
+                    db.table('markeds_priser').update({
+                        'analyse': analyse_tekst,
+                        'branche': søge_emne[:100],
+                        'opdateret': datetime.utcnow().isoformat()
+                    }).eq('klient_id', klient_id).execute()
+                else:
+                    import uuid as _uuid2
+                    db.table('markeds_priser').insert({
+                        'id': str(_uuid2.uuid4()),
+                        'klient_id': klient_id,
+                        'branche': søge_emne[:100],
+                        'analyse': analyse_tekst,
+                        'konkurrenter': []
+                    }).execute()
+                print(f"  ✅ Markedsanalyse opdateret for {klient_navn}")
+            except Exception as e:
+                print(f"  ❌ Markedsanalyse fejl ({klient_navn}): {e}")
+    except Exception as e:
+        print(f"Markedsovervågning fejl: {e}")
+
 # Planlæg jobs
 def kør_billing_agent():
     """Deaktiver kunder der har haft past_due status i over 7 dage"""
@@ -4701,6 +4779,7 @@ scheduler.add_job(kør_reminder_agent,   'cron', hour=9,  minute=0, id='reminder
 scheduler.add_job(kør_review_agent,     'cron', hour=10, minute=0, id='review')
 scheduler.add_job(kør_genopvarmning_agent, 'cron', hour=11, minute=0, id='genopvarmning')
 scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerapport', day_of_week='mon')
+scheduler.add_job(kør_markeds_overvågning, 'cron', day_of_week='fri', hour=6, minute=0, id='markeds_overvågning')
 scheduler.add_job(kør_billing_agent,    'cron', hour=8,  minute=0, id='billing')
 scheduler.add_job(kør_tilbud_followup, 'cron', hour=10, minute=15, id='tilbud_followup')
 scheduler.add_job(kør_mail_flow_agent,  'interval', hours=1, id='mail_flow')
@@ -5148,6 +5227,78 @@ def slet_prispost(post_id):
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/markeds-analyse/<klient_id>', methods=['GET'])
+@require_admin
+def hent_markeds_analyse(klient_id):
+    """Hent seneste markedsanalyse for en klient"""
+    if not db:
+        return jsonify({'analyse': None})
+    try:
+        res = db.table('markeds_priser').select('analyse,branche,opdateret').eq('klient_id', klient_id).order('opdateret', desc=True).limit(1).execute()
+        if res.data:
+            return jsonify(res.data[0])
+        return jsonify({'analyse': None})
+    except Exception as e:
+        return jsonify({'analyse': None, 'error': str(e)})
+
+
+@app.route('/markeds-analyse/<klient_id>', methods=['POST'])
+@require_admin
+def kør_markeds_analyse_nu(klient_id):
+    """Kør markedsanalyse nu for én klient (manuel trigger)"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        k = db.table('klienter').select('navn, hjemmeside').eq('id', klient_id).single().execute()
+        if not k.data:
+            return jsonify({'error': 'Klient ikke fundet'}), 404
+        klient_navn = k.data.get('navn', '')
+        klient_hjemmeside = k.data.get('hjemmeside', '')
+        cfg = db.table('chatbot_config').select('ydelser, branche, andet').eq('klient_id', klient_id).single().execute()
+        ydelser = ''
+        branche = ''
+        if cfg.data:
+            ydelser = cfg.data.get('ydelser', '')
+            branche = cfg.data.get('branche', '') or cfg.data.get('andet', '')
+        søge_emne = branche or ydelser[:60] if (branche or ydelser) else klient_navn
+        prompt = f"""Du er en markedsprisanalytiker. Analyser markedspriser for virksomheder der sælger: {søge_emne}
+
+Virksomhed vi analyserer for: {klient_navn} ({klient_hjemmeside})
+
+Giv en kort, konkret analyse på dansk med:
+1. Typiske markedspriser for de vigtigste ydelser i denne branche (konkrete tal)
+2. Prisniveau: er {klient_navn} forventeligt dyr, middel eller billig ift. markedet?
+3. 2-3 konkrete anbefalinger til prissætning
+
+Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
+        svar = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=600,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        analyse_tekst = svar.content[0].text.strip()
+        from datetime import datetime
+        import uuid as _uuid3
+        eksisterende = db.table('markeds_priser').select('id').eq('klient_id', klient_id).execute()
+        if eksisterende.data:
+            db.table('markeds_priser').update({
+                'analyse': analyse_tekst,
+                'branche': søge_emne[:100],
+                'opdateret': datetime.utcnow().isoformat()
+            }).eq('klient_id', klient_id).execute()
+        else:
+            db.table('markeds_priser').insert({
+                'id': str(_uuid3.uuid4()),
+                'klient_id': klient_id,
+                'branche': søge_emne[:100],
+                'analyse': analyse_tekst,
+                'konkurrenter': []
+            }).execute()
+        return jsonify({'ok': True, 'analyse': analyse_tekst})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/priskatalog/upload-pdf', methods=['POST'])
 @require_admin

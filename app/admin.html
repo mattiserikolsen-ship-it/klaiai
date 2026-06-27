@@ -1222,6 +1222,18 @@
           </div>
         </div>
 
+        <!-- Markedsanalyse -->
+        <div id="markeds_analyse_wrap" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+            <div style="font-size:.78rem;font-weight:700;color:#0369a1">📊 Markedsanalyse</div>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span id="markeds_opdateret" style="font-size:.68rem;color:#64748b"></span>
+              <button class="btn btn-secondary btn-sm" onclick="kørMarketsAnalyseNu()" id="markeds_scan_btn">↻ Scan nu</button>
+            </div>
+          </div>
+          <div id="markeds_analyse_tekst" style="font-size:.78rem;color:#0c4a6e;line-height:1.7;white-space:pre-wrap"></div>
+        </div>
+
         <!-- Priskatalog -->
         <div style="margin-bottom:1.5rem">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
@@ -2323,7 +2335,7 @@ function switchTab(t) {
   if (t === 'leadmails' && currentClient) hentLeadMails();
   if (t === 'insights' && currentClient) hentGaps();
   if (t === 'live' && currentClient) loadCockpit();
-  if (t === 'tilbud' && currentClient) { hentTilbudBranding(); hentPriskatalog(); hentTilbudListe(); }
+  if (t === 'tilbud' && currentClient) { hentTilbudBranding(); hentPriskatalog(); hentTilbudListe(); hentMarketsAnalyse(); }
 }
 
 // ── KLIENT LEADS ─────────────────────────────────────
@@ -4873,6 +4885,43 @@ async function gemPrispost() {
     document.getElementById('prisModal').style.display = 'none';
     hentPriskatalog();
   } catch(e) { alert(e.message); }
+}
+
+async function hentMarketsAnalyse() {
+  if (!currentClient) return;
+  try {
+    const res = await apiFetch(`${AGENT_URL}/markeds-analyse/${currentClient.id}`);
+    if (!res) return;
+    const data = await res.json();
+    const wrap = document.getElementById('markeds_analyse_wrap');
+    if (!wrap) return;
+    if (data.analyse) {
+      wrap.style.display = 'block';
+      document.getElementById('markeds_analyse_tekst').textContent = data.analyse;
+      document.getElementById('markeds_opdateret').textContent = data.opdateret
+        ? 'Opdateret ' + new Date(data.opdateret).toLocaleDateString('da-DK', { day:'numeric', month:'short' })
+        : '';
+    }
+  } catch(e) {}
+}
+
+async function kørMarketsAnalyseNu() {
+  if (!currentClient) return;
+  const btn = document.getElementById('markeds_scan_btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanner...';
+  try {
+    const res = await apiFetch(`${AGENT_URL}/markeds-analyse/${currentClient.id}`, { method: 'POST' });
+    if (!res) return;
+    const data = await res.json();
+    if (data.analyse) {
+      const wrap = document.getElementById('markeds_analyse_wrap');
+      wrap.style.display = 'block';
+      document.getElementById('markeds_analyse_tekst').textContent = data.analyse;
+      document.getElementById('markeds_opdateret').textContent = 'Opdateret nu';
+    }
+  } catch(e) { alert('Fejl ved scanning'); }
+  finally { btn.disabled = false; btn.textContent = '↻ Scan nu'; }
 }
 
 async function hentPriskatalog() {
