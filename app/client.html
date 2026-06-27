@@ -294,15 +294,65 @@
     .send-rapport-btn:hover { opacity: .85; }
     .send-rapport-btn:disabled { opacity: .5; cursor: default; }
 
+    /* ── MOBILE BOTTOM NAV ── */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      background: var(--dark); border-top: 1px solid rgba(255,255,255,.08);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .mobile-bottom-nav-inner { display: flex; justify-content: space-around; }
+    .mob-nav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: .6rem .2rem; color: rgba(255,255,255,.38); cursor: pointer;
+      border: none; background: none; font-family: inherit; transition: color .15s; position: relative;
+    }
+    .mob-nav-item.active { color: #fff; }
+    .mob-nav-icon { font-size: 1.15rem; line-height: 1; }
+    .mob-nav-label { font-size: .55rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-top: .2rem; }
+    .mob-nav-badge {
+      position: absolute; top: .35rem; right: calc(50% - 14px);
+      background: #c0392b; color: #fff; font-size: .5rem; font-weight: 800;
+      min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+      padding: 0 3px;
+    }
+
+    /* ── MOBILE FAB (Nyt tilbud) ── */
+    .mobile-fab {
+      display: none; position: fixed; bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+      right: 1.1rem; z-index: 45;
+      background: var(--dark); color: #fff; border: none; border-radius: 50%;
+      width: 52px; height: 52px; font-size: 1.3rem; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,.3); transition: transform .15s;
+    }
+    .mobile-fab:active { transform: scale(.92); }
+
     /* ── MOBILE ── */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .mobile-header { display: flex; }
-      .main { margin-left: 0; padding-top: 56px; }
+      .mobile-bottom-nav { display: block; }
+      .mobile-fab { display: flex; align-items: center; justify-content: center; }
+      .main { margin-left: 0; padding-top: 56px; padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
       .topbar { display: none; }
-      .content { padding: 1.25rem 1rem; }
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .content { padding: 1rem .85rem; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
       .lead-right { display: none; }
+      .roi-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .roi-badge { display: flex; align-items: center; gap: 1.25rem; min-width: unset; text-align: left; }
+      .roi-badge-num { font-size: 1.75rem; }
+      .roi-stats { gap: 1rem; }
+      .rapport-grid, .rapport-grid-3 { grid-template-columns: 1fr; }
+      .pipeline-wrap { grid-template-columns: 1fr 1fr; gap: .5rem; }
+    }
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: 1fr 1fr; gap: .5rem; }
+      .stat-card { padding: .9rem 1rem; }
+      .stat-num { font-size: 1.6rem; }
+      .card { padding: 1.1rem; }
+      .roi-card { padding: 1.25rem; }
+      .roi-main-num { font-size: 2.2rem; }
+      .pipeline-wrap { grid-template-columns: 1fr; }
     }
 
     /* ── BUTTONS ── */
@@ -346,6 +396,10 @@
     .crm-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:flex-start;justify-content:center;padding-top:5vh;overflow-y:auto; }
     .crm-overlay.open { display:flex; }
     .crm-panel { background:#fff;border-radius:16px;width:620px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.25); }
+    @media (max-width: 600px) {
+      .crm-overlay { align-items: flex-end; padding-top: 0; }
+      .crm-panel { width: 100%; max-width: 100%; border-radius: 20px 20px 0 0; max-height: 92vh; }
+    }
     .crm-header { padding:1.5rem 1.75rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1; }
     .crm-section { padding:1.25rem 1.75rem;border-bottom:1px solid var(--border); }
     .crm-section:last-child { border-bottom:none; }
@@ -370,6 +424,16 @@
       font-size:.88rem;font-family:inherit;outline:none;box-sizing:border-box;
     }
     .tilbud-modal input:focus, .tilbud-modal textarea:focus { border-color:var(--dark); }
+    @media (max-width: 600px) {
+      .tilbud-modal-overlay { align-items: flex-end; }
+      .tilbud-modal {
+        width: 100%; border-radius: 20px 20px 0 0; padding: 1.25rem 1.1rem;
+        max-height: 92vh; padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+      }
+      .tilbud-modal input, .tilbud-modal textarea {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+      }
+    }
 
     /* ── KOM I GANG ── */
     .tjek-item { display:flex;align-items:center;gap:.85rem;padding:.75rem .9rem;border-radius:10px;background:var(--bg);border:1px solid var(--border); }
@@ -455,6 +519,63 @@
     <div class="powered">Drevet af NexOlsen</div>
   </div>
 </nav>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="mobile-bottom-nav">
+  <div class="mobile-bottom-nav-inner">
+    <button class="mob-nav-item active" id="mobNav-overblik" onclick="showView('overblik')">
+      <span class="mob-nav-icon">⊡</span>
+      <span class="mob-nav-label">Hjem</span>
+    </button>
+    <button class="mob-nav-item" id="mobNav-leads" onclick="showView('leads')">
+      <span class="mob-nav-icon">◎</span>
+      <span class="mob-nav-label">Leads</span>
+      <span class="mob-nav-badge hidden" id="mobLeadBadge"></span>
+    </button>
+    <button class="mob-nav-item" id="mobNav-tilbud" onclick="showView('tilbud')">
+      <span class="mob-nav-icon">📄</span>
+      <span class="mob-nav-label">Tilbud</span>
+      <span class="mob-nav-badge hidden" id="mobTilbudBadge"></span>
+    </button>
+    <button class="mob-nav-item" id="mobNav-pipeline" onclick="showView('pipeline')">
+      <span class="mob-nav-icon">◧</span>
+      <span class="mob-nav-label">Pipeline</span>
+    </button>
+    <button class="mob-nav-item" id="mobNav-mere" onclick="toggleMobMereMenu()">
+      <span class="mob-nav-icon">⋯</span>
+      <span class="mob-nav-label">Mere</span>
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE "MERE" DRAWER -->
+<div id="mobMereOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60" onclick="toggleMobMereMenu()"></div>
+<div id="mobMereDrawer" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-radius:20px 20px 0 0;z-index:61;padding:1rem .75rem calc(1.5rem + env(safe-area-inset-bottom,0px))">
+  <div style="width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto .75rem"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+    <button onclick="showView('gaps');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      💬 <span>Spørgsmål</span>
+    </button>
+    <button onclick="showView('agenter');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      ◈ <span>Agenter</span>
+    </button>
+    <button onclick="showView('rapport');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      ◫ <span>Rapport</span>
+    </button>
+    <button onclick="showView('indstillinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      ⚙ <span>Indstillinger</span>
+    </button>
+    <button onclick="showView('bookinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      ▦ <span>Bookinger</span>
+    </button>
+    <button onclick="logud()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.04);border:none;border-radius:10px;padding:.85rem 1rem;color:rgba(255,255,255,.5);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      ↩ <span>Log ud</span>
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE FAB -->
+<button class="mobile-fab" onclick="åbnNytTilbudModal()" title="Nyt tilbud">＋</button>
 
 <div class="main">
   <div class="topbar">
@@ -1009,6 +1130,14 @@ const titles = {
   'kom-i-gang':  ['Kom i gang',     'Installer chatbot og fuldfør opsætning']
 };
 
+function toggleMobMereMenu() {
+  const overlay = document.getElementById('mobMereOverlay');
+  const drawer = document.getElementById('mobMereDrawer');
+  const open = drawer.style.display !== 'none';
+  overlay.style.display = open ? 'none' : 'block';
+  drawer.style.display = open ? 'none' : 'block';
+}
+
 function showView(v) {
   views.forEach(id => {
     document.getElementById('view-'+id)?.classList.add('hidden');
@@ -1018,6 +1147,12 @@ function showView(v) {
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
   document.getElementById('topbarTitle').textContent = titles[v][0];
   document.getElementById('topbarSub').textContent = titles[v][1];
+  // Synkroniser bottom nav
+  ['overblik','leads','tilbud','pipeline'].forEach(id => {
+    document.getElementById('mobNav-'+id)?.classList.toggle('active', id === v);
+  });
+  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang'];
+  document.getElementById('mobNav-mere')?.classList.toggle('active', mereViews.includes(v));
   closeMobileNav();
   if (v === 'overblik') loadOverblik();
   if (v === 'pipeline') loadPipeline();
@@ -1060,8 +1195,14 @@ async function loadData() {
     // Lead badge
     const ulæste = data.leads.filter(l => !kontaktetIds.has(String(l.id))).length;
     const badge = document.getElementById('leadBadge');
-    if (ulæste > 0) { badge.textContent = ulæste; badge.classList.remove('hidden'); }
-    else badge.classList.add('hidden');
+    const mobBadge = document.getElementById('mobLeadBadge');
+    if (ulæste > 0) {
+      badge.textContent = ulæste; badge.classList.remove('hidden');
+      if (mobBadge) { mobBadge.textContent = ulæste; mobBadge.classList.remove('hidden'); }
+    } else {
+      badge.classList.add('hidden');
+      if (mobBadge) mobBadge.classList.add('hidden');
+    }
   } catch(e) { console.error(e); }
 }
 
@@ -1414,8 +1555,14 @@ function renderTilbud() {
 
   // Badge med accepterede
   const badge = document.getElementById('tilbudBadge');
-  if (accepterede.length > 0) { badge.textContent = accepterede.length + ' ✓'; badge.classList.remove('hidden'); }
-  else badge.classList.add('hidden');
+  const mobTilbudBadge = document.getElementById('mobTilbudBadge');
+  if (accepterede.length > 0) {
+    badge.textContent = accepterede.length + ' ✓'; badge.classList.remove('hidden');
+    if (mobTilbudBadge) { mobTilbudBadge.textContent = accepterede.length; mobTilbudBadge.classList.remove('hidden'); }
+  } else {
+    badge.classList.add('hidden');
+    if (mobTilbudBadge) mobTilbudBadge.classList.add('hidden');
+  }
 
   // Søgefilter
   const søg = (document.getElementById('tilbudSøg')?.value || '').toLowerCase().trim();
