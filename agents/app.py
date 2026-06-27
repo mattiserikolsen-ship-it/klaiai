@@ -5424,6 +5424,50 @@ Prisliste:
         print(f"PDF upload fejl: {e}")
         return jsonify({'error': f'Fejl ved behandling: {str(e)}'}), 500
 
+@app.route('/tale/parse', methods=['POST'])
+@require_token
+def parse_tale():
+    """Parser en dansk stemmeoptagelse og udtrækker tilbudsdata via Claude"""
+    data = request.get_json() or {}
+    transskription = data.get('tekst', '').strip()
+    if not transskription:
+        return jsonify({'error': 'Ingen tekst'}), 400
+    try:
+        prompt = f"""Du er en assistent der hjælper danske håndværkere med at lave tilbud.
+
+En håndværker har dikteret følgende noter ude hos en kunde:
+"{transskription}"
+
+Udtræk disse oplysninger og returner KUN valid JSON:
+{{
+  "kunde_navn": "fuldt navn hvis nævnt, ellers tom streng",
+  "kunde_email": "email hvis nævnt, ellers tom streng",
+  "kunde_adresse": "vejnavn og husnummer hvis nævnt, ellers tom streng",
+  "kunde_postnummer": "postnummer eller by hvis nævnt, ellers tom streng",
+  "opgave": "detaljeret beskrivelse af opgaven på dansk — beskriv hvad der skal laves, mål, materialer nævnt, særlige forhold osv.",
+  "noter": "eventuelle ekstra noter, ønsker eller forbehold der er nævnt"
+}}
+
+Opgave-feltet skal være en fyldig, professionel beskrivelse der kan bruges direkte i et tilbud.
+Kun JSON, ingen forklaring."""
+
+        svar = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=800,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        tekst = svar.content[0].text.strip()
+        import re as _re2, json as _json2
+        match = _re2.search(r'\{[\s\S]*\}', tekst)
+        if not match:
+            return jsonify({'error': 'Kunne ikke parse tale'}), 500
+        parsed = _json2.loads(match.group(0))
+        return jsonify({'ok': True, 'data': parsed, 'transskription': transskription})
+    except Exception as e:
+        print(f"Tale parse fejl: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/materialer/soeg', methods=['POST'])
 @require_token
 def soeg_materialer():

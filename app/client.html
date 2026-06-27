@@ -714,7 +714,22 @@
     <!-- TILBUD MODAL -->
     <div class="tilbud-modal-overlay" id="nytTilbudOverlay" onclick="if(event.target===this)lukNytTilbudModal()">
       <div class="tilbud-modal">
-        <div style="font-size:1rem;font-weight:800;color:var(--dark);margin-bottom:1.5rem">✨ Generer nyt tilbud</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div style="font-size:1rem;font-weight:800;color:var(--dark)">✨ Generer nyt tilbud</div>
+          <button id="ntMicBtn" onclick="startStemmeOptagelse()" title="Dikter opgaven med stemme" style="display:flex;align-items:center;gap:.4rem;background:#f0f4ff;border:1.5px solid #c7d7fe;color:#2563eb;border-radius:10px;padding:.45rem .9rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">
+            🎙️ Dikter
+          </button>
+        </div>
+
+        <!-- STEMME PANEL -->
+        <div id="ntStemmePanel" style="display:none;background:#f0f4ff;border:1.5px solid #c7d7fe;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center">
+          <div id="ntStemmeStatus" style="font-size:.85rem;font-weight:700;color:#2563eb;margin-bottom:.5rem">🎙️ Lytter... tal nu</div>
+          <div id="ntStemmeTekst" style="font-size:.78rem;color:#374151;min-height:40px;line-height:1.5;margin-bottom:.75rem;text-align:left;background:#fff;border-radius:8px;padding:.5rem .75rem;border:1px solid #e0e7ff"></div>
+          <div style="display:flex;gap:.5rem;justify-content:center">
+            <button id="ntStopMicBtn" onclick="stopStemmeOptagelse()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">■ Stop</button>
+            <button id="ntBrugTaleBtn" onclick="brugStemmeData()" style="display:none;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">✓ Brug tekst</button>
+          </div>
+        </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
           <div>
@@ -1623,6 +1638,122 @@ function renderTilbud() {
   }).join('');
 }
 
+// ── Stemmeinput ──────────────────────────────────────────
+let recognition = null;
+let stemmeTransskription = '';
+
+function startStemmeOptagelse() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Din browser understøtter ikke stemmeinput.\nBrug Chrome eller Safari på iPhone.');
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.lang = 'da-DK';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  const panel = document.getElementById('ntStemmePanel');
+  const status = document.getElementById('ntStemmeStatus');
+  const tekst = document.getElementById('ntStemmeTekst');
+  const stopBtn = document.getElementById('ntStopMicBtn');
+  const brugBtn = document.getElementById('ntBrugTaleBtn');
+  const micBtn = document.getElementById('ntMicBtn');
+
+  panel.style.display = 'block';
+  micBtn.style.background = '#fef2f2';
+  micBtn.style.borderColor = '#fca5a5';
+  micBtn.style.color = '#dc2626';
+  micBtn.textContent = '🔴 Optager...';
+  micBtn.onclick = stopStemmeOptagelse;
+  status.textContent = '🎙️ Lytter... tal nu';
+  tekst.textContent = '';
+  brugBtn.style.display = 'none';
+  stemmeTransskription = '';
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    stemmeTransskription += final;
+    tekst.textContent = (stemmeTransskription + interim).trim() || '(Lytter...)';
+  };
+
+  recognition.onerror = (e) => {
+    status.textContent = '⚠️ Mikrofonfejl — prøv igen';
+    nulstilMicBtn();
+  };
+
+  recognition.onend = () => {
+    if (stemmeTransskription.trim()) {
+      status.textContent = '✅ Optagelse færdig — tjek teksten';
+      brugBtn.style.display = 'inline-block';
+    } else {
+      status.textContent = '⚠️ Ingen tale registreret';
+    }
+    nulstilMicBtn();
+  };
+
+  recognition.start();
+}
+
+function stopStemmeOptagelse() {
+  if (recognition) recognition.stop();
+  nulstilMicBtn();
+}
+
+function nulstilMicBtn() {
+  const micBtn = document.getElementById('ntMicBtn');
+  if (micBtn) {
+    micBtn.style.background = '#f0f4ff';
+    micBtn.style.borderColor = '#c7d7fe';
+    micBtn.style.color = '#2563eb';
+    micBtn.textContent = '🎙️ Dikter';
+    micBtn.onclick = startStemmeOptagelse;
+  }
+}
+
+async function brugStemmeData() {
+  const tekst = stemmeTransskription.trim();
+  if (!tekst) return;
+  const brugBtn = document.getElementById('ntBrugTaleBtn');
+  const status = document.getElementById('ntStemmeStatus');
+  brugBtn.disabled = true;
+  brugBtn.textContent = '⏳ AI analyserer...';
+  status.textContent = '⏳ Claude forstår dine noter...';
+
+  try {
+    const res = await fetch(`${API}/tale/parse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ tekst })
+    });
+    const data = await res.json();
+    if (!data.ok || !data.data) {
+      status.textContent = '⚠️ Kunne ikke parse — udfyld manuelt';
+      return;
+    }
+    const d = data.data;
+    if (d.kunde_navn)       document.getElementById('ntKundeNavn').value = d.kunde_navn;
+    if (d.kunde_email)      document.getElementById('ntKundeEmail').value = d.kunde_email;
+    if (d.kunde_adresse)    document.getElementById('ntKundeAdresse').value = d.kunde_adresse;
+    if (d.kunde_postnummer) document.getElementById('ntKundePostnummer').value = d.kunde_postnummer;
+    if (d.opgave)           document.getElementById('ntOpgave').value = d.opgave;
+    if (d.noter)            document.getElementById('ntNoter').value = d.noter;
+
+    status.textContent = '✅ Felter udfyldt — tjek og generer tilbud';
+    brugBtn.textContent = '✓ Udfyldt';
+    brugBtn.style.background = '#15803d';
+  } catch(e) {
+    status.textContent = '⚠️ Fejl — udfyld manuelt';
+    brugBtn.disabled = false;
+    brugBtn.textContent = '✓ Brug tekst';
+  }
+}
+
 // ── Materialesøgning globals ──────────────────────────────
 let ntValgteMat = []; // [{produkt, pris, enhed, butik, antal}]
 
@@ -1724,6 +1855,11 @@ function åbnNytTilbudModal() {
   document.getElementById('ntStatus').style.display = 'none';
   document.getElementById('ntGenBtn').disabled = false;
   document.getElementById('ntGenBtn').textContent = '✨ Generer tilbud';
+  // Nulstil stemmepanel
+  if (recognition) { recognition.stop(); recognition = null; }
+  stemmeTransskription = '';
+  document.getElementById('ntStemmePanel').style.display = 'none';
+  nulstilMicBtn();
   // Nulstil materialersektion
   ntValgteMat = [];
   document.getElementById('ntValgteMaterialer').innerHTML = '';
