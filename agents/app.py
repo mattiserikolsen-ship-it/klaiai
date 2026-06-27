@@ -4162,7 +4162,7 @@ Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
                 eksisterende = db.table('markeds_priser').select('id').eq('klient_id', klient_id).execute()
                 if eksisterende.data:
                     db.table('markeds_priser').update({
-                        'analyse': analyse_tekst,
+                        'analyse_tekst': analyse_tekst,
                         'branche': søge_emne[:100],
                         'opdateret': datetime.utcnow().isoformat()
                     }).eq('klient_id', klient_id).execute()
@@ -4172,7 +4172,7 @@ Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
                         'id': str(_uuid2.uuid4()),
                         'klient_id': klient_id,
                         'branche': søge_emne[:100],
-                        'analyse': analyse_tekst,
+                        'analyse_tekst': analyse_tekst,
                         'konkurrenter': []
                     }).execute()
                 print(f"  ✅ Markedsanalyse opdateret for {klient_navn}")
@@ -5301,9 +5301,10 @@ def hent_markeds_analyse(klient_id):
     if not db:
         return jsonify({'analyse': None})
     try:
-        res = db.table('markeds_priser').select('analyse,branche,opdateret').eq('klient_id', klient_id).order('opdateret', desc=True).limit(1).execute()
+        res = db.table('markeds_priser').select('analyse_tekst,branche,opdateret').eq('klient_id', klient_id).order('opdateret', desc=True).limit(1).execute()
         if res.data:
-            return jsonify(res.data[0])
+            row = res.data[0]
+            return jsonify({'analyse': row.get('analyse_tekst'), 'branche': row.get('branche'), 'opdateret': row.get('opdateret')})
         return jsonify({'analyse': None})
     except Exception as e:
         return jsonify({'analyse': None, 'error': str(e)})
@@ -5349,7 +5350,7 @@ Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
         eksisterende = db.table('markeds_priser').select('id').eq('klient_id', klient_id).execute()
         if eksisterende.data:
             db.table('markeds_priser').update({
-                'analyse': analyse_tekst,
+                'analyse_tekst': analyse_tekst,
                 'branche': søge_emne[:100],
                 'opdateret': datetime.utcnow().isoformat()
             }).eq('klient_id', klient_id).execute()
@@ -5358,7 +5359,7 @@ Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
                 'id': str(_uuid3.uuid4()),
                 'klient_id': klient_id,
                 'branche': søge_emne[:100],
-                'analyse': analyse_tekst,
+                'analyse_tekst': analyse_tekst,
                 'konkurrenter': []
             }).execute()
         return jsonify({'ok': True, 'analyse': analyse_tekst})
