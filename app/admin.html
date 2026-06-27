@@ -5069,17 +5069,22 @@ async function hentTilbudListe() {
         </div>`;
       }
 
-      const statusFarve = { udkast: '#6b7280', sendt: '#2563eb', afvist: '#dc2626' };
-      const statusTekst = { udkast: 'Udkast', sendt: 'Sendt', afvist: 'Afvist' };
+      const er_udløbet = t.status === 'udløbet';
+      const statusFarve = { udkast: '#6b7280', sendt: '#2563eb', afvist: '#dc2626', udløbet: '#b45309' };
+      const statusTekst = { udkast: 'Udkast', sendt: 'Sendt', afvist: 'Afvist', udløbet: 'Udløbet' };
       return `
-      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer${er_afvist ? ';opacity:.6' : ''}" onclick="hentOgVisTilbud('${t.id}')">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer${er_afvist || er_udløbet ? ';opacity:.6' : ''}" onclick="hentOgVisTilbud('${t.id}')">
         <div style="flex:1">
           <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.15rem">${t.titel || 'Tilbud'}</div>
           <div style="font-size:.75rem;color:var(--muted)">${t.kunde_navn} · ${t.kunde_email}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:.9rem;font-weight:700;color:var(--accent)">${t.total_pris ? t.total_pris.toLocaleString('da-DK') + ' kr.' : '—'}</div>
-          <div style="font-size:.7rem;font-weight:600;color:${statusFarve[t.status] || '#6b7280'};margin-top:2px;text-transform:uppercase;letter-spacing:.5px">${statusTekst[t.status] || t.status}</div>
+          <div style="display:flex;align-items:center;gap:.3rem;justify-content:flex-end;margin-top:2px">
+            <span style="font-size:.7rem;font-weight:600;color:${statusFarve[t.status] || '#6b7280'};text-transform:uppercase;letter-spacing:.5px">${statusTekst[t.status] || t.status}</span>
+            ${t.åbnet_dato && t.status === 'sendt' ? `<span style="font-size:.65rem;color:#7c3aed;font-weight:600;margin-left:.3rem">👁 Åbnet</span>` : ''}
+            ${t.status === 'udløbet' ? `<span style="background:#fee2e2;color:#dc2626;font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:4px">Udløbet</span>` : ''}
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:.35rem">
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();opdaterTilbudStatus('${t.id}','accepteret')" title="Marker accepteret">✓</button>

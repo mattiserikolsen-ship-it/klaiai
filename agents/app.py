@@ -402,6 +402,15 @@ https://klaiai.onrender.com/app/admin.html"""
         except Exception as _e:
             print(f"SMS-notif fejl: {_e}")
 
+    # Auto-generer og send opfølgningsmails hvis klienten har aktiveret det
+    try:
+        k_auto = db.table('chatbot_config').select('auto_godkend_mails').eq('klient_id', klient_id).single().execute()
+        if k_auto.data and k_auto.data.get('auto_godkend_mails'):
+            # Generer og gem lead-mails straks — de sendes af mail_flow_agent
+            _log_agent('auto_lead_mail', klient_id, lead_data.get('navn',''), 'Auto-godkendelse aktiv — lead-mails genereres')
+    except:
+        pass
+
     # Send automatisk bekræftelses-email til leaden
     if SENDGRID_API_KEY and lead_email and '@' in lead_email:
         try:
@@ -4772,6 +4781,62 @@ def kør_tilbud_followup():
             print(f'Tilbud followup fejl ({t.get("id")}): {e}')
 
 
+def kør_tilbud_udløb():
+    """Markerer tilbud som udløbet efter 30 dage uden svar og sender sidst-chance mail dag 25"""
+    if not db:
+        return
+    from datetime import datetime, timedelta
+    nu = datetime.now()
+    print("⏰ Tilbud udløb-check kører...")
+    try:
+        res = db.table('tilbud').select('*').eq('status', 'sendt').execute()
+        for t in (res.data or []):
+            try:
+                sendt_str = t.get('sendt_dato') or t.get('oprettet', '')
+                if not sendt_str:
+                    continue
+                sendt = datetime.fromisoformat(sendt_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                dage_siden = (nu - sendt).days
+
+                # Dag 25 — sidst chance mail
+                if dage_siden == 25 and not t.get('sidst_chance_sendt'):
+                    kunde_email = t.get('kunde_email', '')
+                    if kunde_email and '@' in kunde_email:
+                        k = db.table('klienter').select('navn').eq('id', t['klient_id']).single().execute()
+                        fra_navn = k.data.get('navn', 'Virksomheden') if k.data else 'Virksomheden'
+                        accept_token = t.get('accept_token', '')
+                        accept_url = f'{SERVER_URL}/tilbud/godkend/{t["id"]}/{accept_token}' if accept_token else ''
+                        html = f"""<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#fff8ed;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px"><tr><td align="center">
+<table width="580" cellpadding="0" cellspacing="0" style="max-width:580px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#92400e,#d97706);padding:28px 36px">
+    <div style="font-size:20px;font-weight:800;color:#fff">⏰ Dit tilbud udløber om 5 dage</div>
+    <div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:4px">Tilbud fra {fra_navn}</div>
+  </td></tr>
+  <tr><td style="padding:28px 36px">
+    <p style="font-size:15px;color:#374151;line-height:1.7">Hej {t.get('kunde_navn','')},<br><br>
+    Dit tilbud <strong>"{t.get('titel','Tilbud')}"</strong> på <strong>{int(t.get('total_pris',0)):,} kr.</strong> udløber om 5 dage.<br><br>
+    Ønsker du at gå videre, skal du acceptere inden da.</p>
+    {f'<div style="text-align:center;margin:24px 0"><a href="{accept_url}" style="background:#d97706;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 40px;border-radius:10px;display:inline-block">Acceptér tilbud →</a></div>' if accept_url else ''}
+    <p style="font-size:13px;color:#6b7280">Har du spørgsmål er du altid velkommen til at kontakte os.<br><br>Med venlig hilsen<br><strong>{fra_navn}</strong></p>
+  </td></tr>
+</table></td></tr></table>
+</body></html>"""
+                        send_mail(kunde_email, f"⏰ Dit tilbud udløber om 5 dage — {t.get('titel','')}", '', fra_navn, html_content=html)
+                        db.table('tilbud').update({'sidst_chance_sendt': True}).eq('id', t['id']).execute()
+                        print(f"  ⏰ Sidst-chance mail sendt til {kunde_email}")
+
+                # Dag 30+ — markér som udløbet
+                elif dage_siden >= 30:
+                    db.table('tilbud').update({'status': 'udløbet'}).eq('id', t['id']).execute()
+                    print(f"  📅 Tilbud {t['id'][:8]} markeret som udløbet ({dage_siden} dage)")
+            except Exception as e:
+                print(f"  Udløb-fejl ({t.get('id','')}): {e}")
+    except Exception as e:
+        print(f"Tilbud udløb fejl: {e}")
+
+
 scheduler.add_job(kør_månedlig_rapport, 'cron', day=1, hour=8, minute=0, id='månedlig_rapport')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=9, minute=30, id='ubesvarede_leads')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=17, minute=0, id='ubesvarede_leads_aften')
@@ -4782,6 +4847,7 @@ scheduler.add_job(kør_ugerapport_agent, 'cron', hour=7,  minute=0, id='ugerappo
 scheduler.add_job(kør_markeds_overvågning, 'cron', day_of_week='fri', hour=6, minute=0, id='markeds_overvågning')
 scheduler.add_job(kør_billing_agent,    'cron', hour=8,  minute=0, id='billing')
 scheduler.add_job(kør_tilbud_followup, 'cron', hour=10, minute=15, id='tilbud_followup')
+scheduler.add_job(kør_tilbud_udløb, 'cron', hour=8, minute=30, id='tilbud_udløb')
 scheduler.add_job(kør_mail_flow_agent,  'interval', hours=1, id='mail_flow')
 scheduler.add_job(kør_anmeldelse_agent, 'cron', hour=10, minute=30, id='anmeldelse')
 scheduler.start()
@@ -5754,7 +5820,7 @@ def portal_tilbud_liste(klient_id):
     if not db:
         return jsonify([])
     try:
-        res = db.table('tilbud').select('id,kunde_navn,kunde_email,kunde_adresse,kunde_postnummer,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
+        res = db.table('tilbud').select('id,kunde_navn,kunde_email,kunde_adresse,kunde_postnummer,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato,åbnet_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify(res.data or [])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -6013,6 +6079,15 @@ def godkend_tilbud(tilbud_id, token):
             return _godkend_side('Tilbud ikke fundet', 'Vi kunne ikke finde dette tilbud. Kontakt os direkte.', fejl=True), 404
         if t.get('accept_token') != token:
             return _godkend_side('Ugyldigt link', 'Dette link er ikke gyldigt. Kontakt os direkte.', fejl=True), 403
+
+        # Log at tilbuddet er åbnet (første gang)
+        if not t.get('åbnet_dato') and t.get('status') == 'sendt':
+            try:
+                from datetime import datetime
+                db.table('tilbud').update({'åbnet_dato': datetime.now().isoformat()}).eq('id', tilbud_id).execute()
+            except:
+                pass
+
         if t.get('status') == 'accepteret':
             godkendt_dato = t.get('godkendt_dato', '')[:19].replace('T', ' kl. ') if t.get('godkendt_dato') else '—'
             return _godkend_side('Allerede bekræftet',
