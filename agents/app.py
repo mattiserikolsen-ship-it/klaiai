@@ -5424,6 +5424,58 @@ Prisliste:
         print(f"PDF upload fejl: {e}")
         return jsonify({'error': f'Fejl ved behandling: {str(e)}'}), 500
 
+@app.route('/materialer/soeg', methods=['POST'])
+@require_token
+def soeg_materialer():
+    """Søg efter materialepriser fra danske byggemarkeder via Claude web_search"""
+    data = request.get_json() or {}
+    soegning = data.get('soegning', '').strip()
+    if not soegning:
+        return jsonify({'error': 'Ingen søgning'}), 400
+    try:
+        prompt = f"""Søg efter aktuelle priser på "{soegning}" fra danske byggemarkeder.
+
+Tjek disse butikker: Bauhaus (bauhaus.dk), Silvan (silvan.dk), Stark (stark.dk), XL-Byg (xl-byg.dk), Bygma (bygma.dk).
+
+Returner KUN et JSON array med max 6 resultater i dette format:
+[
+  {{"produkt": "Præcist produktnavn inkl. størrelse/mål", "pris": 149.00, "enhed": "stk", "butik": "Bauhaus", "bemærkning": "evt. rabat/tilbud info"}}
+]
+
+Enhed skal være en af: stk, m², m, liter, kg, pakke, pose, rulle, sæk
+Pris skal være et tal (DKK ekskl. moms).
+Kun JSON array, ingen tekst før eller efter."""
+
+        svar = ai.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=1200,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+
+        # Find tekstindhold i svaret (efter tool use)
+        tekst = ''
+        for blok in svar.content:
+            if hasattr(blok, 'text'):
+                tekst += blok.text
+
+        # Parse JSON fra svaret
+        import re as _re
+        json_match = _re.search(r'\[[\s\S]*\]', tekst)
+        if not json_match:
+            return jsonify({'resultater': [], 'besked': 'Ingen priser fundet for denne søgning'})
+
+        import json as _json
+        resultater = _json.loads(json_match.group(0))
+        if not isinstance(resultater, list):
+            resultater = []
+
+        return jsonify({'resultater': resultater, 'soegning': soegning})
+    except Exception as e:
+        print(f"Materialer søg fejl: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/tilbud/generer', methods=['POST'])
 @require_token
 def generer_tilbud():
@@ -5447,6 +5499,7 @@ def generer_tilbud():
     noter           = data.get('noter', '')
     kør_konkurrent  = data.get('konkurrent_analyse', False)
     valgte_ydelser  = data.get('valgte_ydelser', [])
+    materialer      = data.get('materialer', [])
 
     # Hent klient info
     klient_navn = 'Virksomheden'
@@ -5497,6 +5550,16 @@ PRISKATALOG (brug disse EKSAKTE priser — afveg ikke):
         linjer = [f"- {y['navn']}: {int(y['enhedspris']):,} kr. per {y.get('enhed','stk')}" for y in valgte_ydelser]
         valgte_tekst = "\n\nKUNDEN HAR VALGT DISSE SPECIFIKKE YDELSER (inkludér dem alle i tilbuddet med disse PRÆCISE priser):\n" + '\n'.join(linjer)
 
+    materialer_tekst = ''
+    if materialer:
+        mat_linjer = []
+        mat_total = 0
+        for m in materialer:
+            linje_pris = m.get('enhedspris', 0) * m.get('antal', 1)
+            mat_total += linje_pris
+            mat_linjer.append(f"- {m['antal']} × {m['produkt']} ({m.get('butik','')}) à {m.get('enhedspris',0):,.2f} kr./{m.get('enhed','stk')} = {linje_pris:,.2f} kr.")
+        materialer_tekst = f"\n\nMATERIALER (håndværkeren har hentet disse aktuelle priser — inkludér dem som en separat post i tilbuddet):\n" + '\n'.join(mat_linjer) + f"\nTotal materialeomkostning: {mat_total:,.2f} kr. ekskl. moms"
+
     # Claude genererer tilbud-indhold
     prompt = f"""Du er en erfaren dansk salgskonsulent. Generer et professionelt tilbud på dansk for virksomheden "{klient_navn}".
 
@@ -5509,7 +5572,7 @@ KLIENTOPLYSNINGER:
 TILBUD TIL:
 - Kundenavn: {kunde_navn}
 - Kundens opgave/behov: {opgave}
-{valgte_tekst}
+{valgte_tekst}{materialer_tekst}
 - Ekstra noter: {noter}
 
 Returner KUN valid JSON (ingen markdown, ingen forklaring) med denne præcise struktur:

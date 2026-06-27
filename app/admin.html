@@ -1366,6 +1366,22 @@
             </div>
           </div>
 
+          <!-- MATERIALESØGNING -->
+          <div style="margin-bottom:1.25rem;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+            <div style="background:#f8faff;padding:.6rem .9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleAdminMaterialerSektion()">
+              <span style="font-size:.78rem;font-weight:700;color:var(--text)">🏗️ Find materialepriser</span>
+              <span id="tMatToggleIcon" style="font-size:.7rem;color:var(--muted)">▼ Udvid</span>
+            </div>
+            <div id="tMaterialerSektion" style="display:none;padding:.8rem">
+              <div style="display:flex;gap:.4rem;margin-bottom:.6rem">
+                <input id="tMatSoeg" placeholder="Fx: gips 12.5mm, træskruer 4x50, mineraluld 200mm..." style="flex:1;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:inherit;outline:none" onkeydown="if(event.key==='Enter')soegAdminMaterialer()"/>
+                <button onclick="soegAdminMaterialer()" id="tMatSoegBtn" style="background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Søg priser</button>
+              </div>
+              <div id="tMatResultater" style="font-size:.78rem;color:var(--muted)">Søg efter materialer for at se priser fra Bauhaus, Silvan, Stark, XL-Byg og Bygma</div>
+              <div id="tValgteMaterialer" style="margin-top:.6rem"></div>
+            </div>
+          </div>
+
           <div id="tilbudGenStatus" style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem;display:none">⏳ Genererer tilbud...</div>
 
           <div style="display:flex;gap:.75rem;justify-content:flex-end">
@@ -4698,6 +4714,93 @@ function tidsAgo(isoStr) {
 // TILBUD-AI
 // ══════════════════════════════════════════════════════
 let aktivtTilbudId = null;
+let adminValgteMat = []; // [{produkt, pris, enhed, butik, antal}]
+
+function toggleAdminMaterialerSektion() {
+  const sek = document.getElementById('tMaterialerSektion');
+  const icon = document.getElementById('tMatToggleIcon');
+  const open = sek.style.display !== 'none';
+  sek.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▼ Udvid' : '▲ Luk';
+}
+
+async function soegAdminMaterialer() {
+  const soegning = document.getElementById('tMatSoeg').value.trim();
+  if (!soegning) return;
+  const btn = document.getElementById('tMatSoegBtn');
+  const res_div = document.getElementById('tMatResultater');
+  btn.disabled = true;
+  btn.textContent = '⏳ Søger...';
+  res_div.innerHTML = '<span style="color:var(--muted)">Søger priser hos danske byggemarkeder... (kan tage 10-20 sek.)</span>';
+  try {
+    const res = await apiFetch(`${AGENT_URL}/materialer/soeg`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soegning })
+    });
+    const data = await res.json();
+    if (data.error) { res_div.innerHTML = `<span style="color:#dc2626">Fejl: ${data.error}</span>`; return; }
+    const resultater = data.resultater || [];
+    if (!resultater.length) {
+      res_div.innerHTML = '<span style="color:var(--muted)">Ingen priser fundet — prøv en anden søgning</span>';
+      return;
+    }
+    res_div.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:.76rem">
+        <thead><tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:.3rem .4rem;color:var(--muted);font-weight:600">Produkt</th>
+          <th style="text-align:right;padding:.3rem .4rem;color:var(--muted);font-weight:600">Pris</th>
+          <th style="text-align:left;padding:.3rem .4rem;color:var(--muted);font-weight:600">Butik</th>
+          <th style="padding:.3rem .4rem"></th>
+        </tr></thead>
+        <tbody>
+          ${resultater.map((r,i) => `<tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:.4rem;color:var(--text)">${r.produkt}${r.bemærkning ? `<br><span style="color:var(--muted);font-size:.7rem">${r.bemærkning}</span>` : ''}</td>
+            <td style="padding:.4rem;text-align:right;font-weight:700;color:#1e40af;white-space:nowrap">${r.pris ? r.pris.toLocaleString('da-DK',{minimumFractionDigits:2})+'&nbsp;kr.' : '—'}<br><span style="font-weight:400;color:var(--muted);font-size:.68rem">/ ${r.enhed||'stk'}</span></td>
+            <td style="padding:.4rem;color:var(--muted)">${r.butik||''}</td>
+            <td style="padding:.4rem"><button onclick="tilføjAdminMateriale(${i},'${encodeURIComponent(JSON.stringify(r))}')" style="background:#f0f4ff;color:#2563eb;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;font-weight:700;cursor:pointer">+ Tilføj</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    res_div.innerHTML = '<span style="color:#dc2626">Netværksfejl</span>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Søg priser';
+  }
+}
+
+function tilføjAdminMateriale(i, encoded) {
+  const r = JSON.parse(decodeURIComponent(encoded));
+  const antal = parseFloat(prompt(`Antal (${r.enhed||'stk'}) for "${r.produkt}"?`, '1') || '1');
+  if (isNaN(antal) || antal <= 0) return;
+  adminValgteMat.push({ ...r, antal });
+  renderAdminValgteMaterialer();
+}
+
+function fjernAdminMateriale(idx) {
+  adminValgteMat.splice(idx, 1);
+  renderAdminValgteMaterialer();
+}
+
+function renderAdminValgteMaterialer() {
+  const el = document.getElementById('tValgteMaterialer');
+  if (!adminValgteMat.length) { el.innerHTML = ''; return; }
+  const total = adminValgteMat.reduce((s, m) => s + (m.pris || 0) * m.antal, 0);
+  el.innerHTML = `
+    <div style="border:1px solid #bbf7d0;border-radius:8px;overflow:hidden;margin-top:.4rem">
+      <div style="background:#f0fdf4;padding:.4rem .7rem;font-size:.72rem;font-weight:700;color:#15803d;display:flex;justify-content:space-between">
+        <span>Valgte materialer</span><span>Total: ${total.toLocaleString('da-DK',{minimumFractionDigits:2})} kr. ekskl. moms</span>
+      </div>
+      ${adminValgteMat.map((m,i) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .7rem;border-top:1px solid #dcfce7;font-size:.74rem">
+        <span style="color:var(--text)">${m.antal} × ${m.produkt} <span style="color:var(--muted)">(${m.butik})</span></span>
+        <span style="display:flex;align-items:center;gap:.5rem">
+          <span style="font-weight:700;color:#1e40af">${((m.pris||0)*m.antal).toLocaleString('da-DK',{minimumFractionDigits:2})} kr.</span>
+          <button onclick="fjernAdminMateriale(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.8rem;padding:0">✕</button>
+        </span>
+      </div>`).join('')}
+    </div>`;
+}
 
 function åbnNytTilbud() {
   document.getElementById('tKundeNavn').value = '';
@@ -4706,6 +4809,13 @@ function åbnNytTilbud() {
   document.getElementById('tNoter').value = '';
   document.getElementById('tKonkurrent').checked = true;
   document.getElementById('tilbudGenStatus').style.display = 'none';
+  // Nulstil materialersektion
+  adminValgteMat = [];
+  document.getElementById('tValgteMaterialer').innerHTML = '';
+  document.getElementById('tMatResultater').innerHTML = 'Søg efter materialer for at se priser fra Bauhaus, Silvan, Stark, XL-Byg og Bygma';
+  document.getElementById('tMatSoeg').value = '';
+  document.getElementById('tMaterialerSektion').style.display = 'none';
+  document.getElementById('tMatToggleIcon').textContent = '▼ Udvid';
   document.getElementById('tilbudModal').style.display = 'flex';
   // Indlæs priskatalog til hurtigvalg
   if (currentClient) {
@@ -4778,6 +4888,13 @@ async function genererTilbud() {
           enhedspris: parseFloat(cb.dataset.pris),
           enhed: cb.dataset.enhed,
           moms_inkluderet: cb.dataset.moms === 'true'
+        })),
+        materialer: adminValgteMat.map(m => ({
+          produkt: m.produkt,
+          antal: m.antal,
+          enhed: m.enhed || 'stk',
+          enhedspris: m.pris || 0,
+          butik: m.butik || ''
         }))
       })
     });
