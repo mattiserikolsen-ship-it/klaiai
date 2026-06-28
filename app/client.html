@@ -725,8 +725,9 @@
         <div id="ntStemmePanel" style="display:none;background:#f0f4ff;border:1.5px solid #c7d7fe;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center">
           <div id="ntStemmeStatus" style="font-size:.85rem;font-weight:700;color:#2563eb;margin-bottom:.5rem">🎙️ Lytter... tal nu</div>
           <div id="ntStemmeTekst" style="font-size:.78rem;color:#374151;min-height:40px;line-height:1.5;margin-bottom:.75rem;text-align:left;background:#fff;border-radius:8px;padding:.5rem .75rem;border:1px solid #e0e7ff"></div>
-          <div style="display:flex;gap:.5rem;justify-content:center">
+          <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
             <button id="ntStopMicBtn" onclick="stopStemmeOptagelse()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">■ Stop</button>
+            <button id="ntFortsætMicBtn" onclick="startStemmeOptagelse()" style="display:none;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">🎙️ Tilføj mere</button>
             <button id="ntBrugTaleBtn" onclick="brugStemmeData()" style="display:none;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">✓ Brug tekst</button>
           </div>
         </div>
@@ -1641,67 +1642,107 @@ function renderTilbud() {
 // ── Stemmeinput ──────────────────────────────────────────
 let recognition = null;
 let stemmeTransskription = '';
+let stemmeAktiv = false;
+const erIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
 function startStemmeOptagelse() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    alert('Din browser understøtter ikke stemmeinput.\nBrug Chrome eller Safari på iPhone.');
+    alert('Din browser understøtter ikke stemmeinput.\nÅbn siden i Safari på iPhone.');
     return;
   }
-  recognition = new SpeechRecognition();
-  recognition.lang = 'da-DK';
-  recognition.continuous = true;
-  recognition.interimResults = true;
 
   const panel = document.getElementById('ntStemmePanel');
   const status = document.getElementById('ntStemmeStatus');
   const tekst = document.getElementById('ntStemmeTekst');
-  const stopBtn = document.getElementById('ntStopMicBtn');
   const brugBtn = document.getElementById('ntBrugTaleBtn');
+  const fortsætBtn = document.getElementById('ntFortsætMicBtn');
   const micBtn = document.getElementById('ntMicBtn');
 
+  if (!stemmeAktiv) {
+    // Første gang — nulstil
+    stemmeTransskription = '';
+    tekst.textContent = '';
+    brugBtn.style.display = 'none';
+    if (fortsætBtn) fortsætBtn.style.display = 'none';
+  }
+
   panel.style.display = 'block';
+  stemmeAktiv = true;
   micBtn.style.background = '#fef2f2';
   micBtn.style.borderColor = '#fca5a5';
   micBtn.style.color = '#dc2626';
   micBtn.textContent = '🔴 Optager...';
   micBtn.onclick = stopStemmeOptagelse;
-  status.textContent = '🎙️ Lytter... tal nu';
-  tekst.textContent = '';
-  brugBtn.style.display = 'none';
-  stemmeTransskription = '';
+  status.textContent = erIOS ? '🎙️ Tal nu — stop automatisk ved pause' : '🎙️ Lytter... tal nu';
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'da-DK';
+  // iOS Safari understøtter IKKE continuous — vi gen-starter manuelt
+  recognition.continuous = !erIOS;
+  recognition.interimResults = !erIOS; // iOS: ingen interim
 
   recognition.onresult = (e) => {
     let interim = '';
-    let final = '';
+    let finalDelta = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+      if (e.results[i].isFinal) finalDelta += e.results[i][0].transcript + ' ';
       else interim += e.results[i][0].transcript;
     }
-    stemmeTransskription += final;
+    stemmeTransskription += finalDelta;
     tekst.textContent = (stemmeTransskription + interim).trim() || '(Lytter...)';
   };
 
   recognition.onerror = (e) => {
-    status.textContent = '⚠️ Mikrofonfejl — prøv igen';
-    nulstilMicBtn();
+    if (e.error === 'not-allowed') {
+      status.textContent = '⚠️ Mikrofon ikke tilladt — tjek indstillinger i Safari';
+    } else if (e.error === 'no-speech') {
+      // Ingen tale — ignorer på iOS, gen-start
+      if (erIOS && stemmeAktiv) { try { recognition.start(); } catch(_){} }
+    } else {
+      status.textContent = `⚠️ Fejl (${e.error}) — prøv igen`;
+      stemmeAktiv = false;
+      nulstilMicBtn();
+    }
   };
 
   recognition.onend = () => {
-    if (stemmeTransskription.trim()) {
-      status.textContent = '✅ Optagelse færdig — tjek teksten';
-      brugBtn.style.display = 'inline-block';
-    } else {
-      status.textContent = '⚠️ Ingen tale registreret';
+    if (!stemmeAktiv) {
+      // Brugeren stoppede manuelt
+      if (stemmeTransskription.trim()) {
+        status.textContent = '✅ Optagelse færdig — tjek teksten';
+        brugBtn.style.display = 'inline-block';
+        if (fortsætBtn) fortsætBtn.style.display = 'inline-block';
+      } else {
+        status.textContent = '⚠️ Ingen tale — prøv igen';
+      }
+      nulstilMicBtn();
+    } else if (erIOS) {
+      // iOS stopper automatisk — gen-start så håndværkeren kan fortsætte
+      status.textContent = '🎙️ Fortsæt med at tale...';
+      try { recognition.start(); } catch(_) {
+        stemmeAktiv = false;
+        if (stemmeTransskription.trim()) {
+          status.textContent = '✅ Optagelse færdig — tjek teksten';
+          brugBtn.style.display = 'inline-block';
+        }
+        nulstilMicBtn();
+      }
     }
-    nulstilMicBtn();
   };
 
-  recognition.start();
+  try {
+    recognition.start();
+  } catch(e) {
+    status.textContent = '⚠️ Kunne ikke starte mikrofon';
+    stemmeAktiv = false;
+    nulstilMicBtn();
+  }
 }
 
 function stopStemmeOptagelse() {
-  if (recognition) recognition.stop();
+  stemmeAktiv = false;
+  if (recognition) { try { recognition.stop(); } catch(_){} }
   nulstilMicBtn();
 }
 
@@ -1856,9 +1897,12 @@ function åbnNytTilbudModal() {
   document.getElementById('ntGenBtn').disabled = false;
   document.getElementById('ntGenBtn').textContent = '✨ Generer tilbud';
   // Nulstil stemmepanel
-  if (recognition) { recognition.stop(); recognition = null; }
+  stemmeAktiv = false;
+  if (recognition) { try { recognition.stop(); } catch(_){} recognition = null; }
   stemmeTransskription = '';
   document.getElementById('ntStemmePanel').style.display = 'none';
+  const fb = document.getElementById('ntFortsætMicBtn');
+  if (fb) fb.style.display = 'none';
   nulstilMicBtn();
   // Nulstil materialersektion
   ntValgteMat = [];
