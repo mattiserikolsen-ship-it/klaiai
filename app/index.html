@@ -41,8 +41,11 @@
     .nav-links { display: flex; gap: 2rem; list-style: none; }
     .nav-links a { color: rgba(255,255,255,.5); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .2s; }
     .nav-links a:hover { color: #fff; }
+    .nav-login { color: rgba(255,255,255,.65); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .2s; padding: .55rem 0; }
+    .nav-login:hover { color: #fff; }
     .nav-cta { background: var(--accent); color: #fff; padding: .55rem 1.35rem; border-radius: 8px; text-decoration: none; font-size: .875rem; font-weight: 700; transition: opacity .2s; }
     .nav-cta:hover { opacity: .9; }
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
 
     /* ── HERO ── */
     .hero {
@@ -60,8 +63,8 @@
     }
     .hero-eyebrow {
       display: inline-flex; align-items: center; gap: .5rem;
-      background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.25);
-      color: var(--accent2); padding: .4rem 1.1rem; border-radius: 99px;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.8); padding: .4rem 1.1rem; border-radius: 99px;
       font-size: .78rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
       margin-bottom: 2rem;
     }
@@ -70,7 +73,7 @@
       font-weight: 900; line-height: 1.05; letter-spacing: -2.5px;
       color: #fff; max-width: 900px; margin-bottom: 1.75rem;
     }
-    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero h1 em { font-style: normal; color: #fff; }
     .hero p {
       font-size: 1.15rem; color: rgba(255,255,255,.6); max-width: 560px;
       margin: 0 auto 2.75rem; line-height: 1.8; font-weight: 400;
@@ -251,7 +254,10 @@
     <li><a href="#priser">Priser</a></li>
     <li><a href="#kontakt">Kontakt</a></li>
   </ul>
-  <a href="#kontakt" class="nav-cta">Book demo →</a>
+  <div class="nav-right">
+    <a href="/login" class="nav-login">Log ind</a>
+    <a href="#kontakt" class="nav-cta">Book demo →</a>
+  </div>
 </nav>
 
 <!-- HERO -->

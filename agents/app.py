@@ -3149,6 +3149,13 @@ def login_page():
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     return send_from_directory(app_dir, 'login.html')
 
+@app.route('/nexolsen-admin', methods=['GET'])
+def admin_login_page():
+    """Separat admin-login URL — ikke linket fra forsiden"""
+    from flask import send_from_directory
+    app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
+    return send_from_directory(app_dir, 'admin.html')
+
 def _ryd_gamle_sessions():
     """Fjern demo_sessions ældre end 2 timer, udløbne tokens og prospekter ældre end 7 dage"""
     _ryd_tokens()
