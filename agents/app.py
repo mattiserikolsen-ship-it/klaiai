@@ -5475,6 +5475,51 @@ Prisliste:
         print(f"PDF upload fejl: {e}")
         return jsonify({'error': f'Fejl ved behandling: {str(e)}'}), 500
 
+@app.route('/tale/pris', methods=['POST'])
+@require_token
+def parse_tale_pris():
+    """Parser en dikteret pris og udtrækker katalogdata via Claude"""
+    data = request.get_json() or {}
+    transskription = data.get('tekst', '').strip()
+    if not transskription:
+        return jsonify({'error': 'Ingen tekst'}), 400
+    try:
+        prompt = f"""En dansk håndværker har dikteret en pris til sit priskatalog:
+"{transskription}"
+
+Udtræk disse oplysninger og returner KUN valid JSON:
+{{
+  "navn": "navnet på ydelsen eller produktet",
+  "enhedspris": 0.0,
+  "enhed": "stk",
+  "kategori": "kategori hvis nævnt, ellers 'Generelt'",
+  "beskrivelse": "kort beskrivelse hvis nævnt, ellers tom streng"
+}}
+
+Enhed skal være én af: stk, m², m, time, dag, opgave, pakke
+Hvis der nævnes "pr time", "per time" → enhed = "time"
+Hvis der nævnes "pr kvadratmeter", "per m2" → enhed = "m²"
+Hvis der nævnes "pr meter" → enhed = "m"
+Enhedspris skal være et tal i DKK (ignorer "kr", "kroner" osv.).
+Kun JSON, ingen forklaring."""
+
+        svar = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=300,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        tekst = svar.content[0].text.strip()
+        import re as _re3, json as _json3
+        match = _re3.search(r'\{[\s\S]*\}', tekst)
+        if not match:
+            return jsonify({'error': 'Kunne ikke parse'}), 500
+        parsed = _json3.loads(match.group(0))
+        return jsonify({'ok': True, 'data': parsed})
+    except Exception as e:
+        print(f"Tale pris fejl: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/tale/parse', methods=['POST'])
 @require_token
 def parse_tale():

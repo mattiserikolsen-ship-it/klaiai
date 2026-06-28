@@ -1038,7 +1038,22 @@
       <!-- NY/REDIGER PRISPOST MODAL -->
       <div id="prispostOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)lukPrispostModal()">
         <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:1.5rem 1.25rem calc(2rem + env(safe-area-inset-bottom,0px));max-height:90vh;overflow-y:auto">
-          <div style="font-size:.95rem;font-weight:800;color:var(--dark);margin-bottom:1.25rem" id="prispostModalTitel">Tilføj ydelse / pris</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+            <div style="font-size:.95rem;font-weight:800;color:var(--dark)" id="prispostModalTitel">Tilføj ydelse / pris</div>
+            <button id="ppMicBtn" onclick="startPrisStemme()" style="display:flex;align-items:center;gap:.4rem;background:#f0f4ff;border:1.5px solid #c7d7fe;color:#2563eb;border-radius:10px;padding:.4rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">
+              🎙️ Dikter pris
+            </button>
+          </div>
+          <!-- STEMME PANEL PRIS -->
+          <div id="ppStemmePanel" style="display:none;background:#f0f4ff;border:1.5px solid #c7d7fe;border-radius:10px;padding:.75rem;margin-bottom:.9rem;text-align:center">
+            <div id="ppStemmeStatus" style="font-size:.8rem;font-weight:700;color:#2563eb;margin-bottom:.4rem">🎙️ Tal nu — fx "Badeværelse 8500 kr per opgave"</div>
+            <div id="ppStemmeTekst" style="font-size:.75rem;color:#374151;min-height:32px;line-height:1.5;background:#fff;border-radius:7px;padding:.4rem .65rem;border:1px solid #e0e7ff;text-align:left;margin-bottom:.6rem"></div>
+            <div style="display:flex;gap:.4rem;justify-content:center;flex-wrap:wrap">
+              <button onclick="stopPrisStemme()" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:.4rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">■ Stop</button>
+              <button id="ppFortsætBtn" onclick="startPrisStemme()" style="display:none;background:#2563eb;color:#fff;border:none;border-radius:7px;padding:.4rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">🎙️ Tilføj mere</button>
+              <button id="ppBrugTaleBtn" onclick="brugPrisStemmeData()" style="display:none;background:#16a34a;color:#fff;border:none;border-radius:7px;padding:.4rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit">✓ Udfyld felter</button>
+            </div>
+          </div>
           <input type="hidden" id="ppId"/>
           <div style="margin-bottom:.75rem">
             <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px">Navn *</label>
@@ -2907,6 +2922,11 @@ function redigerPrispost(id) {
 }
 
 function lukPrispostModal() {
+  prisStemmeAktiv = false;
+  if (prisRecognition) { try { prisRecognition.stop(); } catch(_){} prisRecognition = null; }
+  prisStemmeTransskription = '';
+  document.getElementById('ppStemmePanel').style.display = 'none';
+  nulstilPrisMicBtn();
   document.getElementById('prispostOverlay').style.display = 'none';
 }
 
@@ -2957,6 +2977,101 @@ async function sletPrispost(id) {
     });
     await loadKlientKatalog();
   } catch(e) { alert('Fejl ved sletning'); }
+}
+
+// ── Stemmeinput til priskatalog ───────────────────────────
+let prisRecognition = null;
+let prisStemmeTransskription = '';
+let prisStemmeAktiv = false;
+
+function startPrisStemme() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) { alert('Din browser understøtter ikke stemmeinput.\nBrug Safari på iPhone eller Chrome.'); return; }
+
+  const panel = document.getElementById('ppStemmePanel');
+  const status = document.getElementById('ppStemmeStatus');
+  const tekst = document.getElementById('ppStemmeTekst');
+  const brugBtn = document.getElementById('ppBrugTaleBtn');
+  const fortsætBtn = document.getElementById('ppFortsætBtn');
+  const micBtn = document.getElementById('ppMicBtn');
+
+  if (!prisStemmeAktiv) { prisStemmeTransskription = ''; tekst.textContent = ''; brugBtn.style.display = 'none'; fortsætBtn.style.display = 'none'; }
+
+  panel.style.display = 'block';
+  prisStemmeAktiv = true;
+  micBtn.style.background = '#fef2f2'; micBtn.style.borderColor = '#fca5a5'; micBtn.style.color = '#dc2626';
+  micBtn.textContent = '🔴 Optager...'; micBtn.onclick = stopPrisStemme;
+  status.textContent = '🎙️ Tal fx: "Montage af pool 12500 kr per opgave"';
+
+  prisRecognition = new SpeechRecognition();
+  prisRecognition.lang = 'da-DK';
+  prisRecognition.continuous = !erIOS;
+  prisRecognition.interimResults = !erIOS;
+
+  prisRecognition.onresult = (e) => {
+    let interim = '', finalDelta = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalDelta += e.results[i][0].transcript + ' ';
+      else interim += e.results[i][0].transcript;
+    }
+    prisStemmeTransskription += finalDelta;
+    tekst.textContent = (prisStemmeTransskription + interim).trim() || '(Lytter...)';
+  };
+
+  prisRecognition.onerror = (e) => {
+    prisStemmeAktiv = false; nulstilPrisMicBtn();
+    if (e.error === 'not-allowed') status.textContent = '⚠️ Mikrofon ikke tilladt — tjek Safari indstillinger';
+    else if (e.error === 'service-not-allowed') { status.textContent = '⏸️ Tryk "Tilføj mere" for at fortsætte'; if (prisStemmeTransskription.trim()) { brugBtn.style.display = 'inline-block'; fortsætBtn.style.display = 'inline-block'; } }
+    else status.textContent = `⚠️ Fejl — prøv igen`;
+  };
+
+  prisRecognition.onend = () => {
+    prisStemmeAktiv = false; nulstilPrisMicBtn();
+    if (prisStemmeTransskription.trim()) {
+      status.textContent = erIOS ? '⏸️ Tryk "Tilføj mere" eller "Udfyld felter"' : '✅ Færdig — udfyld felter';
+      brugBtn.style.display = 'inline-block';
+      fortsætBtn.style.display = 'inline-block';
+    } else { status.textContent = '⚠️ Ingen tale — prøv igen'; }
+  };
+
+  try { prisRecognition.start(); } catch(e) { status.textContent = '⚠️ Kunne ikke starte mikrofon'; prisStemmeAktiv = false; nulstilPrisMicBtn(); }
+}
+
+function stopPrisStemme() {
+  prisStemmeAktiv = false;
+  if (prisRecognition) { try { prisRecognition.stop(); } catch(_){} }
+  nulstilPrisMicBtn();
+}
+
+function nulstilPrisMicBtn() {
+  const micBtn = document.getElementById('ppMicBtn');
+  if (micBtn) { micBtn.style.background = '#f0f4ff'; micBtn.style.borderColor = '#c7d7fe'; micBtn.style.color = '#2563eb'; micBtn.textContent = '🎙️ Dikter pris'; micBtn.onclick = startPrisStemme; }
+}
+
+async function brugPrisStemmeData() {
+  const tekst = prisStemmeTransskription.trim();
+  if (!tekst) return;
+  const btn = document.getElementById('ppBrugTaleBtn');
+  const status = document.getElementById('ppStemmeStatus');
+  btn.disabled = true; btn.textContent = '⏳ AI analyserer...';
+  status.textContent = '⏳ Claude forstår prisen...';
+  try {
+    const res = await fetch(`${API}/tale/pris`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ tekst })
+    });
+    const data = await res.json();
+    if (!data.ok || !data.data) { status.textContent = '⚠️ Kunne ikke parse — udfyld manuelt'; btn.disabled = false; btn.textContent = '✓ Udfyld felter'; return; }
+    const d = data.data;
+    if (d.navn)        document.getElementById('ppNavn').value = d.navn;
+    if (d.enhedspris)  document.getElementById('ppPris').value = d.enhedspris;
+    if (d.enhed)       document.getElementById('ppEnhed').value = d.enhed;
+    if (d.kategori)    document.getElementById('ppKategori').value = d.kategori;
+    if (d.beskrivelse) document.getElementById('ppBeskrivelse').value = d.beskrivelse;
+    status.textContent = '✅ Felter udfyldt — tjek og gem';
+    btn.textContent = '✓ Udfyldt'; btn.style.background = '#15803d';
+  } catch(e) { status.textContent = '⚠️ Fejl — udfyld manuelt'; btn.disabled = false; btn.textContent = '✓ Udfyld felter'; }
 }
 </script>
 </body>
