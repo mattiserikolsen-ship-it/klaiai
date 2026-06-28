@@ -799,7 +799,24 @@ def byg_html_mail(lead_navn, tekst, klient_navn, klient_hjemmeside, hero_image_u
 </body></html>"""
 
 
-def send_mail(til, emne, tekst, fra_navn, html_content=None):
+def generer_tilbud_pdf(html_indhold):
+    """Konverterer tilbuds-HTML til PDF bytes via WeasyPrint"""
+    try:
+        from weasyprint import HTML, CSS
+        # Tilføj print-venlig CSS
+        ekstra_css = CSS(string="""
+            @page { size: A4; margin: 0; }
+            body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            * { box-sizing: border-box; }
+        """)
+        pdf_bytes = HTML(string=html_indhold, base_url=None).write_pdf(stylesheets=[ekstra_css])
+        return pdf_bytes
+    except Exception as e:
+        print(f"WeasyPrint PDF fejl: {e}")
+        return None
+
+
+def send_mail(til, emne, tekst, fra_navn, html_content=None, pdf_vedhæft=None, pdf_filnavn='tilbud.pdf'):
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return False
     try:
@@ -813,6 +830,17 @@ def send_mail(til, emne, tekst, fra_navn, html_content=None):
             plain_text_content=tekst,
             html_content=html_content
         )
+        if pdf_vedhæft:
+            import base64
+            from sendgrid.helpers.mail import Attachment, FileContent, FileName, FileType, Disposition
+            encoded = base64.b64encode(pdf_vedhæft).decode()
+            attachment = Attachment(
+                FileContent(encoded),
+                FileName(pdf_filnavn),
+                FileType('application/pdf'),
+                Disposition('attachment')
+            )
+            message.attachment = attachment
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
         print(f"SendGrid status: {response.status_code}")
@@ -6262,11 +6290,24 @@ def send_tilbud(tilbud_id):
 
         html_til_kunde = html_til_kunde.replace('<!-- FOOTER -->', ekstra_blok + '\n  <!-- FOOTER -->')
 
-        send_mail(kunde_email, f'Tilbud: {titel}', f'Hej {kunde_navn},\n\nSe tilbuddet herunder.', fra_navn=fra_navn, html_content=html_til_kunde)
+        # Generer PDF og vedhæft mailen
+        pdf_bytes = generer_tilbud_pdf(html_til_kunde)
+        sikkert_filnavn = ''.join(c for c in titel if c.isalnum() or c in ' -_')[:40].strip() or 'tilbud'
+        pdf_filnavn = f'{sikkert_filnavn}.pdf'
+
+        send_mail(
+            kunde_email,
+            f'Tilbud: {titel}',
+            f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF — du kan godkende det via knappen i mailen.',
+            fra_navn=fra_navn,
+            html_content=html_til_kunde,
+            pdf_vedhæft=pdf_bytes,
+            pdf_filnavn=pdf_filnavn
+        )
 
         db.table('tilbud').update({'status': 'sendt', 'sendt_dato': datetime.now().isoformat()}).eq('id', tilbud_id).execute()
 
-        return jsonify({'ok': True, 'sendt_til': kunde_email})
+        return jsonify({'ok': True, 'sendt_til': kunde_email, 'pdf_vedhæftet': pdf_bytes is not None})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
