@@ -1694,40 +1694,35 @@ function startStemmeOptagelse() {
   };
 
   recognition.onerror = (e) => {
+    stemmeAktiv = false;
+    nulstilMicBtn();
     if (e.error === 'not-allowed') {
-      status.textContent = '⚠️ Mikrofon ikke tilladt — tjek indstillinger i Safari';
+      status.textContent = '⚠️ Mikrofon ikke tilladt — gå til Safari Indstillinger → Privatliv → Mikrofon og tillad denne side';
+    } else if (e.error === 'service-not-allowed') {
+      status.textContent = '⚠️ Tryk på "Tilføj mere" for at optage igen';
+      if (stemmeTransskription.trim()) {
+        brugBtn.style.display = 'inline-block';
+        if (fortsætBtn) fortsætBtn.style.display = 'inline-block';
+      }
     } else if (e.error === 'no-speech') {
-      // Ingen tale — ignorer på iOS, gen-start
-      if (erIOS && stemmeAktiv) { try { recognition.start(); } catch(_){} }
+      status.textContent = '⚠️ Ingen tale — tryk igen og tal';
+      if (fortsætBtn && stemmeTransskription.trim()) fortsætBtn.style.display = 'inline-block';
     } else {
-      status.textContent = `⚠️ Fejl (${e.error}) — prøv igen`;
-      stemmeAktiv = false;
-      nulstilMicBtn();
+      status.textContent = `⚠️ Fejl — tryk igen (${e.error})`;
     }
   };
 
   recognition.onend = () => {
-    if (!stemmeAktiv) {
-      // Brugeren stoppede manuelt
-      if (stemmeTransskription.trim()) {
-        status.textContent = '✅ Optagelse færdig — tjek teksten';
-        brugBtn.style.display = 'inline-block';
-        if (fortsætBtn) fortsætBtn.style.display = 'inline-block';
-      } else {
-        status.textContent = '⚠️ Ingen tale — prøv igen';
-      }
-      nulstilMicBtn();
-    } else if (erIOS) {
-      // iOS stopper automatisk — gen-start så håndværkeren kan fortsætte
-      status.textContent = '🎙️ Fortsæt med at tale...';
-      try { recognition.start(); } catch(_) {
-        stemmeAktiv = false;
-        if (stemmeTransskription.trim()) {
-          status.textContent = '✅ Optagelse færdig — tjek teksten';
-          brugBtn.style.display = 'inline-block';
-        }
-        nulstilMicBtn();
-      }
+    stemmeAktiv = false;
+    nulstilMicBtn();
+    if (stemmeTransskription.trim()) {
+      status.textContent = erIOS
+        ? '⏸️ Pause — tryk "Tilføj mere" for at fortsætte'
+        : '✅ Optagelse færdig — tjek teksten';
+      brugBtn.style.display = 'inline-block';
+      if (fortsætBtn) fortsætBtn.style.display = 'inline-block';
+    } else {
+      status.textContent = '⚠️ Ingen tale registreret — prøv igen';
     }
   };
 
