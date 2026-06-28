@@ -7,20 +7,20 @@
   <meta name="description" content="NexOlsen bygger digitale systemer til håndværkere og SMV'er. Leads, tilbud, bookinger og overblik — automatisk. Du fokuserer på faget, systemet klarer resten."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --dark:    #0d1117;
-      --dark2:   #161b22;
-      --accent:  #f97316;
-      --accent2: #fb923c;
-      --text:    #0d1117;
-      --muted:   #6b7280;
-      --border:  #e5e7eb;
+      --dark:    #0f172a;
+      --dark2:   #1e293b;
+      --accent:  #2563eb;
+      --accent2: #3b82f6;
+      --text:    #0f172a;
+      --muted:   #64748b;
+      --border:  #e2e8f0;
       --card:    #ffffff;
-      --bg:      #f9fafb;
+      --bg:      #f8fafc;
     }
 
     html { scroll-behavior: smooth; }
@@ -30,21 +30,20 @@
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 2.5rem;
-      background: rgba(13,17,23,0.9);
+      padding: 1.1rem 2.5rem;
+      background: rgba(15,23,42,0.92);
       backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
       transition: all .3s;
     }
-    .logo { font-size: 1.25rem; font-weight: 900; color: #fff; letter-spacing: -.3px; }
-    .logo span { color: var(--accent); }
+    .logo { font-size: 1.2rem; font-weight: 700; color: #fff; letter-spacing: -.2px; }
     .nav-links { display: flex; gap: 2rem; list-style: none; }
-    .nav-links a { color: rgba(255,255,255,.5); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .2s; }
+    .nav-links a { color: rgba(255,255,255,.45); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .2s; }
     .nav-links a:hover { color: #fff; }
-    .nav-login { color: rgba(255,255,255,.65); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .2s; padding: .55rem 0; }
+    .nav-login { color: rgba(255,255,255,.55); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .2s; padding: .5rem 0; }
     .nav-login:hover { color: #fff; }
-    .nav-cta { background: var(--accent); color: #fff; padding: .55rem 1.35rem; border-radius: 8px; text-decoration: none; font-size: .875rem; font-weight: 700; transition: opacity .2s; }
-    .nav-cta:hover { opacity: .9; }
+    .nav-cta { background: var(--accent); color: #fff; padding: .55rem 1.35rem; border-radius: 8px; text-decoration: none; font-size: .875rem; font-weight: 600; transition: opacity .2s; }
+    .nav-cta:hover { opacity: .88; }
     .nav-right { display: flex; align-items: center; gap: 1.5rem; }
 
     /* ── HERO ── */
@@ -58,146 +57,146 @@
     .hero::before {
       content: '';
       position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(249,115,22,.15) 0%, transparent 60%);
+      background: radial-gradient(ellipse 70% 50% at 50% -5%, rgba(37,99,235,.14) 0%, transparent 60%);
       pointer-events: none;
     }
     .hero-eyebrow {
       display: inline-flex; align-items: center; gap: .5rem;
-      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
-      color: rgba(255,255,255,.8); padding: .4rem 1.1rem; border-radius: 99px;
-      font-size: .78rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+      color: rgba(255,255,255,.7); padding: .4rem 1.1rem; border-radius: 99px;
+      font-size: .8rem; font-weight: 500;
       margin-bottom: 2rem;
     }
     .hero h1 {
-      font-size: clamp(2.8rem, 7vw, 5.5rem);
-      font-weight: 900; line-height: 1.05; letter-spacing: -2.5px;
-      color: #fff; max-width: 900px; margin-bottom: 1.75rem;
+      font-size: clamp(2.6rem, 6.5vw, 5rem);
+      font-weight: 800; line-height: 1.08; letter-spacing: -1.8px;
+      color: #fff; max-width: 860px; margin-bottom: 1.75rem;
     }
     .hero h1 em { font-style: normal; color: #fff; }
     .hero p {
-      font-size: 1.15rem; color: rgba(255,255,255,.6); max-width: 560px;
-      margin: 0 auto 2.75rem; line-height: 1.8; font-weight: 400;
+      font-size: 1.1rem; color: rgba(255,255,255,.5); max-width: 520px;
+      margin: 0 auto 2.75rem; line-height: 1.85; font-weight: 400;
     }
     .hero-actions { display: flex; gap: .85rem; flex-wrap: wrap; justify-content: center; margin-bottom: 5rem; }
-    .btn-primary { background: var(--accent); color: #fff; padding: .9rem 2.2rem; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: .95rem; transition: opacity .2s, transform .2s; display: inline-flex; align-items: center; gap: .5rem; }
-    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
-    .btn-ghost { background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); padding: .9rem 2.2rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: .95rem; border: 1px solid rgba(255,255,255,.12); transition: all .2s; }
-    .btn-ghost:hover { background: rgba(255,255,255,.12); }
+    .btn-primary { background: var(--accent); color: #fff; padding: .9rem 2.1rem; border-radius: 9px; text-decoration: none; font-weight: 600; font-size: .95rem; transition: opacity .2s, transform .2s; display: inline-flex; align-items: center; gap: .5rem; }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-ghost { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); padding: .9rem 2.1rem; border-radius: 9px; text-decoration: none; font-weight: 500; font-size: .95rem; border: 1px solid rgba(255,255,255,.1); transition: all .2s; }
+    .btn-ghost:hover { background: rgba(255,255,255,.1); }
 
     /* Dashboard mockup */
     .hero-dashboard {
-      width: 100%; max-width: 900px; margin: 0 auto;
-      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-      border-radius: 16px; overflow: hidden;
+      width: 100%; max-width: 880px; margin: 0 auto;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px; overflow: hidden;
     }
     .dash-topbar {
-      background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.05);
       padding: .75rem 1.25rem; display: flex; align-items: center; gap: .5rem;
     }
     .dash-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .dash-title { margin-left: .75rem; font-size: .78rem; color: rgba(255,255,255,.3); font-weight: 600; }
-    .dash-body { display: grid; grid-template-columns: 180px 1fr; min-height: 320px; }
-    .dash-sidebar { border-right: 1px solid rgba(255,255,255,.06); padding: 1rem .75rem; }
-    .dash-nav-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .75rem; border-radius: 7px; font-size: .75rem; color: rgba(255,255,255,.35); margin-bottom: .2rem; }
-    .dash-nav-item.active { background: rgba(249,115,22,.12); color: var(--accent2); font-weight: 600; }
+    .dash-title { margin-left: .75rem; font-size: .78rem; color: rgba(255,255,255,.25); font-weight: 500; }
+    .dash-body { display: grid; grid-template-columns: 180px 1fr; min-height: 300px; }
+    .dash-sidebar { border-right: 1px solid rgba(255,255,255,.05); padding: 1rem .75rem; }
+    .dash-nav-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .75rem; border-radius: 6px; font-size: .75rem; color: rgba(255,255,255,.3); margin-bottom: .2rem; }
+    .dash-nav-item.active { background: rgba(37,99,235,.12); color: var(--accent2); font-weight: 600; }
     .dash-content { padding: 1.25rem; }
     .dash-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; margin-bottom: 1rem; }
-    .dash-stat { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; padding: .9rem 1rem; }
-    .dash-stat-num { font-size: 1.5rem; font-weight: 800; color: #fff; }
-    .dash-stat-label { font-size: .68rem; color: rgba(255,255,255,.35); margin-top: .1rem; }
+    .dash-stat { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 9px; padding: .9rem 1rem; }
+    .dash-stat-num { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .dash-stat-label { font-size: .68rem; color: rgba(255,255,255,.3); margin-top: .1rem; }
     .dash-stat-trend { font-size: .68rem; color: #4ade80; font-weight: 600; margin-top: .2rem; }
-    .dash-leads { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 10px; overflow: hidden; }
+    .dash-leads { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.05); border-radius: 9px; overflow: hidden; }
     .dash-lead-row { display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; border-bottom: 1px solid rgba(255,255,255,.04); }
     .dash-lead-row:last-child { border-bottom: none; }
     .dash-lead-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; flex-shrink: 0; }
-    .dash-lead-name { font-size: .75rem; color: rgba(255,255,255,.75); font-weight: 600; flex: 1; }
-    .dash-lead-badge { font-size: .62rem; font-weight: 700; padding: .15rem .5rem; border-radius: 4px; }
+    .dash-lead-name { font-size: .75rem; color: rgba(255,255,255,.7); font-weight: 500; flex: 1; }
+    .dash-lead-badge { font-size: .62rem; font-weight: 600; padding: .15rem .5rem; border-radius: 4px; }
 
     /* ── LOGO BAR ── */
     .logo-bar { background: var(--bg); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 1.75rem 2rem; }
     .logo-bar-inner { max-width: 900px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 3.5rem; flex-wrap: wrap; }
-    .logo-bar-label { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .logo-bar-label { font-size: .78rem; font-weight: 500; color: var(--muted); }
     .logo-bar-items { display: flex; align-items: center; gap: 3rem; flex-wrap: wrap; justify-content: center; }
-    .logo-bar-item { font-size: .85rem; font-weight: 700; color: #9ca3af; letter-spacing: -.2px; }
+    .logo-bar-item { font-size: .85rem; font-weight: 600; color: #94a3b8; letter-spacing: -.1px; }
 
     /* ── SHARED SECTIONS ── */
     section { padding: 6rem 2rem; }
     .container { max-width: 1100px; margin: 0 auto; }
-    .eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); margin-bottom: .75rem; }
-    .section-title { font-size: clamp(1.9rem, 3.5vw, 2.8rem); font-weight: 800; letter-spacing: -.75px; line-height: 1.15; margin-bottom: 1rem; }
+    .eyebrow { font-size: .8rem; font-weight: 600; color: var(--accent); margin-bottom: .75rem; }
+    .section-title { font-size: clamp(1.8rem, 3.2vw, 2.6rem); font-weight: 700; letter-spacing: -.5px; line-height: 1.2; margin-bottom: 1rem; }
     .section-sub { color: var(--muted); font-size: 1rem; max-width: 520px; line-height: 1.8; }
 
     /* ── PROBLEM ── */
     #problem { background: var(--bg); }
     .problem-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; margin-top: 3rem; }
-    .problem-card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 1.75rem; }
-    .problem-icon { font-size: 1.75rem; margin-bottom: 1rem; }
-    .problem-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
-    .problem-card p { font-size: .875rem; color: var(--muted); line-height: 1.7; }
+    .problem-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem; }
+    .problem-icon { font-size: 1.5rem; margin-bottom: 1rem; }
+    .problem-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .5rem; color: var(--text); }
+    .problem-card p { font-size: .875rem; color: var(--muted); line-height: 1.75; }
 
     /* ── PRODUCT ── */
     #produkt { background: #fff; }
     .product-showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; margin-top: 4rem; }
     .product-showcase.reverse { direction: rtl; }
     .product-showcase.reverse > * { direction: ltr; }
-    .product-screen { background: var(--dark); border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 24px 64px rgba(0,0,0,.15); }
-    .product-screen-bar { background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.05); padding: .6rem 1rem; display: flex; gap: .35rem; }
+    .product-screen { background: var(--dark); border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.06); box-shadow: 0 20px 60px rgba(0,0,0,.12); }
+    .product-screen-bar { background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.05); padding: .6rem 1rem; display: flex; gap: .35rem; }
     .ps-dot { width: 8px; height: 8px; border-radius: 50%; }
     .product-screen-body { padding: 1.25rem; }
     .product-text { display: flex; flex-direction: column; gap: 1.25rem; }
-    .product-text h3 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.4px; line-height: 1.25; }
+    .product-text h3 { font-size: 1.45rem; font-weight: 700; letter-spacing: -.3px; line-height: 1.3; }
     .product-text p { font-size: .95rem; color: var(--muted); line-height: 1.8; }
     .product-bullets { display: flex; flex-direction: column; gap: .65rem; }
     .product-bullet { display: flex; align-items: flex-start; gap: .65rem; font-size: .9rem; color: var(--muted); }
-    .bullet-check { width: 20px; height: 20px; border-radius: 50%; background: #dcfce7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: .65rem; color: #16a34a; font-weight: 800; margin-top: .1rem; }
+    .bullet-check { width: 20px; height: 20px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: .65rem; color: var(--accent); font-weight: 800; margin-top: .1rem; }
 
     /* ── HOW ── */
     #hvordan { background: var(--dark); color: #fff; }
     .steps-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2rem; margin-top: 3.5rem; position: relative; }
-    .steps-grid::before { content: ''; position: absolute; top: 28px; left: calc(16.5% + 28px); right: calc(16.5% + 28px); height: 1px; background: linear-gradient(90deg, var(--accent), rgba(249,115,22,.2)); }
+    .steps-grid::before { content: ''; position: absolute; top: 27px; left: calc(16.5% + 28px); right: calc(16.5% + 28px); height: 1px; background: linear-gradient(90deg, rgba(37,99,235,.5), rgba(59,130,246,.15)); }
     .step-card { text-align: center; padding: 1.5rem; }
-    .step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.15rem; font-weight: 800; margin: 0 auto 1.25rem; color: #fff; position: relative; z-index: 1; }
-    .step-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; color: #fff; }
-    .step-card p { font-size: .875rem; color: rgba(255,255,255,.5); line-height: 1.7; }
+    .step-num { width: 54px; height: 54px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 700; margin: 0 auto 1.25rem; color: #fff; position: relative; z-index: 1; }
+    .step-card h3 { font-size: .95rem; font-weight: 600; margin-bottom: .5rem; color: #fff; }
+    .step-card p { font-size: .875rem; color: rgba(255,255,255,.45); line-height: 1.75; }
 
     /* ── RESULTS ── */
     #resultater { background: var(--bg); }
     .results-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1.5rem; margin-top: 3.5rem; }
-    .result-card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 2rem; text-align: center; }
-    .result-num { font-size: 2.5rem; font-weight: 900; color: var(--text); letter-spacing: -1.5px; line-height: 1; }
+    .result-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 2rem; text-align: center; }
+    .result-num { font-size: 2.4rem; font-weight: 800; color: var(--text); letter-spacing: -1.2px; line-height: 1; }
     .result-num span { color: var(--accent); }
-    .result-label { font-size: .82rem; color: var(--muted); margin-top: .5rem; line-height: 1.5; }
+    .result-label { font-size: .82rem; color: var(--muted); margin-top: .5rem; line-height: 1.55; }
 
     /* ── PRICING ── */
     #priser { background: #fff; }
     .pricing-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; margin-top: 3.5rem; }
-    .price-card { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; position: relative; }
-    .price-card.featured { background: var(--dark); border-color: var(--accent); color: #fff; }
-    .price-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: .25rem 1rem; border-radius: 99px; font-size: .72rem; font-weight: 800; white-space: nowrap; letter-spacing: .3px; }
-    .price-name { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 1rem; }
-    .price-card.featured .price-name { color: rgba(255,255,255,.45); }
-    .price-amount { font-size: 2.6rem; font-weight: 900; letter-spacing: -1.5px; margin-bottom: .2rem; }
+    .price-card { background: var(--bg); border: 1px solid var(--border); border-radius: 18px; padding: 2rem; position: relative; }
+    .price-card.featured { background: var(--dark); border-color: rgba(37,99,235,.4); color: #fff; }
+    .price-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: .25rem 1rem; border-radius: 99px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .price-name { font-size: .82rem; font-weight: 600; color: var(--muted); margin-bottom: 1rem; }
+    .price-card.featured .price-name { color: rgba(255,255,255,.4); }
+    .price-amount { font-size: 2.5rem; font-weight: 800; letter-spacing: -1.2px; margin-bottom: .2rem; }
     .price-period { font-size: .85rem; color: var(--muted); margin-bottom: 1.75rem; }
-    .price-card.featured .price-period { color: rgba(255,255,255,.4); }
+    .price-card.featured .price-period { color: rgba(255,255,255,.35); }
     .price-features { list-style: none; display: flex; flex-direction: column; gap: .7rem; margin-bottom: 2rem; }
     .price-features li { display: flex; align-items: flex-start; gap: .6rem; font-size: .875rem; color: var(--muted); }
-    .price-card.featured .price-features li { color: rgba(255,255,255,.65); }
-    .price-features li::before { content: '✓'; color: var(--accent); font-weight: 800; flex-shrink: 0; }
-    .price-btn { display: block; text-align: center; padding: .85rem; border-radius: 10px; font-weight: 700; font-size: .9rem; text-decoration: none; transition: all .2s; }
+    .price-card.featured .price-features li { color: rgba(255,255,255,.6); }
+    .price-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+    .price-btn { display: block; text-align: center; padding: .85rem; border-radius: 9px; font-weight: 600; font-size: .9rem; text-decoration: none; transition: all .2s; }
     .price-btn-light { background: #fff; color: var(--text); border: 1px solid var(--border); }
     .price-btn-light:hover { border-color: var(--accent); color: var(--accent); }
-    .price-btn-accent { background: var(--accent); color: #fff; box-shadow: 0 4px 20px rgba(249,115,22,.3); }
+    .price-btn-accent { background: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(37,99,235,.25); }
     .price-btn-accent:hover { opacity: .9; }
-    .price-btn-dark { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.15); }
-    .price-btn-dark:hover { background: rgba(255,255,255,.18); }
+    .price-btn-dark { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.12); }
+    .price-btn-dark:hover { background: rgba(255,255,255,.14); }
 
     /* ── CONTACT ── */
     #kontakt { background: var(--bg); }
     .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; margin-top: 3.5rem; }
     .contact-info { display: flex; flex-direction: column; gap: 1.5rem; }
     .contact-point { display: flex; gap: 1rem; align-items: flex-start; }
-    .contact-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.2); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
-    .contact-point h4 { font-size: .9rem; font-weight: 700; margin-bottom: .2rem; }
+    .contact-icon { width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; border: 1px solid #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .contact-point h4 { font-size: .9rem; font-weight: 600; margin-bottom: .2rem; }
     .contact-point p { font-size: .85rem; color: var(--muted); }
     .contact-form { display: flex; flex-direction: column; gap: 1rem; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -206,15 +205,14 @@
     .form-group input, .form-group textarea, .form-group select { background: #fff; border: 1px solid var(--border); border-radius: 9px; padding: .8rem 1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: .9rem; outline: none; transition: border-color .2s; }
     .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent); }
     .form-group textarea { resize: vertical; min-height: 110px; }
-    .form-submit { background: var(--accent); color: #fff; border: none; padding: .95rem; border-radius: 10px; font-size: .95rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .2s; box-shadow: 0 4px 20px rgba(249,115,22,.25); }
+    .form-submit { background: var(--accent); color: #fff; border: none; padding: .95rem; border-radius: 9px; font-size: .95rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .2s; }
     .form-submit:hover { opacity: .9; }
     .form-success { display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.5rem; text-align: center; color: #15803d; font-weight: 600; }
 
     /* ── FOOTER ── */
     footer { background: var(--dark); padding: 3rem 2rem; text-align: center; }
-    .footer-logo { font-size: 1.4rem; font-weight: 900; color: #fff; margin-bottom: .75rem; }
-    .footer-logo span { color: var(--accent); }
-    footer p { color: rgba(255,255,255,.3); font-size: .85rem; }
+    .footer-logo { font-size: 1.35rem; font-weight: 700; color: #fff; margin-bottom: .75rem; }
+    footer p { color: rgba(255,255,255,.25); font-size: .85rem; }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
@@ -239,7 +237,7 @@
     }
 
     /* ── ANIMATIONS ── */
-    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
     .reveal.visible { opacity: 1; transform: none; }
   </style>
 </head>
@@ -247,7 +245,7 @@
 
 <!-- NAV -->
 <nav id="nav">
-  <div class="logo">Nex<span>Olsen</span></div>
+  <div class="logo">NexOlsen</div>
   <ul class="nav-links">
     <li><a href="#problem">Udfordringen</a></li>
     <li><a href="#produkt">Systemet</a></li>
@@ -256,14 +254,14 @@
   </ul>
   <div class="nav-right">
     <a href="/login" class="nav-login">Log ind</a>
-    <a href="#kontakt" class="nav-cta">Book demo →</a>
+    <a href="#kontakt" class="nav-cta">Book demo</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-eyebrow">🛠 Bygget til håndværkere og SMV'er</div>
-  <h1>Stop med at bruge tid<br>på <em>administration</em></h1>
+  <div class="hero-eyebrow">Bygget til håndværkere og SMV'er</div>
+  <h1>Stop med at bruge tid<br>på administration</h1>
   <p>NexOlsen bygger digitale systemer der samler dine leads, tilbud og bookinger ét sted — så du kan fokusere på det du er god til.</p>
   <div class="hero-actions">
     <a href="#kontakt" class="btn-primary">Book en gratis demo →</a>
@@ -296,7 +294,7 @@
           <div class="dash-stat">
             <div class="dash-stat-num">3</div>
             <div class="dash-stat-label">Afventer svar</div>
-            <div class="dash-stat-trend" style="color:#f59e0b">📄 Send tilbud</div>
+            <div class="dash-stat-trend" style="color:#94a3b8">📄 Send tilbud</div>
           </div>
           <div class="dash-stat">
             <div class="dash-stat-num">84k</div>
@@ -311,12 +309,12 @@
             <div class="dash-lead-badge" style="background:#dcfce7;color:#15803d">Ny</div>
           </div>
           <div class="dash-lead-row">
-            <div class="dash-lead-avatar" style="background:#fef3c7;color:#92400e">MH</div>
+            <div class="dash-lead-avatar" style="background:#e0e7ff;color:#4338ca">MH</div>
             <div class="dash-lead-name">Mette Hansen — Aarhus</div>
-            <div class="dash-lead-badge" style="background:#fef3c7;color:#92400e">Tilbud sendt</div>
+            <div class="dash-lead-badge" style="background:#eff6ff;color:#1d4ed8">Tilbud sendt</div>
           </div>
           <div class="dash-lead-row">
-            <div class="dash-lead-avatar" style="background:#f3e8ff;color:#7e22ce">PK</div>
+            <div class="dash-lead-avatar" style="background:#f0fdf4;color:#15803d">PK</div>
             <div class="dash-lead-name">Peter Kjær — Silkeborg</div>
             <div class="dash-lead-badge" style="background:#f0fdf4;color:#15803d">✓ Accepteret</div>
           </div>
@@ -386,28 +384,28 @@
           <div class="ps-dot" style="background:#28c840"></div>
         </div>
         <div class="product-screen-body" style="padding:1.5rem">
-          <div style="font-size:.7rem;color:rgba(255,255,255,.3);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:1rem">Nye leads i dag</div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.3);font-weight:500;margin-bottom:1rem">Nye leads i dag</div>
           <div style="display:flex;flex-direction:column;gap:.75rem">
-            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.9rem 1rem;display:flex;align-items:center;gap:.85rem">
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:.9rem 1rem;display:flex;align-items:center;gap:.85rem">
               <div style="width:36px;height:36px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#1d4ed8;flex-shrink:0">LN</div>
               <div style="flex:1">
-                <div style="font-size:.82rem;font-weight:700;color:#fff">Lars Nielsen</div>
-                <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.1rem">Interesseret i badeværelse — 8 min siden</div>
+                <div style="font-size:.82rem;font-weight:600;color:#fff">Lars Nielsen</div>
+                <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:.1rem">Interesseret i badeværelse — 8 min siden</div>
               </div>
               <div style="display:flex;gap:.4rem">
-                <div style="background:#f97316;color:#fff;font-size:.68rem;font-weight:700;padding:.25rem .65rem;border-radius:6px;cursor:pointer">📞 Ring</div>
-                <div style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);font-size:.68rem;font-weight:700;padding:.25rem .65rem;border-radius:6px">📄 Tilbud</div>
+                <div style="background:#2563eb;color:#fff;font-size:.68rem;font-weight:600;padding:.25rem .65rem;border-radius:6px">📞 Ring</div>
+                <div style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);font-size:.68rem;font-weight:600;padding:.25rem .65rem;border-radius:6px">📄 Tilbud</div>
               </div>
             </div>
-            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.9rem 1rem;display:flex;align-items:center;gap:.85rem">
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:.9rem 1rem;display:flex;align-items:center;gap:.85rem">
               <div style="width:36px;height:36px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#15803d;flex-shrink:0">AJ</div>
               <div style="flex:1">
-                <div style="font-size:.82rem;font-weight:700;color:#fff">Anna Jensen</div>
-                <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.1rem">Pool-montering i Viborg — 34 min siden</div>
+                <div style="font-size:.82rem;font-weight:600;color:#fff">Anna Jensen</div>
+                <div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-top:.1rem">Pool-montering i Viborg — 34 min siden</div>
               </div>
               <div style="display:flex;gap:.4rem">
-                <div style="background:#f97316;color:#fff;font-size:.68rem;font-weight:700;padding:.25rem .65rem;border-radius:6px;cursor:pointer">📞 Ring</div>
-                <div style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);font-size:.68rem;font-weight:700;padding:.25rem .65rem;border-radius:6px">📄 Tilbud</div>
+                <div style="background:#2563eb;color:#fff;font-size:.68rem;font-weight:600;padding:.25rem .65rem;border-radius:6px">📞 Ring</div>
+                <div style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);font-size:.68rem;font-weight:600;padding:.25rem .65rem;border-radius:6px">📄 Tilbud</div>
               </div>
             </div>
           </div>
@@ -447,18 +445,18 @@
           <div class="ps-dot" style="background:#28c840"></div>
         </div>
         <div class="product-screen-body" style="padding:1.25rem">
-          <div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.2);border-radius:8px;padding:.65rem .9rem;font-size:.72rem;color:#fb923c;font-weight:700;margin-bottom:1rem">✨ Tilbud genereret på 12 sekunder</div>
-          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:1rem;margin-bottom:.75rem">
-            <div style="font-size:.75rem;font-weight:800;color:#fff;margin-bottom:.5rem">Renovering af badeværelse</div>
+          <div style="background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:.65rem .9rem;font-size:.72rem;color:#93c5fd;font-weight:600;margin-bottom:1rem">Tilbud genereret på 12 sekunder</div>
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:1rem;margin-bottom:.75rem">
+            <div style="font-size:.75rem;font-weight:700;color:#fff;margin-bottom:.5rem">Renovering af badeværelse</div>
             <div style="display:flex;flex-direction:column;gap:.3rem">
-              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.5)"><span>Flisearbejde 8m²</span><span style="color:#fff;font-weight:700">6.400 kr.</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.5)"><span>Ny håndvask + toilet</span><span style="color:#fff;font-weight:700">4.200 kr.</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.5)"><span>Kloakarbejde</span><span style="color:#fff;font-weight:700">3.800 kr.</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.45)"><span>Flisearbejde 8m²</span><span style="color:#fff;font-weight:600">6.400 kr.</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.45)"><span>Ny håndvask + toilet</span><span style="color:#fff;font-weight:600">4.200 kr.</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.45)"><span>Kloakarbejde</span><span style="color:#fff;font-weight:600">3.800 kr.</span></div>
               <div style="height:1px;background:rgba(255,255,255,.06);margin:.4rem 0"></div>
-              <div style="display:flex;justify-content:space-between;font-size:.8rem;font-weight:800;color:#fff"><span>Total ekskl. moms</span><span style="color:#4ade80">14.400 kr.</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:.8rem;font-weight:700;color:#fff"><span>Total ekskl. moms</span><span style="color:#4ade80">14.400 kr.</span></div>
             </div>
           </div>
-          <div style="background:#16a34a;color:#fff;text-align:center;font-size:.78rem;font-weight:700;padding:.6rem;border-radius:8px">📧 Send PDF til kunde</div>
+          <div style="background:#16a34a;color:#fff;text-align:center;font-size:.78rem;font-weight:600;padding:.6rem;border-radius:8px">📧 Send PDF til kunde</div>
         </div>
       </div>
     </div>
@@ -472,17 +470,17 @@
           <div class="ps-dot" style="background:#28c840"></div>
         </div>
         <div class="product-screen-body" style="padding:1.25rem">
-          <div style="font-size:.7rem;color:rgba(255,255,255,.3);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:1rem">Pipeline — Tilbudsstatus</div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.3);font-weight:500;margin-bottom:1rem">Pipeline — Tilbudsstatus</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
             <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.75rem">
-              <div style="font-size:.65rem;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.6rem">Sendt</div>
-              <div style="background:rgba(255,255,255,.06);border-radius:6px;padding:.6rem;margin-bottom:.4rem"><div style="font-size:.72rem;color:#fff;font-weight:600">Lars Nielsen</div><div style="font-size:.65rem;color:rgba(255,255,255,.35);margin-top:.15rem">14.400 kr. · 👁 Åbnet</div></div>
-              <div style="background:rgba(255,255,255,.06);border-radius:6px;padding:.6rem"><div style="font-size:.72rem;color:#fff;font-weight:600">Søren B.</div><div style="font-size:.65rem;color:rgba(255,255,255,.35);margin-top:.15rem">8.200 kr. · Sendt i går</div></div>
+              <div style="font-size:.68rem;font-weight:600;color:rgba(255,255,255,.3);margin-bottom:.6rem">Sendt</div>
+              <div style="background:rgba(255,255,255,.06);border-radius:6px;padding:.6rem;margin-bottom:.4rem"><div style="font-size:.72rem;color:#fff;font-weight:500">Lars Nielsen</div><div style="font-size:.65rem;color:rgba(255,255,255,.3);margin-top:.15rem">14.400 kr. · 👁 Åbnet</div></div>
+              <div style="background:rgba(255,255,255,.06);border-radius:6px;padding:.6rem"><div style="font-size:.72rem;color:#fff;font-weight:500">Søren B.</div><div style="font-size:.65rem;color:rgba(255,255,255,.3);margin-top:.15rem">8.200 kr. · Sendt i går</div></div>
             </div>
-            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(74,222,128,.2);border-radius:8px;padding:.75rem">
-              <div style="font-size:.65rem;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.6px;margin-bottom:.6rem">Accepteret</div>
-              <div style="background:rgba(74,222,128,.08);border-radius:6px;padding:.6rem;margin-bottom:.4rem"><div style="font-size:.72rem;color:#fff;font-weight:600">Anna Jensen</div><div style="font-size:.65rem;color:#4ade80;margin-top:.15rem">✓ 22.500 kr.</div></div>
-              <div style="background:rgba(74,222,128,.08);border-radius:6px;padding:.6rem"><div style="font-size:.72rem;color:#fff;font-weight:600">Peter K.</div><div style="font-size:.65rem;color:#4ade80;margin-top:.15rem">✓ 61.000 kr.</div></div>
+            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(74,222,128,.18);border-radius:8px;padding:.75rem">
+              <div style="font-size:.68rem;font-weight:600;color:#4ade80;margin-bottom:.6rem">Accepteret</div>
+              <div style="background:rgba(74,222,128,.07);border-radius:6px;padding:.6rem;margin-bottom:.4rem"><div style="font-size:.72rem;color:#fff;font-weight:500">Anna Jensen</div><div style="font-size:.65rem;color:#4ade80;margin-top:.15rem">✓ 22.500 kr.</div></div>
+              <div style="background:rgba(74,222,128,.07);border-radius:6px;padding:.6rem"><div style="font-size:.72rem;color:#fff;font-weight:500">Peter K.</div><div style="font-size:.65rem;color:#4ade80;margin-top:.15rem">✓ 61.000 kr.</div></div>
             </div>
           </div>
         </div>
@@ -506,9 +504,9 @@
 <section id="hvordan">
   <div class="container">
     <div class="reveal" style="text-align:center">
-      <div class="eyebrow" style="color:var(--accent)">Sådan virker det</div>
+      <div class="eyebrow" style="color:var(--accent2)">Sådan virker det</div>
       <h2 class="section-title" style="color:#fff">Fra opsætning til overblik<br>på under en uge</h2>
-      <p class="section-sub" style="margin:0 auto;color:rgba(255,255,255,.45)">Du behøver ikke rode med teknik. Vi klarer det hele.</p>
+      <p class="section-sub" style="margin:0 auto;color:rgba(255,255,255,.4)">Du behøver ikke rode med teknik. Vi klarer det hele.</p>
     </div>
     <div class="steps-grid reveal">
       <div class="step-card">
@@ -701,7 +699,7 @@
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">Nex<span>Olsen</span></div>
+  <div class="footer-logo">NexOlsen</div>
   <p>© 2026 NexOlsen &nbsp;·&nbsp; Systemer der sparer din tid &nbsp;·&nbsp; support@nexolsen.dk</p>
 </footer>
 
@@ -718,14 +716,12 @@
   }, { threshold: 0.08 });
   reveals.forEach(el => observer.observe(el));
 
-  // Nav skift ved scroll
+  // Nav ved scroll
   const nav = document.getElementById('nav');
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 80) {
-      nav.style.background = 'rgba(13,17,23,.97)';
-    } else {
-      nav.style.background = 'rgba(13,17,23,.9)';
-    }
+    nav.style.background = window.scrollY > 80
+      ? 'rgba(15,23,42,.98)'
+      : 'rgba(15,23,42,.92)';
   });
 
   // Form submit
