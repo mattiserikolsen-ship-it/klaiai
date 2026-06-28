@@ -5374,9 +5374,14 @@ def slet_prispost_admin(post_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/markeds-analyse/<klient_id>', methods=['GET'])
-@require_admin
+@require_token
 def hent_markeds_analyse(klient_id):
-    """Hent seneste markedsanalyse for en klient"""
+    """Hent seneste markedsanalyse for en klient — tilgængelig for klient-token (intern brug)"""
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _info = active_tokens.get(_tok, {})
+    if _info.get('role') == 'client' and _info.get('klient_id') != klient_id:
+        return jsonify({'analyse': None}), 403
     if not db:
         return jsonify({'analyse': None})
     try:

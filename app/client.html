@@ -866,6 +866,19 @@
           <div class="stat-sub">kr ekskl. afviste</div>
         </div>
       </div>
+      <!-- INTERN MARKEDSPRIS PANEL — vises kun her, aldrig i kundens mail -->
+      <div id="markedsPrisPanel" style="background:#fff8ed;border:1px solid #fde68a;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-size:.82rem;font-weight:800;color:#92400e">📊 Markedspriser i din branche</span>
+            <span style="font-size:.65rem;font-weight:700;background:#fef3c7;color:#b45309;padding:.15rem .45rem;border-radius:4px;text-transform:uppercase;letter-spacing:.5px">Kun synlig for dig</span>
+          </div>
+          <button onclick="document.getElementById('markedsPrisPanel').style.display='none'" style="background:none;border:none;color:#b45309;cursor:pointer;font-size:.9rem;padding:.1rem .3rem">✕</button>
+        </div>
+        <div id="markedsPrisTekst" style="font-size:.8rem;color:#78350f;line-height:1.7;white-space:pre-wrap"></div>
+        <div id="markedsPrisDato" style="font-size:.68rem;color:#b45309;margin-top:.5rem;opacity:.7"></div>
+      </div>
+
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap">
           <div class="card-title" style="margin:0">Alle tilbud</div>
@@ -1613,6 +1626,8 @@ async function loadTilbud() {
   if (!CLIENT_ID) return;
   const el = document.getElementById('tilbudList');
   el.innerHTML = '<div class="loading">Henter tilbud...</div>';
+  // Hent markedspriser i baggrunden (kun intern visning)
+  hentMarkedsPriser();
   try {
     const res = await fetch(`${API}/portal/tilbud/${CLIENT_ID}`, {
       headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
@@ -1713,6 +1728,28 @@ function renderTilbud() {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── Markedspriser (intern — vises kun for klienten) ──────
+async function hentMarkedsPriser() {
+  const panel = document.getElementById('markedsPrisPanel');
+  const tekst = document.getElementById('markedsPrisTekst');
+  const dato = document.getElementById('markedsPrisDato');
+  if (!panel) return;
+  try {
+    const res = await fetch(`${API}/markeds-analyse/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    const data = await res.json();
+    if (data.analyse) {
+      tekst.textContent = data.analyse;
+      if (data.opdateret) {
+        const d = new Date(data.opdateret);
+        dato.textContent = `Senest opdateret ${d.toLocaleDateString('da-DK', {day:'numeric',month:'long',year:'numeric'})}`;
+      }
+      panel.style.display = 'block';
+    }
+  } catch(e) { /* Ingen analyse endnu — vis ikke panelet */ }
 }
 
 // ── Stemmeinput ──────────────────────────────────────────
