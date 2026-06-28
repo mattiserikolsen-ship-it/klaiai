@@ -1022,6 +1022,67 @@
         </button>
         <span id="cfgStatus" style="font-size:.85rem;color:var(--muted)"></span>
       </div>
+
+      <!-- PRISKATALOG -->
+      <div class="card" style="margin-top:1.25rem;padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="card-title" style="margin:0">Priskatalog</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Disse priser bruges automatisk når AI genererer tilbud</div>
+          </div>
+          <button onclick="åbnNyPrispost()" style="background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">+ Tilføj</button>
+        </div>
+        <div id="klientKatalogListe"><div class="loading" style="padding:1.5rem">Henter katalog...</div></div>
+      </div>
+
+      <!-- NY/REDIGER PRISPOST MODAL -->
+      <div id="prispostOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)lukPrispostModal()">
+        <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:1.5rem 1.25rem calc(2rem + env(safe-area-inset-bottom,0px));max-height:90vh;overflow-y:auto">
+          <div style="font-size:.95rem;font-weight:800;color:var(--dark);margin-bottom:1.25rem" id="prispostModalTitel">Tilføj ydelse / pris</div>
+          <input type="hidden" id="ppId"/>
+          <div style="margin-bottom:.75rem">
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px">Navn *</label>
+            <input id="ppNavn" placeholder="Fx. Badeværelsesrenovering, Tagudskiftning..." style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;outline:none"/>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px">Pris (kr.) *</label>
+              <input id="ppPris" type="number" min="0" placeholder="2500" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;outline:none"/>
+            </div>
+            <div>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px">Enhed</label>
+              <select id="ppEnhed" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;outline:none;background:#fff">
+                <option value="stk">stk</option>
+                <option value="m²">m²</option>
+                <option value="m">m</option>
+                <option value="time">time</option>
+                <option value="dag">dag</option>
+                <option value="opgave">opgave</option>
+                <option value="pakke">pakke</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px">Kategori</label>
+              <input id="ppKategori" placeholder="Fx. Murværk, VVS, El..." style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;outline:none"/>
+            </div>
+            <div style="display:flex;align-items:center;gap:.6rem;padding-top:1.4rem">
+              <input type="checkbox" id="ppMoms" checked style="width:16px;height:16px;cursor:pointer"/>
+              <label for="ppMoms" style="font-size:.85rem;font-weight:600;color:var(--dark);cursor:pointer">Inkl. moms</label>
+            </div>
+          </div>
+          <div style="margin-bottom:1.25rem">
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.4px">Beskrivelse (valgfrit)</label>
+            <textarea id="ppBeskrivelse" rows="2" placeholder="Kort beskrivelse af hvad der er inkluderet..." style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;outline:none;resize:none"></textarea>
+          </div>
+          <div id="ppStatus" style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem;display:none">Gemmer...</div>
+          <div style="display:flex;gap:.75rem">
+            <button onclick="lukPrispostModal()" style="flex:1;background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.7rem;font-size:.875rem;font-weight:700;cursor:pointer;font-family:inherit">Annuller</button>
+            <button onclick="gemPrispost()" style="flex:2;background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.7rem;font-size:.875rem;font-weight:700;cursor:pointer;font-family:inherit">Gem</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- AGENTER -->
@@ -2532,6 +2593,7 @@ let indstillingerIndlæst = false;
 
 async function loadIndstillinger() {
   if (indstillingerIndlæst) return;
+  loadKlientKatalog();
   try {
     const res = await fetch(`${API}/widget/${CLIENT_ID}`);
     if (!res.ok) return;
@@ -2761,6 +2823,141 @@ function kopierWidgetKode() {
 document.addEventListener('DOMContentLoaded', () => {
   visPlatform('html', document.querySelector('.plat-btn.active'));
 });
+
+// ── PRISKATALOG ──────────────────────────────────────────
+let klientKatalog = [];
+
+async function loadKlientKatalog() {
+  const liste = document.getElementById('klientKatalogListe');
+  if (!liste) return;
+  try {
+    const res = await fetch(`${API}/priskatalog/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    klientKatalog = await res.json() || [];
+    renderKlientKatalog();
+  } catch(e) {
+    liste.innerHTML = '<div class="loading">Kunne ikke hente katalog</div>';
+  }
+}
+
+function renderKlientKatalog() {
+  const liste = document.getElementById('klientKatalogListe');
+  if (!klientKatalog.length) {
+    liste.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted)">
+      <div style="font-size:1.5rem;margin-bottom:.5rem">📋</div>
+      <div style="font-size:.85rem">Ingen ydelser endnu — tilføj din første pris</div>
+    </div>`;
+    return;
+  }
+  // Gruppér per kategori
+  const kategorier = {};
+  klientKatalog.forEach(p => {
+    const k = p.kategori || 'Andet';
+    if (!kategorier[k]) kategorier[k] = [];
+    kategorier[k].push(p);
+  });
+  liste.innerHTML = Object.entries(kategorier).map(([kat, poster]) => `
+    <div style="border-bottom:1px solid var(--border)">
+      <div style="padding:.5rem 1.25rem;background:#f8f7f4;font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">${kat}</div>
+      ${poster.map(p => `
+        <div style="display:flex;align-items:center;padding:.8rem 1.25rem;border-bottom:1px solid var(--border);gap:.75rem" id="ppRow-${p.id}">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.875rem;font-weight:600;color:var(--dark)">${p.navn}</div>
+            ${p.beskrivelse ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.1rem">${p.beskrivelse}</div>` : ''}
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:.9rem;font-weight:800;color:var(--dark)">${parseInt(p.enhedspris).toLocaleString('da-DK')} kr.</div>
+            <div style="font-size:.7rem;color:var(--muted)">/ ${p.enhed||'stk'} · ${p.moms_inkluderet ? 'inkl.' : 'ekskl.'} moms</div>
+          </div>
+          <div style="display:flex;gap:.35rem;flex-shrink:0">
+            <button onclick="redigerPrispost('${p.id}')" style="background:#f0f4ff;color:#2563eb;border:none;border-radius:7px;padding:.35rem .65rem;font-size:.78rem;cursor:pointer">✏️</button>
+            <button onclick="sletPrispost('${p.id}')" style="background:#fef2f2;color:#dc2626;border:none;border-radius:7px;padding:.35rem .65rem;font-size:.78rem;cursor:pointer">🗑</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function åbnNyPrispost() {
+  document.getElementById('ppId').value = '';
+  document.getElementById('ppNavn').value = '';
+  document.getElementById('ppPris').value = '';
+  document.getElementById('ppEnhed').value = 'stk';
+  document.getElementById('ppKategori').value = '';
+  document.getElementById('ppMoms').checked = true;
+  document.getElementById('ppBeskrivelse').value = '';
+  document.getElementById('ppStatus').style.display = 'none';
+  document.getElementById('prispostModalTitel').textContent = 'Tilføj ydelse / pris';
+  document.getElementById('prispostOverlay').style.display = 'flex';
+}
+
+function redigerPrispost(id) {
+  const p = klientKatalog.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('ppId').value = p.id;
+  document.getElementById('ppNavn').value = p.navn || '';
+  document.getElementById('ppPris').value = p.enhedspris || '';
+  document.getElementById('ppEnhed').value = p.enhed || 'stk';
+  document.getElementById('ppKategori').value = p.kategori || '';
+  document.getElementById('ppMoms').checked = !!p.moms_inkluderet;
+  document.getElementById('ppBeskrivelse').value = p.beskrivelse || '';
+  document.getElementById('ppStatus').style.display = 'none';
+  document.getElementById('prispostModalTitel').textContent = 'Rediger ydelse';
+  document.getElementById('prispostOverlay').style.display = 'flex';
+}
+
+function lukPrispostModal() {
+  document.getElementById('prispostOverlay').style.display = 'none';
+}
+
+async function gemPrispost() {
+  const navn = document.getElementById('ppNavn').value.trim();
+  const pris = parseFloat(document.getElementById('ppPris').value);
+  if (!navn || isNaN(pris)) { alert('Udfyld navn og pris'); return; }
+  const id = document.getElementById('ppId').value;
+  const statusEl = document.getElementById('ppStatus');
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Gemmer...';
+  const payload = {
+    klient_id: CLIENT_ID,
+    navn,
+    enhedspris: pris,
+    enhed: document.getElementById('ppEnhed').value,
+    kategori: document.getElementById('ppKategori').value.trim() || 'Andet',
+    moms_inkluderet: document.getElementById('ppMoms').checked,
+    beskrivelse: document.getElementById('ppBeskrivelse').value.trim(),
+    aktiv: true
+  };
+  try {
+    const url = id ? `${API}/priskatalog/${CLIENT_ID}/${id}` : `${API}/priskatalog/${CLIENT_ID}`;
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok || data.id || res.ok) {
+      lukPrispostModal();
+      await loadKlientKatalog();
+    } else {
+      statusEl.textContent = data.error || 'Fejl — prøv igen';
+    }
+  } catch(e) {
+    statusEl.textContent = 'Netværksfejl';
+  }
+}
+
+async function sletPrispost(id) {
+  if (!confirm('Slet denne ydelse fra kataloget?')) return;
+  try {
+    await fetch(`${API}/priskatalog/${CLIENT_ID}/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    await loadKlientKatalog();
+  } catch(e) { alert('Fejl ved sletning'); }
+}
 </script>
 </body>
 </html>

@@ -5241,8 +5241,14 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
 
 
 @app.route('/priskatalog/<klient_id>', methods=['GET'])
-@require_admin
+@require_token
 def hent_priskatalog(klient_id):
+    # Klient-token må kun se eget katalog
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _info = active_tokens.get(_tok, {})
+    if _info.get('role') == 'client' and _info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ikke tilladt'}), 403
     if not db: return jsonify([])
     try:
         res = db.table('priskatalog').select('*').eq('klient_id', klient_id).order('kategori').order('navn').execute()
@@ -5250,16 +5256,21 @@ def hent_priskatalog(klient_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/priskatalog', methods=['POST'])
-@require_admin
-def gem_prispost():
+@app.route('/priskatalog/<klient_id>', methods=['POST'])
+@require_token
+def gem_prispost(klient_id):
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _info = active_tokens.get(_tok, {})
+    if _info.get('role') == 'client' and _info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ikke tilladt'}), 403
     if not db: return jsonify({'error': 'Ingen database'}), 500
     data = request.json or {}
     import uuid as _uuid
     try:
         post = {
             'id': str(_uuid.uuid4()),
-            'klient_id': data['klient_id'],
+            'klient_id': klient_id,
             'kategori': data.get('kategori', 'Generelt'),
             'navn': data['navn'],
             'beskrivelse': data.get('beskrivelse', ''),
@@ -5273,9 +5284,48 @@ def gem_prispost():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/priskatalog/<klient_id>/<post_id>', methods=['PUT'])
+@require_token
+def opdater_prispost(klient_id, post_id):
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _info = active_tokens.get(_tok, {})
+    if _info.get('role') == 'client' and _info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ikke tilladt'}), 403
+    if not db: return jsonify({'error': 'Ingen database'}), 500
+    data = request.json or {}
+    try:
+        db.table('priskatalog').update({
+            'navn': data.get('navn'),
+            'enhedspris': float(data.get('enhedspris', 0)),
+            'enhed': data.get('enhed', 'stk'),
+            'kategori': data.get('kategori', 'Generelt'),
+            'beskrivelse': data.get('beskrivelse', ''),
+            'moms_inkluderet': bool(data.get('moms_inkluderet', False)),
+        }).eq('id', post_id).eq('klient_id', klient_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/priskatalog/<klient_id>/<post_id>', methods=['DELETE'])
+@require_token
+def slet_prispost(klient_id, post_id):
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _info = active_tokens.get(_tok, {})
+    if _info.get('role') == 'client' and _info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ikke tilladt'}), 403
+    if not db: return jsonify({'error': 'Ingen database'}), 500
+    try:
+        db.table('priskatalog').delete().eq('id', post_id).eq('klient_id', klient_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Behold admin-kompatibilitet for PATCH (bruges af admin.html)
 @app.route('/priskatalog/<post_id>', methods=['PATCH'])
 @require_admin
-def opdater_prispost(post_id):
+def opdater_prispost_admin(post_id):
     if not db: return jsonify({'error': 'Ingen database'}), 500
     data = request.json or {}
     try:
@@ -5284,9 +5334,10 @@ def opdater_prispost(post_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/priskatalog/<post_id>', methods=['DELETE'])
+# Behold admin DELETE compat
+@app.route('/priskatalog/slet/<post_id>', methods=['DELETE'])
 @require_admin
-def slet_prispost(post_id):
+def slet_prispost_admin(post_id):
     if not db: return jsonify({'error': 'Ingen database'}), 500
     try:
         db.table('priskatalog').delete().eq('id', post_id).execute()
