@@ -632,6 +632,9 @@
     <!-- OVERBLIK -->
     <div id="view-overblik">
 
+      <!-- SIDEN SIDST BANNER -->
+      <div id="sidenSidstCard" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem"></div>
+
       <!-- LEAD INDBAKKE -->
       <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.25rem" id="leadIndbakkeCard">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
@@ -1655,6 +1658,9 @@ async function loadOverblik() {
     // Aktivitetsfeed
     renderAktivitetFeed(d.aktivitet || []);
 
+    // Siden sidst banner
+    visSidenSidst(d.aktivitet || []);
+
     // Næste aftale banner
     const naest = d.naeste_booking;
     const naestBanner = document.getElementById('naestAftaleBanner');
@@ -1675,6 +1681,59 @@ async function loadOverblik() {
       'Sidst opdateret ' + nu.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' });
 
   } catch(e) { console.error('Overblik fejl:', e); }
+}
+
+// ── SIDEN SIDST ──────────────────────────────────────
+function visSidenSidst(aktivitet) {
+  const SIDST_KEY = `klaiai_sidst_besogt_${CLIENT_ID}`;
+  const nu = new Date();
+  const sidstStr = localStorage.getItem(SIDST_KEY);
+
+  // Gem nuværende besøg til næste gang
+  localStorage.setItem(SIDST_KEY, nu.toISOString());
+
+  const card = document.getElementById('sidenSidstCard');
+  if (!card) return;
+
+  // Første gang — ingen baseline at sammenligne med
+  if (!sidstStr) return;
+
+  const sidstDt = new Date(sidstStr);
+  // Vis kun hvis der er gået mere end 2 timer
+  if ((nu - sidstDt) < 7200000) return;
+
+  const nyt = aktivitet.filter(a => a.tid && new Date(a.tid) > sidstDt);
+  if (nyt.length === 0) return;
+
+  const leads         = nyt.filter(a => a.type === 'lead').length;
+  const tilbudAccept  = nyt.filter(a => a.type === 'tilbud_accepteret').length;
+  const tilbudSendt   = nyt.filter(a => a.type === 'tilbud_sendt').length;
+  const bookinger     = nyt.filter(a => a.type === 'booking').length;
+
+  const items = [];
+  if (leads)        items.push(`${leads} ny${leads > 1 ? 'e' : ''} lead${leads > 1 ? 's' : ''}`);
+  if (tilbudAccept) items.push(`${tilbudAccept} tilbud accepteret`);
+  if (tilbudSendt)  items.push(`${tilbudSendt} tilbud sendt`);
+  if (bookinger)    items.push(`${bookinger} ny${bookinger > 1 ? 'e' : ''} booking${bookinger > 1 ? 'er' : ''}`);
+
+  if (!items.length) return;
+
+  const datoTekst = sidstDt.toLocaleDateString('da-DK', { weekday:'long', day:'numeric', month:'long' });
+
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
+      <div style="display:flex;gap:.85rem;align-items:flex-start">
+        <div style="width:38px;height:38px;background:var(--accent);color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🔔</div>
+        <div>
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:.4rem">Siden dit sidste besøg — <span style="font-weight:400;color:var(--muted)">${datoTekst}</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:.45rem">
+            ${items.map(item => `<span style="background:var(--accent);color:#fff;font-size:.73rem;font-weight:700;padding:.22rem .65rem;border-radius:6px">${item}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+      <button onclick="document.getElementById('sidenSidstCard').style.display='none'" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.2rem;line-height:1;padding:.1rem .3rem;flex-shrink:0" title="Luk">×</button>
+    </div>`;
 }
 
 function relTid(isoStr) {
