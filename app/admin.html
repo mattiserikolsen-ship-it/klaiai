@@ -384,6 +384,9 @@
       <span class="ni">❤️</span> Health Score
       <span id="navHealthBadge" class="hidden" style="margin-left:auto;background:#dc2626;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .45rem;border-radius:4px"></span>
     </div>
+    <div class="nav-item" data-view="mrr" onclick="showView('mrr');renderMRR()">
+      <span class="ni">📊</span> MRR & Vækst
+    </div>
     <div class="nav-item" onclick="syncAlleKlienter()" title="Synkroniser alle klienter til databasen">
       <span class="ni">↻</span> Synk DB
     </div>
@@ -567,6 +570,56 @@
       <div class="card" style="padding:0;overflow:hidden">
         <div id="healthTableWrap">
           <div style="padding:2rem;text-align:center;color:var(--muted)">Henter health scores...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MRR ── -->
+    <div id="view-mrr" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+        <div>
+          <div style="font-size:1rem;font-weight:800">MRR & Vækst</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem">Månedlig tilbagevendende omsætning og klient-vækst</div>
+        </div>
+      </div>
+
+      <!-- TOP MRR STATS -->
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem">
+        <div class="stat-card" style="border-left:4px solid var(--accent)">
+          <div class="stat-num" id="mrrTotal" style="color:var(--accent)">—</div>
+          <div class="stat-label">MRR (kr/md)</div>
+          <div class="stat-sub" id="mrrTotalSub"></div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #6366f1">
+          <div class="stat-num" id="mrrArr" style="color:#6366f1">—</div>
+          <div class="stat-label">ARR (kr/år)</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">MRR × 12</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid var(--green)">
+          <div class="stat-num" id="mrrAktive" style="color:var(--green)">—</div>
+          <div class="stat-label">Aktive klienter</div>
+          <div class="stat-sub" id="mrrAktiveSub"></div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid var(--red)">
+          <div class="stat-num" id="mrrChurn" style="color:var(--red)">—</div>
+          <div class="stat-label">Inaktive (churn)</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">status: inaktiv</div>
+        </div>
+      </div>
+
+      <!-- MRR FORDELING + KLIENT LISTE -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+
+        <!-- MRR per plan -->
+        <div class="card">
+          <div style="font-size:.9rem;font-weight:700;margin-bottom:1.1rem">MRR fordeling per klient</div>
+          <div id="mrrFordeling" style="font-size:.85rem;color:var(--muted)">Indlæser...</div>
+        </div>
+
+        <!-- Churn risiko klienter -->
+        <div class="card">
+          <div style="font-size:.9rem;font-weight:700;margin-bottom:1.1rem">⚠️ Kræver handling</div>
+          <div id="mrrChurnListe" style="font-size:.85rem;color:var(--muted)">Indlæser...</div>
         </div>
       </div>
     </div>
@@ -2371,11 +2424,12 @@ async function syncChatbotConfigToDB(clientId, cfg) {
 }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','health','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound','economic'];
+const views = ['dashboard','clients','health','mrr','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound','economic'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
   'health':        ['Health Score', 'Aktivitet, churn-risiko og status per klient'],
+  'mrr':           ['MRR & Vækst', 'Månedlig omsætning, ARR og churn-oversigt'],
   'new-client':    ['Ny klient', 'Opret og konfigurer ny klient'],
   'client-detail': ['Klient', ''],
   'agents':        ['AI-agenter', 'Automatiske agenter der kører for alle dine klienter'],
@@ -2507,6 +2561,80 @@ function renderHealthTable(data) {
         }).join('')}
       </tbody>
     </table>`;
+}
+
+// ── MRR & VÆKST ──────────────────────────────────────
+function renderMRR() {
+  const aktive   = clients.filter(c => c.status === 'aktiv' || !c.status);
+  const inaktive = clients.filter(c => c.status === 'inaktiv');
+  const mrr      = aktive.reduce((s,c) => s + (parseInt(c.mdpris)||0), 0);
+  const arr      = mrr * 12;
+
+  document.getElementById('mrrTotal').textContent   = mrr.toLocaleString('da-DK') + ' kr';
+  document.getElementById('mrrArr').textContent     = (arr/1000).toFixed(0) + 'K kr';
+  document.getElementById('mrrAktive').textContent  = aktive.length;
+  document.getElementById('mrrChurn').textContent   = inaktive.length;
+
+  const churnMRR = inaktive.reduce((s,c) => s + (parseInt(c.mdpris)||0), 0);
+  document.getElementById('mrrTotalSub').textContent = mrr > 0 ? `↑ fra ${aktive.length} klienter` : '';
+  document.getElementById('mrrAktiveSub').textContent = `${mrr.toLocaleString('da-DK')} kr MRR`;
+
+  // MRR fordeling — sorteret højest først
+  const sorteretAktive = [...aktive].sort((a,b) => (parseInt(b.mdpris)||0) - (parseInt(a.mdpris)||0));
+  const maxPris = Math.max(...sorteretAktive.map(c => parseInt(c.mdpris)||0), 1);
+  document.getElementById('mrrFordeling').innerHTML = sorteretAktive.length
+    ? sorteretAktive.map(c => {
+        const pris = parseInt(c.mdpris)||0;
+        const pct  = Math.round((pris/mrr)*100);
+        const w    = Math.round((pris/maxPris)*100);
+        return `<div style="margin-bottom:.7rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem">
+            <span style="font-size:.82rem;font-weight:600">${c.name}</span>
+            <span style="font-size:.8rem;color:var(--muted)">${pris.toLocaleString('da-DK')} kr (${pct}%)</span>
+          </div>
+          <div style="height:5px;background:var(--bg2);border-radius:99px;overflow:hidden">
+            <div style="width:${w}%;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px"></div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--muted)">Ingen aktive klienter</div>';
+
+  // Churn / handling liste — kombiner inaktive + health risiko
+  const churnListe = document.getElementById('mrrChurnListe');
+  const risikoKlienter = healthData
+    ? healthData.filter(h => h.kategori === 'risiko' || h.churn_signal)
+    : [];
+  const inaktiveListe = inaktive.slice(0,5);
+
+  if (!risikoKlienter.length && !inaktiveListe.length) {
+    churnListe.innerHTML = '<div style="color:var(--green);font-weight:600">✓ Ingen churn-signaler</div>';
+    return;
+  }
+
+  let html = '';
+  risikoKlienter.slice(0,5).forEach(h => {
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:.82rem;font-weight:700">${h.navn}</div>
+        <div style="font-size:.7rem;color:var(--muted)">Score: ${h.score} · ${h.dage_siden ?? '?'}d siden</div>
+      </div>
+      <div style="display:flex;gap:.4rem">
+        ${h.churn_signal ? `<span style="font-size:.68rem;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;padding:.15rem .5rem;font-weight:700">Ring</span>` : ''}
+        <span class="badge badge-red" style="font-size:.65rem">Risiko</span>
+      </div>
+    </div>`;
+  });
+  inaktiveListe.forEach(c => {
+    if (risikoKlienter.find(h => h.klient_id === c.id)) return; // skip duplikater
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:.82rem;font-weight:700">${c.name}</div>
+        <div style="font-size:.7rem;color:var(--muted)">${(parseInt(c.mdpris)||0).toLocaleString('da-DK')} kr/md tabt</div>
+      </div>
+      <span class="badge badge-gray">Inaktiv</span>
+    </div>`;
+  });
+  churnListe.innerHTML = html || '<div style="color:var(--green)">✓ Ingen advarsler</div>';
 }
 
 async function loadEconOversigt() {
