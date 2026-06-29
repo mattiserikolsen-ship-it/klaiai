@@ -4879,16 +4879,16 @@ def _byg_followup_html(fra_navn, klient_hjemmeside, kunde_navn, titel, accept_kn
     pris_str = f'{int(total_pris):,} kr.'.replace(',', '.') if total_pris else ''
 
     if trin == 1:
-        emne_linje = f'Har du haft mulighed for at kigge på tilbuddet, {fornavn}?'
+        emne_linje = f'{fornavn} — har du haft mulighed for at kigge på vores tilbud?'
         indhold = f"""
-    <div style="font-size:22px;font-weight:800;color:#111;letter-spacing:-.5px;margin-bottom:18px;line-height:1.3">Hej {fornavn},<br>nåede tilbuddet frem?</div>
+    <div style="font-size:22px;font-weight:800;color:#111;letter-spacing:-.5px;margin-bottom:18px;line-height:1.3">Hej {fornavn},<br>nåede det frem til dig?</div>
     <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
-      Vi sendte dig et tilbud på <strong>{titel}</strong> for et par dage siden, og ville høre om du har haft mulighed for at kigge på det.
+      For et par dage siden sendte vi dig vores tilbud på <strong>{titel}</strong>. Vi ville blot høre, om du har haft mulighed for at kigge på det.
     </div>
     <div style="font-size:14px;color:#374151;line-height:1.85;margin-bottom:16px">
-      Har du spørgsmål til prisen, tidsplanen eller indholdet, er du meget velkommen til at svare direkte på denne mail — vi justerer gerne.
+      Har du spørgsmål til prisen, tidsplanen eller opgavens omfang, er du meget velkommen til at svare direkte på denne mail — vi tilpasser gerne.
     </div>
-    {f'<div style="background:#f8faff;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#374151"><strong>Tilbudets total:</strong> {pris_str}</div>' if pris_str else ''}"""
+    {f'<div style="background:#f8faff;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#374151"><strong>Tilbuddets samlede pris:</strong> {pris_str}</div>' if pris_str else ''}"""
     elif trin == 2:
         emne_linje = f'{fornavn} — tilbuddet gælder stadig, og vi er klar'
         indhold = f"""
