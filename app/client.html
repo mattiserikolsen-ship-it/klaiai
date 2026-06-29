@@ -20,6 +20,8 @@
       --red:     #c0392b;
       --red-bg:  #fdf0ee;
       --sidebar: #1a1918;
+      /* Apple-agtig ease-out — blød og selvsikker */
+      --ease:    cubic-bezier(0.16, 1, 0.3, 1);
     }
     html, body { height: 100%; }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); display: flex; min-height: 100vh; }
@@ -96,9 +98,21 @@
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem; }
     .card-title { font-size: .88rem; font-weight: 700; margin-bottom: 1rem; color: var(--dark); }
 
+    /* ── VIEW ENTRANCE — blød staggered fade-up ved view-skift ── */
+    @keyframes viewRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .view-anim > * { animation: viewRise .55s var(--ease) both; }
+    .view-anim > *:nth-child(1) { animation-delay: .02s; }
+    .view-anim > *:nth-child(2) { animation-delay: .07s; }
+    .view-anim > *:nth-child(3) { animation-delay: .12s; }
+    .view-anim > *:nth-child(4) { animation-delay: .17s; }
+    .view-anim > *:nth-child(5) { animation-delay: .22s; }
+    .view-anim > *:nth-child(n+6) { animation-delay: .26s; }
+    @media (prefers-reduced-motion: reduce) { .view-anim > * { animation: none; } }
+
     /* ── STATS ── */
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
-    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px -12px rgba(26,25,24,.18); }
     .stat-num { font-size: 2rem; font-weight: 800; color: var(--dark); letter-spacing: -1px; }
     .stat-label { font-size: .75rem; color: var(--muted); margin-top: .2rem; font-weight: 500; }
     .stat-sub { font-size: .7rem; color: var(--muted); margin-top: .15rem; }
@@ -1566,7 +1580,14 @@ function showView(v) {
     document.getElementById('view-'+id)?.classList.add('hidden');
     document.querySelector(`[data-view="${id}"]`)?.classList.remove('active');
   });
-  document.getElementById('view-'+v)?.classList.remove('hidden');
+  const _viewEl = document.getElementById('view-'+v);
+  _viewEl?.classList.remove('hidden');
+  // Genudløs blød entrance-animation
+  if (_viewEl) {
+    _viewEl.classList.remove('view-anim');
+    void _viewEl.offsetWidth;
+    _viewEl.classList.add('view-anim');
+  }
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
   document.getElementById('topbarTitle').textContent = titles[v][0];
   document.getElementById('topbarSub').textContent = titles[v][1];
