@@ -235,7 +235,7 @@
     .booking-item {
       display: flex; align-items: center; gap: 1rem;
       padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
-      transition: background .15s;
+      transition: background .15s; cursor: pointer;
     }
     .booking-item:last-child { border-bottom: none; }
     .booking-item:hover { background: #faf9f6; }
@@ -249,6 +249,46 @@
     .booking-name { font-weight: 600; font-size: .875rem; }
     .booking-detail { font-size: .775rem; color: var(--muted); margin-top: .15rem; }
     .booking-right { text-align: right; flex-shrink: 0; }
+
+    /* ── BOOKING STATUS BADGES ── */
+    .bstatus-bekræftet       { background:#eef2ec; color:#4a6741; }
+    .bstatus-afventer_opstart{ background:#fef9c3; color:#a16207; }
+    .bstatus-igangværende    { background:#dbeafe; color:#1d4ed8; }
+    .bstatus-afsluttet       { background:#f0efec; color:#9a9590; }
+
+    /* ── BOOKING MINI KALENDER ── */
+    .booking-cal { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:.5rem 1rem 1rem; }
+    .booking-cal-header { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:.75rem 1rem 0; }
+    .booking-cal-day-label { font-size:.6rem; font-weight:700; text-align:center; color:var(--muted); text-transform:uppercase; padding-bottom:.35rem; }
+    .booking-cal-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:7px; font-size:.78rem; font-weight:500; position:relative; }
+    .booking-cal-cell.today { background:var(--dark); color:#fff; font-weight:800; }
+    .booking-cal-cell.has-booking { background:var(--green-bg); color:var(--green); font-weight:700; cursor:pointer; }
+    .booking-cal-cell.has-booking:hover { background:#c5d6c2; }
+    .booking-cal-cell.other-month { opacity:.3; }
+    .booking-cal-dot { position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:var(--green); }
+
+    /* ── BOOKING FILTER KNAPPER ── */
+    .booking-filter-btn { font-size:.72rem; font-weight:600; padding:.3rem .75rem; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--muted); cursor:pointer; font-family:inherit; transition:all .15s; }
+    .booking-filter-btn.active { background:var(--dark); color:#fff; border-color:var(--dark); }
+
+    /* ── BOOKING DETAIL SLIDE-IN ── */
+    #bookingPanel { position:fixed; top:0; right:-460px; width:440px; max-width:100vw; height:100vh; background:#fff; z-index:2000; box-shadow:-8px 0 40px rgba(0,0,0,.12); transition:right .25s ease; display:flex; flex-direction:column; overflow:hidden; }
+    #bookingPanel.open { right:0; }
+    #bookingPanelOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:1999; }
+    #bookingPanelOverlay.open { display:block; }
+
+    /* ── OPRET AFTALE MODAL ── */
+    .aftale-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; align-items:center; justify-content:center; }
+    .aftale-modal-overlay.open { display:flex; }
+    .aftale-modal { background:#fff; border-radius:16px; padding:2rem; width:480px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+    .aftale-modal label { font-size:.75rem; font-weight:600; color:var(--muted); display:block; margin-bottom:.3rem; text-transform:uppercase; letter-spacing:.4px; }
+    .aftale-modal input, .aftale-modal textarea, .aftale-modal select { width:100%; padding:.65rem .9rem; border:1px solid var(--border); border-radius:9px; font-size:.88rem; font-family:inherit; outline:none; box-sizing:border-box; margin-bottom:.9rem; }
+    .aftale-modal input:focus, .aftale-modal textarea:focus, .aftale-modal select:focus { border-color:var(--dark); }
+    @media (max-width:600px) {
+      .aftale-modal-overlay { align-items:flex-end; }
+      .aftale-modal { width:100%; border-radius:20px 20px 0 0; max-height:92vh; }
+      .aftale-modal input, .aftale-modal textarea, .aftale-modal select { font-size:16px; }
+    }
 
     /* ── AGENT ── */
     .agent-card {
@@ -607,6 +647,19 @@
         <div id="leadIndbakke"><div class="loading" style="padding:1.5rem">Henter leads...</div></div>
       </div>
 
+      <!-- NÆSTE AFTALE BANNER -->
+      <div id="naestAftaleBanner" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer" onclick="showView('bookinger')">
+        <div style="display:flex;align-items:center;gap:.85rem">
+          <div id="naestAftaleIkon" style="width:44px;height:44px;border-radius:10px;background:var(--dark);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0">—</div>
+          <div>
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.15rem">Næste aftale</div>
+            <div id="naestAftaleNavn" style="font-size:.9rem;font-weight:700;color:var(--dark)">—</div>
+            <div id="naestAftaleSub" style="font-size:.75rem;color:var(--muted);margin-top:.1rem">—</div>
+          </div>
+        </div>
+        <span style="font-size:.75rem;color:var(--muted);flex-shrink:0">Se alle →</span>
+      </div>
+
       <!-- ROI CARD -->
       <div class="roi-card" id="roiCard" style="display:none">
         <div class="roi-grid">
@@ -688,12 +741,115 @@
 
     <!-- BOOKINGER -->
     <div id="view-bookinger" class="hidden">
-      <div class="card" style="padding:0;overflow:hidden">
+
+      <!-- MINI KALENDER -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.25rem">
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div class="card-title" style="margin:0">Alle bookinger</div>
-          <span id="bookingCount" style="font-size:.78rem;color:var(--muted)"></span>
+          <div>
+            <div class="card-title" style="margin:0" id="kalenderMaanedTitel">Kalender</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Klik på en grøn dato for at se booking</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem">
+            <button onclick="skiftKalenderMaaned(-1)" style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:.3rem .65rem;font-size:.85rem;cursor:pointer">←</button>
+            <button onclick="skiftKalenderMaaned(1)"  style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:.3rem .65rem;font-size:.85rem;cursor:pointer">→</button>
+          </div>
+        </div>
+        <div class="booking-cal-header">
+          <div class="booking-cal-day-label">Man</div><div class="booking-cal-day-label">Tir</div>
+          <div class="booking-cal-day-label">Ons</div><div class="booking-cal-day-label">Tor</div>
+          <div class="booking-cal-day-label">Fre</div><div class="booking-cal-day-label">Lør</div>
+          <div class="booking-cal-day-label">Søn</div>
+        </div>
+        <div class="booking-cal" id="kalenderGrid"></div>
+      </div>
+
+      <!-- BOOKING LISTE -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div class="card-title" style="margin:0">Aftaler</div>
+            <span id="bookingCount" style="font-size:.78rem;color:var(--muted)"></span>
+          </div>
+          <button onclick="åbnOpretAftaleModal()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">+ Opret aftale</button>
+        </div>
+        <div style="padding:.6rem 1.25rem;border-bottom:1px solid var(--border);display:flex;gap:.35rem;flex-wrap:wrap">
+          <button class="booking-filter-btn active" data-filter="alle"            onclick="setBookingFilter('alle',this)">Alle</button>
+          <button class="booking-filter-btn"        data-filter="bekræftet"       onclick="setBookingFilter('bekræftet',this)">Bekræftet</button>
+          <button class="booking-filter-btn"        data-filter="afventer_opstart" onclick="setBookingFilter('afventer_opstart',this)">Afventer opstart</button>
+          <button class="booking-filter-btn"        data-filter="igangværende"    onclick="setBookingFilter('igangværende',this)">Igangværende</button>
+          <button class="booking-filter-btn"        data-filter="afsluttet"       onclick="setBookingFilter('afsluttet',this)">Afsluttet</button>
         </div>
         <div id="bookingList"><div class="loading">Henter bookinger...</div></div>
+      </div>
+    </div>
+
+    <!-- OPRET AFTALE MODAL -->
+    <div class="aftale-modal-overlay" id="opretAftaleOverlay" onclick="if(event.target===this)lukOpretAftaleModal()">
+      <div class="aftale-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div style="font-size:.95rem;font-weight:700;color:var(--dark)">Opret aftale</div>
+          <button onclick="lukOpretAftaleModal()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted)">✕</button>
+        </div>
+        <div id="aftaleTilbudKobling" style="display:none">
+          <label>Kobling til tilbud (valgfrit)</label>
+          <select id="aftaleTilbudId"></select>
+        </div>
+        <label>Kundenavn *</label>
+        <input id="aftaleNavn" type="text" placeholder="fx Lars Hansen"/>
+        <label>Email</label>
+        <input id="aftaleEmail" type="email" placeholder="lars@example.dk"/>
+        <label>Telefon</label>
+        <input id="aftaleTelefon" type="tel" placeholder="12 34 56 78"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+          <div>
+            <label>Dato *</label>
+            <input id="aftaleDato" type="date"/>
+          </div>
+          <div>
+            <label>Tidspunkt</label>
+            <input id="aftaleTid" type="time"/>
+          </div>
+        </div>
+        <label>Ydelse / opgave</label>
+        <input id="aftaleYdelse" type="text" placeholder="fx Badeværelse renovering"/>
+        <label>Status</label>
+        <select id="aftalePortalStatus">
+          <option value="bekræftet">Bekræftet</option>
+          <option value="afventer_opstart">Afventer opstart</option>
+          <option value="igangværende">Igangværende</option>
+        </select>
+        <label>Noter (intern)</label>
+        <textarea id="aftaleNoter" rows="2" placeholder="Interne noter — vises ikke til kunden"></textarea>
+        <div style="display:flex;gap:.75rem;margin-top:.25rem">
+          <button onclick="lukOpretAftaleModal()" style="flex:1;background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.65rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Annuller</button>
+          <button onclick="gemNyAftale()" id="gemAftaleBtn" style="flex:2;background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.65rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Gem aftale</button>
+        </div>
+        <div id="aftaleStatusMsg" style="display:none;text-align:center;font-size:.82rem;margin-top:.75rem"></div>
+      </div>
+    </div>
+
+    <!-- BOOKING DETAIL PANEL -->
+    <div id="bookingPanelOverlay" onclick="lukBookingPanel()"></div>
+    <div id="bookingPanel">
+      <div style="padding:1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div>
+          <div id="bpNavn" style="font-size:.95rem;font-weight:700;color:var(--dark)">—</div>
+          <div id="bpDatoTid" style="font-size:.75rem;color:var(--muted);margin-top:.1rem">—</div>
+        </div>
+        <button onclick="lukBookingPanel()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.35rem .8rem;font-size:.82rem;cursor:pointer;font-family:inherit;font-weight:600">✕</button>
+      </div>
+      <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0">
+        <a id="bpRingLink" href="#" style="flex:1;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:8px;padding:.5rem;font-size:.78rem;font-weight:700;text-decoration:none">📞 Ring</a>
+        <a id="bpMailLink" href="#" style="flex:1;display:flex;align-items:center;justify-content:center;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:.5rem;font-size:.78rem;font-weight:700;text-decoration:none">✉ Mail</a>
+      </div>
+      <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.5rem">Status</div>
+        <div id="bpStatusPills" style="display:flex;gap:.35rem;flex-wrap:wrap"></div>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:1rem 1.25rem">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.85rem">Detaljer</div>
+        <div id="bpDetaljer" style="font-size:.85rem;color:var(--dark);line-height:2"></div>
+        <div id="bpTilbudLinkDiv" style="display:none;margin-top:1rem;padding:.75rem 1rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;font-size:.82rem;color:#15803d;font-weight:600;cursor:pointer" onclick="showView('tilbud');lukBookingPanel()">📄 Se tilknyttet tilbud →</div>
       </div>
     </div>
 
@@ -1487,6 +1643,20 @@ async function loadOverblik() {
     // Aktivitetsfeed
     renderAktivitetFeed(d.aktivitet || []);
 
+    // Næste aftale banner
+    const naest = d.naeste_booking;
+    const naestBanner = document.getElementById('naestAftaleBanner');
+    if (naest && naestBanner) {
+      naestBanner.style.display = 'flex';
+      const datoObj = new Date(naest.dato + 'T12:00:00');
+      const datoTekst = datoObj.toLocaleDateString('da-DK', { weekday:'short', day:'numeric', month:'short' });
+      document.getElementById('naestAftaleIkon').textContent = datoObj.getDate();
+      document.getElementById('naestAftaleNavn').textContent = naest.navn || '—';
+      document.getElementById('naestAftaleSub').textContent = datoTekst + (naest.tid ? ' · Kl. ' + naest.tid : '') + (naest.ydelse ? ' · ' + naest.ydelse : '');
+    } else if (naestBanner) {
+      naestBanner.style.display = 'none';
+    }
+
     // Opdateringstidspunkt
     const nu = new Date();
     document.getElementById('aktivitetOpdateret').textContent =
@@ -1685,33 +1855,274 @@ function renderLeads() {
 }
 
 // ── BOOKINGER ──────────────────────────────────────────
+// ── BOOKINGER ──────────────────────────────────────────
+let bookingFilter = 'alle';
+let aktivBooking  = null;
+let kalenderMaaned = new Date(); kalenderMaaned.setDate(1);
+
+const BOOKING_STATUS_CFG = {
+  bekræftet:        { label: 'Bekræftet',        cls: 'bstatus-bekræftet' },
+  afventer_opstart: { label: 'Afventer opstart',  cls: 'bstatus-afventer_opstart' },
+  igangværende:     { label: 'Igangværende',      cls: 'bstatus-igangværende' },
+  afsluttet:        { label: 'Afsluttet',         cls: 'bstatus-afsluttet' },
+};
+
 function renderBookinger() {
   const bookinger = data.bookinger;
-  document.getElementById('bookingCount').textContent = bookinger.length ? `${bookinger.length} booking${bookinger.length !== 1 ? 'er' : ''}` : '';
+  const sorterede = [...bookinger].sort((a,b) => (a.dato||'') < (b.dato||'') ? -1 : 1);
+
+  renderKalender(sorterede);
+
+  const filtrerede = bookingFilter === 'alle'
+    ? sorterede
+    : sorterede.filter(b => (b.portal_status || b.status || 'bekræftet') === bookingFilter);
+
+  document.getElementById('bookingCount').textContent =
+    bookinger.length ? `${filtrerede.length} af ${bookinger.length} aftale${bookinger.length !== 1 ? 'r' : ''}` : '';
+
   const el = document.getElementById('bookingList');
   if (!bookinger.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">▦</div><div class="empty-text">Ingen bookinger endnu.<br>Når kunder booker via din hjemmeside, vises de her.</div></div>`;
+    el.innerHTML = `<div class="empty"><div class="empty-icon">▦</div><div class="empty-text">Ingen aftaler endnu.<br>Kunder booker via din hjemmeside, eller <span onclick="åbnOpretAftaleModal()" style="text-decoration:underline;cursor:pointer">opret en aftale manuelt</span>.</div></div>`;
     return;
   }
-  el.innerHTML = bookinger.map(b => {
+  if (!filtrerede.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">▦</div><div class="empty-text">Ingen aftaler med denne status.</div></div>`;
+    return;
+  }
+
+  const iDagStr = new Date().toISOString().slice(0,10);
+  el.innerHTML = filtrerede.map(b => {
     const dato = b.dato ? new Date(b.dato + 'T12:00:00') : null;
-    const dag = dato ? dato.getDate() : '—';
-    const mdr = dato ? dato.toLocaleDateString('da-DK', { month:'short' }) : '';
-    return `<div class="booking-item">
-      <div class="booking-date">
+    const dag  = dato ? dato.getDate() : '—';
+    const mdr  = dato ? dato.toLocaleDateString('da-DK', { month:'short' }) : '';
+    const st   = b.portal_status || b.status || 'bekræftet';
+    const scfg = BOOKING_STATUS_CFG[st] || BOOKING_STATUS_CFG.bekræftet;
+    const forbi = b.dato && b.dato < iDagStr && st !== 'afsluttet';
+    return `<div class="booking-item${forbi ? '" style="opacity:.6' : ''}" onclick="åbnBookingPanel('${b.id}')">
+      <div class="booking-date" style="${st==='afsluttet' ? 'background:#9a9590' : ''}">
         <div class="booking-date-day">${dag}</div>
         <div class="booking-date-month">${mdr}</div>
       </div>
       <div class="booking-body">
         <div class="booking-name">${b.navn || '—'}</div>
-        <div class="booking-detail">Kl. ${b.tid || '—'}${b.ydelse ? ' · ' + b.ydelse : ''}${b.telefon ? ' · ' + b.telefon : ''}</div>
+        <div class="booking-detail">Kl. ${b.tid || '—'}${b.ydelse ? ' · '+b.ydelse : ''}${b.telefon ? ' · '+b.telefon : ''}</div>
       </div>
       <div class="booking-right">
-        <span class="badge badge-green">Bekræftet</span>
-        ${b.email ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">${b.email}</div>` : ''}
+        <span class="badge ${scfg.cls}">${scfg.label}</span>
+        ${b.tilbud_id ? `<div style="font-size:.65rem;color:var(--muted);margin-top:.25rem">Fra tilbud</div>` : ''}
       </div>
     </div>`;
   }).join('');
+}
+
+function setBookingFilter(filter, btn) {
+  bookingFilter = filter;
+  document.querySelectorAll('.booking-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBookinger();
+}
+
+function renderKalender(bookinger) {
+  const grid = document.getElementById('kalenderGrid');
+  if (!grid) return;
+  const år = kalenderMaaned.getFullYear();
+  const mdr = kalenderMaaned.getMonth();
+
+  const titel = kalenderMaaned.toLocaleDateString('da-DK', { month:'long', year:'numeric' });
+  document.getElementById('kalenderMaanedTitel').textContent = titel.charAt(0).toUpperCase() + titel.slice(1);
+
+  const bookingDatoer = {};
+  bookinger.forEach(b => {
+    if (!b.dato) return;
+    const [y, m] = b.dato.split('-').map(Number);
+    if (y === år && m-1 === mdr) {
+      if (!bookingDatoer[b.dato]) bookingDatoer[b.dato] = [];
+      bookingDatoer[b.dato].push(b);
+    }
+  });
+
+  const foersteDag = new Date(år, mdr, 1);
+  let startOffset = foersteDag.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+  const dageIMaaned = new Date(år, mdr+1, 0).getDate();
+  const iDagStr = new Date().toISOString().slice(0,10);
+
+  let html = '';
+  for (let i = 0; i < startOffset; i++) {
+    const d = new Date(år, mdr, -(startOffset-i-1));
+    html += `<div class="booking-cal-cell other-month">${d.getDate()}</div>`;
+  }
+  for (let d = 1; d <= dageIMaaned; d++) {
+    const ds = `${år}-${String(mdr+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const erIdag = ds === iDagStr;
+    const harB = !!bookingDatoer[ds];
+    let cls = 'booking-cal-cell';
+    if (erIdag) cls += ' today';
+    else if (harB) cls += ' has-booking';
+    const onclick = harB ? `onclick="fremhævBookinger('${ds}')"` : '';
+    const dot = harB && !erIdag ? '<div class="booking-cal-dot"></div>' : '';
+    html += `<div class="${cls}" ${onclick}>${d}${dot}</div>`;
+  }
+  const total = startOffset + dageIMaaned;
+  const rest = total % 7 === 0 ? 0 : 7-(total%7);
+  for (let i = 1; i <= rest; i++) html += `<div class="booking-cal-cell other-month">${i}</div>`;
+  grid.innerHTML = html;
+}
+
+function skiftKalenderMaaned(delta) {
+  kalenderMaaned.setMonth(kalenderMaaned.getMonth() + delta);
+  const sorterede = [...data.bookinger].sort((a,b) => (a.dato||'') < (b.dato||'') ? -1 : 1);
+  renderKalender(sorterede);
+}
+
+function fremhævBookinger(dateStr) {
+  bookingFilter = 'alle';
+  document.querySelectorAll('.booking-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === 'alle'));
+  renderBookinger();
+  setTimeout(() => {
+    const items = document.querySelectorAll('.booking-item');
+    const target = [...data.bookinger].sort((a,b) => (a.dato||'') < (b.dato||'') ? -1 : 1)
+      .findIndex(b => b.dato === dateStr);
+    if (items[target]) items[target].scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 50);
+}
+
+function åbnBookingPanel(bookingId) {
+  const b = data.bookinger.find(x => String(x.id) === String(bookingId));
+  if (!b) return;
+  aktivBooking = b;
+
+  document.getElementById('bpNavn').textContent = b.navn || '—';
+  const dato = b.dato ? new Date(b.dato+'T12:00:00').toLocaleDateString('da-DK',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '—';
+  document.getElementById('bpDatoTid').textContent = dato + (b.tid ? ' · Kl. '+b.tid : '');
+
+  const rl = document.getElementById('bpRingLink');
+  const ml = document.getElementById('bpMailLink');
+  rl.href = b.telefon ? 'tel:'+b.telefon.replace(/\s/g,'') : '#';
+  rl.style.opacity = b.telefon ? '1' : '.35';
+  ml.href = b.email ? 'mailto:'+b.email : '#';
+  ml.style.opacity = b.email ? '1' : '.35';
+
+  const nuværende = b.portal_status || b.status || 'bekræftet';
+  document.getElementById('bpStatusPills').innerHTML = Object.entries(BOOKING_STATUS_CFG).map(([k,cfg]) =>
+    `<button onclick="ændrBookingStatus('${b.id}','${k}')" id="bpPill_${k}"
+      style="font-size:.72rem;font-weight:600;padding:.3rem .75rem;border-radius:20px;border:1.5px solid ${k===nuværende?'var(--dark)':'var(--border)'};background:${k===nuværende?'var(--dark)':'var(--card)'};color:${k===nuværende?'#fff':'var(--muted)'};cursor:pointer;font-family:inherit;transition:all .15s"
+    >${cfg.label}</button>`
+  ).join('');
+
+  document.getElementById('bpDetaljer').innerHTML = [
+    b.email    ? `<div><strong>Email:</strong> ${b.email}</div>` : '',
+    b.telefon  ? `<div><strong>Telefon:</strong> ${b.telefon}</div>` : '',
+    b.ydelse   ? `<div><strong>Ydelse:</strong> ${b.ydelse}</div>` : '',
+    b.besked   ? `<div><strong>Besked:</strong> ${b.besked}</div>` : '',
+    b.noter    ? `<div style="margin-top:.5rem;padding:.65rem .85rem;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:.8rem"><strong>Note:</strong> ${b.noter}</div>` : '',
+  ].join('');
+
+  document.getElementById('bpTilbudLinkDiv').style.display = b.tilbud_id ? 'block' : 'none';
+  document.getElementById('bookingPanelOverlay').classList.add('open');
+  document.getElementById('bookingPanel').classList.add('open');
+}
+
+function lukBookingPanel() {
+  document.getElementById('bookingPanelOverlay').classList.remove('open');
+  document.getElementById('bookingPanel').classList.remove('open');
+  aktivBooking = null;
+}
+
+async function ændrBookingStatus(bookingId, nyStatus) {
+  try {
+    await fetch(`${API}/portal/bookinger/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json', 'Authorization': localStorage.getItem('klaiai_token')||'' },
+      body: JSON.stringify({ portal_status: nyStatus })
+    });
+    const b = data.bookinger.find(x => String(x.id) === String(bookingId));
+    if (b) b.portal_status = nyStatus;
+    if (aktivBooking && String(aktivBooking.id) === String(bookingId)) aktivBooking.portal_status = nyStatus;
+    document.querySelectorAll('[id^="bpPill_"]').forEach(pill => {
+      const k = pill.id.replace('bpPill_', '');
+      const aktiv = k === nyStatus;
+      pill.style.background   = aktiv ? 'var(--dark)' : 'var(--card)';
+      pill.style.color        = aktiv ? '#fff' : 'var(--muted)';
+      pill.style.borderColor  = aktiv ? 'var(--dark)' : 'var(--border)';
+    });
+    renderBookinger();
+  } catch(e) { alert('Netværksfejl'); }
+}
+
+function åbnOpretAftaleModal(tilbudId, navn, email, telefon) {
+  ['aftaleNavn','aftaleEmail','aftaleTelefon','aftaleDato','aftaleTid','aftaleYdelse','aftaleNoter'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('aftaleStatusMsg').style.display = 'none';
+  document.getElementById('gemAftaleBtn').disabled = false;
+  document.getElementById('gemAftaleBtn').textContent = 'Gem aftale';
+  const morgen = new Date(); morgen.setDate(morgen.getDate()+1);
+  document.getElementById('aftaleDato').value = morgen.toISOString().slice(0,10);
+  if (navn)    document.getElementById('aftaleNavn').value    = navn;
+  if (email)   document.getElementById('aftaleEmail').value   = email;
+  if (telefon) document.getElementById('aftaleTelefon').value = telefon;
+
+  const koblDiv = document.getElementById('aftaleTilbudKobling');
+  const sel = document.getElementById('aftaleTilbudId');
+  if (tilbudData && tilbudData.length) {
+    const relevante = tilbudData.filter(t => t.status === 'accepteret' || t.status === 'sendt');
+    if (relevante.length) {
+      sel.innerHTML = '<option value="">— Ingen kobling —</option>' +
+        relevante.map(t => `<option value="${t.id}" ${t.id===tilbudId?'selected':''}>${t.titel||t.kunde_navn} (${t.status})</option>`).join('');
+      koblDiv.style.display = 'block';
+    } else { koblDiv.style.display = 'none'; }
+  } else {
+    sel.innerHTML = tilbudId ? `<option value="${tilbudId}" selected>Valgt tilbud</option>` : '<option value="">—</option>';
+    koblDiv.style.display = tilbudId ? 'block' : 'none';
+  }
+  document.getElementById('opretAftaleOverlay').classList.add('open');
+}
+
+function lukOpretAftaleModal() {
+  document.getElementById('opretAftaleOverlay').classList.remove('open');
+}
+
+async function gemNyAftale() {
+  const navn = document.getElementById('aftaleNavn').value.trim();
+  const dato = document.getElementById('aftaleDato').value;
+  if (!navn || !dato) { alert('Udfyld navn og dato'); return; }
+  const btn = document.getElementById('gemAftaleBtn');
+  btn.disabled = true; btn.textContent = '⏳ Gemmer...';
+  const statusMsg = document.getElementById('aftaleStatusMsg');
+  statusMsg.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/portal/bookinger`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization': localStorage.getItem('klaiai_token')||'' },
+      body: JSON.stringify({
+        klient_id:     CLIENT_ID,
+        navn, dato,
+        email:         document.getElementById('aftaleEmail').value.trim(),
+        telefon:       document.getElementById('aftaleTelefon').value.trim(),
+        tid:           document.getElementById('aftaleTid').value,
+        ydelse:        document.getElementById('aftaleYdelse').value.trim(),
+        noter:         document.getElementById('aftaleNoter').value.trim(),
+        portal_status: document.getElementById('aftalePortalStatus').value,
+        tilbud_id:     document.getElementById('aftaleTilbudId').value || null,
+      })
+    });
+    const result = await res.json();
+    if (!res.ok || !result.ok) {
+      statusMsg.textContent = result.error || 'Fejl ved oprettelse';
+      statusMsg.style.color = 'var(--red)'; statusMsg.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Gem aftale'; return;
+    }
+    if (result.booking) data.bookinger.push(result.booking);
+    lukOpretAftaleModal();
+    renderBookinger();
+    loadOverblik();
+  } catch(e) {
+    statusMsg.textContent = 'Netværksfejl — prøv igen';
+    statusMsg.style.color = 'var(--red)'; statusMsg.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Gem aftale';
+  }
 }
 
 // ── AGENTER ────────────────────────────────────────────
@@ -1854,6 +2265,7 @@ function renderTilbud() {
           <div style="display:flex;gap:.4rem;margin-top:.2rem">
             <button onclick="åbnTilbud('${t.id}')" style="background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
             <button onclick="downloadTilbudPdf('${t.id}')" title="Download PDF" style="background:#f0efec;color:var(--dark);border:1px solid var(--border);border-radius:7px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">⬇ PDF</button>
+            ${t.status === 'accepteret' ? `<button onclick="åbnOpretAftaleModal('${t.id}','${(t.kunde_navn||'').replace(/'/g,"\\'")}','${t.kunde_email||''}','')" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">📅 Book opstart</button>` : ''}
             ${(t.status === 'sendt' || t.status === 'accepteret') && !t.economic_faktura_nr ? `<button onclick="econSyncTilbud('${t.id}',this)" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit" title="Synkroniser til e-conomic">e-conomic ↑</button>` : ''}
             ${t.economic_faktura_nr ? `<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600">✓ e-conomic #${t.economic_faktura_nr}</span>` : ''}
           </div>

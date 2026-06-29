@@ -1061,10 +1061,66 @@ def get_bookinger(klient_id):
     if not db:
         return jsonify({'bookinger': []})
     try:
-        res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
+        res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('dato', desc=False).execute()
         return jsonify({'bookinger': res.data or []})
     except Exception as e:
         return jsonify({'bookinger': [], 'error': str(e)})
+
+
+@app.route('/portal/bookinger', methods=['POST'])
+@require_token
+def portal_opret_booking():
+    """Klientportal: opretter en manuel aftale"""
+    body = request.get_json() or {}
+    klient_id = str(request.user_klient_id)
+    if not body.get('navn') or not body.get('dato'):
+        return jsonify({'error': 'navn og dato er påkrævet'}), 400
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        row = {
+            'klient_id':     klient_id,
+            'navn':          body.get('navn', ''),
+            'email':         body.get('email', ''),
+            'telefon':       body.get('telefon', ''),
+            'ydelse':        body.get('ydelse', ''),
+            'dato':          body.get('dato', ''),
+            'tid':           body.get('tid', ''),
+            'besked':        body.get('besked', ''),
+            'noter':         body.get('noter', ''),
+            'status':        'bekræftet',
+            'portal_status': body.get('portal_status', 'bekræftet'),
+        }
+        if body.get('tilbud_id'):
+            row['tilbud_id'] = body['tilbud_id']
+        res = db.table('bookinger').insert(row).execute()
+        return jsonify({'ok': True, 'booking': res.data[0] if res.data else {}})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/portal/bookinger/<booking_id>/status', methods=['PATCH'])
+@require_token
+def portal_opdater_booking_status(booking_id):
+    """Klientportal: opdaterer portal_status på en booking"""
+    body = request.get_json() or {}
+    ny_status = body.get('portal_status', '')
+    gyldige = {'bekræftet', 'afventer_opstart', 'igangværende', 'afsluttet'}
+    if ny_status not in gyldige:
+        return jsonify({'error': 'Ugyldig status'}), 400
+    klient_id = str(request.user_klient_id)
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        b = db.table('bookinger').select('klient_id').eq('id', booking_id).maybe_single().execute()
+        if not b.data:
+            return jsonify({'error': 'Booking ikke fundet'}), 404
+        if b.data['klient_id'] != klient_id:
+            return jsonify({'error': 'Ingen adgang'}), 403
+        db.table('bookinger').update({'portal_status': ny_status}).eq('id', booking_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ── LEAD MAILS PREVIEW & GODKENDELSE ──────────────────
@@ -6166,9 +6222,14 @@ def portal_overblik(klient_id):
         leads_måned = [l for l in leads_alle if l.get('oprettet', '') >= maaned_start]
 
         # Bookinger
-        book_res = db.table('bookinger').select('id,navn,oprettet,dato').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
+        book_res = db.table('bookinger').select('id,navn,oprettet,dato,tid,ydelse,portal_status').eq('klient_id', klient_id).order('dato', desc=False).limit(100).execute()
         book_alle = book_res.data or []
         book_måned = [b for b in book_alle if b.get('oprettet', '') >= maaned_start]
+        # Næste kommende booking
+        import datetime as _dt
+        i_dag = _dt.date.today().isoformat()
+        kommende = [b for b in book_alle if b.get('dato', '') >= i_dag and b.get('portal_status') != 'afsluttet']
+        naeste_booking = kommende[0] if kommende else None
 
         # Byg aktivitetsfeed — kombiner events fra alle tabeller
         events = []
@@ -6252,7 +6313,8 @@ def portal_overblik(klient_id):
                 'tilbud_accepteret_maaned': len(accepterede_måned),
                 'tilbud_afventende': len(afventende),
             },
-            'aktivitet': events[:25]
+            'aktivitet': events[:25],
+            'naeste_booking': naeste_booking,
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
