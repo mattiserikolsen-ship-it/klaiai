@@ -365,6 +365,28 @@ def opsaml_kontakt(klient_id, email, navn='', telefon='', adresse='', postnummer
         print(f"Kontakt-opsamling fejl: {e}")
 
 
+def log_aktivitet(klient_id, type, titel, kontakt_email='', beloeb=None, reference_id='', modul=''):
+    """Skriver én linje i den fælles tidslinje på tværs af moduler.
+
+    Hver hændelse (lead, tilbud sendt/godkendt, booking) logges her, så kundekortet
+    og forretnings-overblikket kan vise alt samlet. Fejler aldrig hovedflowet.
+    """
+    if not db or str(klient_id) == 'demo':
+        return
+    try:
+        db.table('aktivitet').insert({
+            'klient_id': str(klient_id),
+            'kontakt_email': (kontakt_email or '').strip().lower(),
+            'type': type,
+            'titel': titel,
+            'beloeb': beloeb,
+            'reference_id': str(reference_id) if reference_id else None,
+            'modul': modul
+        }).execute()
+    except Exception as e:
+        print(f"Aktivitet-log fejl: {e}")
+
+
 def gem_lead_i_db(klient_id, lead_data):
     """Gemmer lead i Supabase og sender notifikation til klient."""
     if db:
@@ -380,6 +402,7 @@ def gem_lead_i_db(klient_id, lead_data):
                 'status': 'ny'
             }).execute()
             opsaml_kontakt(klient_id, lead_data.get('email', ''), lead_data.get('navn', ''), lead_data.get('telefon', ''))
+            log_aktivitet(klient_id, 'lead', f"Nyt lead via chatbot — {lead_data.get('navn','') or 'ukendt'}", lead_data.get('email', ''), modul='leads')
         except Exception as e:
             print(f"Lead DB fejl: {e}")
 
@@ -666,6 +689,7 @@ def modtag_lead():
                 'status': 'ny'
             }).execute()
             opsaml_kontakt(klient_id, lead.get('email', ''), lead.get('navn', ''), lead.get('telefon', ''))
+            log_aktivitet(klient_id, 'lead', f"Nyt lead via formular — {lead.get('navn','') or 'ukendt'}", lead.get('email', ''), modul='leads')
         except Exception as e:
             print(f"Lead DB fejl: {e}")
 
@@ -1035,6 +1059,7 @@ def modtag_booking():
                 'status': 'bekræftet'
             }).execute()
             opsaml_kontakt(klient_id, booking.get('email', ''), booking.get('navn', ''), booking.get('telefon', ''))
+            log_aktivitet(klient_id, 'booking', f"Booking — {booking.get('ydelse','') or 'tid'} {booking.get('dato','')} {booking.get('tid','')}".strip(), booking.get('email', ''), modul='bookinger')
         except Exception as e:
             print(f"Booking DB fejl: {e}")
 
@@ -6835,6 +6860,7 @@ def send_tilbud(tilbud_id):
         )
 
         db.table('tilbud').update({'status': 'sendt', 'sendt_dato': datetime.now().isoformat()}).eq('id', tilbud_id).execute()
+        log_aktivitet(tilbud.get('klient_id',''), 'tilbud_sendt', f"Tilbud sendt — {titel}", kunde_email, beloeb=tilbud.get('total_pris'), reference_id=tilbud_id, modul='tilbud')
 
         return jsonify({'ok': True, 'sendt_til': kunde_email, 'pdf_vedhæftet': pdf_bytes is not None})
     except Exception as e:
@@ -6925,6 +6951,7 @@ def portal_send_tilbud(tilbud_id):
             'sendt_dato': _dt2.now().isoformat(),
             'followup_aktiveret': aktiver_followup
         }).eq('id', tilbud_id).execute()
+        log_aktivitet(klient_id, 'tilbud_sendt', f"Tilbud sendt — {titel}", kunde_email, beloeb=tilbud.get('total_pris'), reference_id=tilbud_id, modul='tilbud')
 
         # Auto-upsert CRM kontakt
         try:
@@ -7100,6 +7127,7 @@ def godkend_tilbud(tilbud_id, token):
         kunde_email = t.get('kunde_email', '')
         titel       = t.get('titel', 'Tilbud')
         total_pris  = int(t.get('total_pris', 0))
+        log_aktivitet(t.get('klient_id',''), 'tilbud_godkendt', f"Tilbud godkendt — {titel}", kunde_email, beloeb=total_pris, reference_id=tilbud_id, modul='tilbud')
         ref_nr      = tilbud_id[:8].upper()
         dato_str    = godkendt_dato.strftime('%-d. %B %Y kl. %H:%M')
 
