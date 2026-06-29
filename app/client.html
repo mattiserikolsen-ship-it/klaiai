@@ -545,6 +545,9 @@
     <div class="nav-item active" data-view="overblik" onclick="showView('overblik')">
       <span class="ni">⊡</span> Overblik
     </div>
+    <div class="nav-item" data-view="forretning" onclick="showView('forretning')">
+      <span class="ni">◆</span> Forretning
+    </div>
     <div class="nav-item" data-view="leads" onclick="showView('leads')">
       <span class="ni">◎</span> Leads
       <span id="leadBadge" class="hidden" style="margin-left:auto;background:#c0392b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
@@ -756,6 +759,56 @@
           </span>
         </div>
         <div id="aktivitetFeed"><div class="loading">Henter aktivitet...</div></div>
+      </div>
+
+    </div>
+
+    <!-- FORRETNING — alt samlet på tværs af moduler -->
+    <div id="view-forretning" class="hidden">
+
+      <!-- KPI-KORT -->
+      <div class="stats-row" style="margin-bottom:1.25rem">
+        <div class="stat-card">
+          <div class="stat-num" id="fwLeads">—</div>
+          <div class="stat-label">Nye leads</div>
+          <div class="stat-sub">denne måned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="fwSendt">—</div>
+          <div class="stat-label">Tilbud sendt</div>
+          <div class="stat-sub">denne måned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="fwVundet">—</div>
+          <div class="stat-label">Vundet</div>
+          <div class="stat-sub">aftaler lukket</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="fwBeloeb" style="color:var(--green)">—</div>
+          <div class="stat-label">Omsætning vundet</div>
+          <div class="stat-sub">denne måned</div>
+        </div>
+      </div>
+
+      <!-- TRAGTEN -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div class="card-title" style="margin:0">Din salgstragt</div>
+          <span id="fwKonvertering" style="font-size:.75rem;font-weight:700;color:var(--green)"></span>
+        </div>
+        <div id="fwTragt" style="display:flex;align-items:stretch;gap:.5rem">
+          <div class="loading">Henter...</div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.85rem">Samme kunde fulgt hele vejen — fra første henvendelse til vundet aftale.</div>
+      </div>
+
+      <!-- TIDSLINJE -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)">
+          <div class="card-title" style="margin:0">Seneste aktivitet — på tværs af alt</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">Leads, bookinger og tilbud i én strøm</div>
+        </div>
+        <div id="fwTidslinje"><div class="loading">Henter aktivitet...</div></div>
       </div>
 
     </div>
@@ -1552,9 +1605,10 @@ function closeMobileNav() {
 }
 
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','leads','bookinger','tilbud','pipeline','gaps','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
+const views = ['overblik','forretning','leads','bookinger','tilbud','pipeline','gaps','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
 const titles = {
   overblik:      ['Overblik',       'Din Nordolsen portal'],
+  forretning:    ['Forretning',     'Hele din forretning samlet ét sted'],
   leads:         ['Leads',          'Kunder der har henvendt sig'],
   bookinger:     ['Bookinger',      'Bekræftede bookinger'],
   tilbud:        ['Tilbud',         'Tilbud du har sendt til kunder'],
@@ -1599,6 +1653,7 @@ function showView(v) {
   document.getElementById('mobNav-mere')?.classList.toggle('active', mereViews.includes(v));
   closeMobileNav();
   if (v === 'overblik') loadOverblik();
+  if (v === 'forretning') loadForretning();
   if (v === 'pipeline') loadPipeline();
   if (v === 'gaps') loadGaps();
   if (v === 'rapport' && !rapportData) loadRapport();
@@ -1669,6 +1724,81 @@ function countUp(el, target, { suffix = '', duration = 900 } = {}) {
     else el.textContent = fmt(target) + suffix;
   }
   requestAnimationFrame(frame);
+}
+
+async function loadForretning() {
+  if (!CLIENT_ID) return;
+  const kr = n => (Number(n) || 0).toLocaleString('da-DK');
+  try {
+    const res = await fetch(`${API}/portal/overblik-total/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    if (!res.ok) return;
+    const d = await res.json();
+    const m = d.maaned || {};
+
+    // KPI-kort
+    countUp(document.getElementById('fwLeads'), m.leads || 0);
+    countUp(document.getElementById('fwSendt'), m.tilbud_sendt || 0);
+    countUp(document.getElementById('fwVundet'), m.tilbud_vundet || 0);
+    countUp(document.getElementById('fwBeloeb'), m.vundet_beloeb || 0, { suffix: ' kr' });
+
+    // Tragt
+    const trin = [
+      { navn: 'Leads',        antal: m.leads || 0,        farve: '#2563eb' },
+      { navn: 'Tilbud sendt', antal: m.tilbud_sendt || 0, farve: '#0369a1' },
+      { navn: 'Vundet',       antal: m.tilbud_vundet || 0, farve: '#16a34a' },
+    ];
+    const maks = Math.max(...trin.map(t => t.antal), 1);
+    document.getElementById('fwTragt').innerHTML = trin.map(t => {
+      const h = 40 + Math.round((t.antal / maks) * 80);
+      return `<div style="flex:1;text-align:center">
+        <div style="display:flex;align-items:flex-end;justify-content:center;height:120px">
+          <div style="width:100%;max-width:90px;height:${h}px;background:${t.farve};border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:.5rem">
+            <span style="color:#fff;font-size:1.15rem;font-weight:800">${t.antal}</span>
+          </div>
+        </div>
+        <div style="font-size:.72rem;font-weight:600;color:var(--mid);margin-top:.5rem">${t.navn}</div>
+      </div>`;
+    }).join('');
+    const konv = m.konvertering || 0;
+    document.getElementById('fwKonvertering').textContent =
+      (m.tilbud_sendt || 0) > 0 ? `${konv}% af sendte tilbud vundet` : '';
+
+    // Tidslinje
+    const liste = d.tidslinje || [];
+    const stil = {
+      lead:             { ikon: '◎', farve: '#2563eb', bg: '#eff6ff' },
+      booking:          { ikon: '▦', farve: '#7c3aed', bg: '#f5f3ff' },
+      tilbud_sendt:     { ikon: '✉', farve: '#0369a1', bg: '#f0f9ff' },
+      tilbud_godkendt:  { ikon: '🎉', farve: '#15803d', bg: '#f0fdf4' },
+    };
+    const fmtTid = iso => {
+      if (!iso) return '';
+      const dt = new Date(iso);
+      if (isNaN(dt)) return '';
+      return dt.toLocaleDateString('da-DK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    };
+    const feed = document.getElementById('fwTidslinje');
+    if (!liste.length) {
+      feed.innerHTML = `<div style="padding:2rem 1.25rem;text-align:center;color:var(--muted);font-size:.85rem">Ingen aktivitet endnu — så snart en kunde henvender sig, dukker det op her.</div>`;
+    } else {
+      feed.innerHTML = liste.map(a => {
+        const s = stil[a.type] || { ikon: '•', farve: '#6b7280', bg: '#f9fafb' };
+        const beloeb = a.beloeb ? `<span style="font-weight:700;color:#15803d">${kr(a.beloeb)} kr</span>` : '';
+        return `<div style="display:flex;align-items:center;gap:.85rem;padding:.85rem 1.25rem;border-bottom:1px solid var(--border)">
+          <div style="width:34px;height:34px;border-radius:9px;background:${s.bg};color:${s.farve};display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">${s.ikon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.82rem;font-weight:600;color:var(--dark)">${(a.titel || '—')} ${beloeb}</div>
+            <div style="font-size:.7rem;color:var(--muted)">${a.kontakt_email || ''}</div>
+          </div>
+          <div style="font-size:.7rem;color:var(--muted);flex-shrink:0">${fmtTid(a.oprettet)}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.error('Forretning fejl:', e);
+  }
 }
 
 async function loadOverblik() {
