@@ -697,62 +697,111 @@
       </div>
     </div>
 
-    <!-- CRM KUNDE MODAL -->
-    <div class="crm-overlay" id="crmOverlay" onclick="if(event.target===this)lukCRM()">
-      <div class="crm-panel">
-        <div class="crm-header">
-          <div>
-            <div style="font-size:1.05rem;font-weight:800;color:var(--dark)" id="crmNavn">—</div>
-            <div style="font-size:.78rem;color:var(--muted);margin-top:.1rem" id="crmEmail">—</div>
+    <!-- CRM SLIDE-IN PANEL -->
+    <div id="crmSideOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1999" onclick="lukCRM()"></div>
+    <div id="crmSidePanel" style="position:fixed;top:0;right:-460px;width:440px;max-width:100vw;height:100vh;background:#fff;z-index:2000;box-shadow:-8px 0 40px rgba(0,0,0,.12);transition:right .25s ease;display:flex;flex-direction:column;overflow:hidden">
+
+      <!-- CRM HEADER -->
+      <div style="padding:1.25rem 1.25rem .9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:.85rem;min-width:0">
+          <div id="crmAvatar" style="width:44px;height:44px;border-radius:50%;background:#e0e7ff;color:#3730a3;font-size:1rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">?</div>
+          <div style="min-width:0">
+            <div id="crmNavn" style="font-size:.95rem;font-weight:700;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+            <div id="crmKontaktLinje" style="font-size:.75rem;color:var(--muted);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
           </div>
-          <button onclick="lukCRM()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.4rem .85rem;font-size:.82rem;cursor:pointer;font-family:inherit;font-weight:600">✕ Luk</button>
         </div>
-        <div id="crmIndhold"><div class="loading" style="padding:3rem">Henter kundedata...</div></div>
+        <button onclick="lukCRM()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.35rem .8rem;font-size:.82rem;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0">✕</button>
       </div>
+
+      <!-- CRM QUICK ACTIONS -->
+      <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0">
+        <button onclick="åbnNytTilbudModal(crmAktivEmail, crmAktivNavn, crmAktivTelefon)" style="flex:1;background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.5rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">📄 Nyt tilbud</button>
+        <a id="crmRingLink" href="#" style="flex:1;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:8px;padding:.5rem .75rem;font-size:.78rem;font-weight:700;text-decoration:none">📞 Ring</a>
+        <a id="crmMailLink" href="#" style="flex:1;display:flex;align-items:center;justify-content:center;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:.5rem .75rem;font-size:.78rem;font-weight:700;text-decoration:none">✉ Mail</a>
+      </div>
+
+      <!-- CRM STATUS -->
+      <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem;flex-shrink:0">
+        <span style="font-size:.75rem;font-weight:600;color:var(--muted)">Status:</span>
+        <div id="crmStatusPills" style="display:flex;gap:.4rem;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- CRM HURTIG NOTE -->
+      <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;gap:.5rem;flex-shrink:0">
+        <input id="crmNoteInput" placeholder="Tilføj note... fx 'Ring mandag 10:00'" style="flex:1;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:inherit;outline:none;font-size:16px"/>
+        <button onclick="gemCRMNote()" style="background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Gem</button>
+      </div>
+
+      <!-- CRM TIDSLINJE -->
+      <div id="crmTidslinje" style="flex:1;overflow-y:auto;padding:.25rem 0">
+        <div class="loading" style="padding:2rem 1.25rem">Henter historik...</div>
+      </div>
+
+      <!-- CRM FOOTER STATS -->
+      <div id="crmFooterStats" style="padding:.75rem 1.25rem;border-top:1px solid var(--border);font-size:.75rem;color:var(--muted);text-align:center;flex-shrink:0"></div>
     </div>
 
-    <!-- TILBUD MODAL -->
+    <!-- TILBUD MODAL (3 steps) -->
     <div class="tilbud-modal-overlay" id="nytTilbudOverlay" onclick="if(event.target===this)lukNytTilbudModal()">
       <div class="tilbud-modal">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
-          <div style="font-size:1rem;font-weight:800;color:var(--dark)">✨ Generer nyt tilbud</div>
-          <button id="ntMicBtn" onclick="startStemmeOptagelse()" title="Dikter opgaven med stemme" style="display:flex;align-items:center;gap:.4rem;background:#f0f4ff;border:1.5px solid #c7d7fe;color:#2563eb;border-radius:10px;padding:.45rem .9rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">
-            🎙️ Dikter
-          </button>
+
+        <!-- STEP INDIKATOR -->
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem" id="ntStepIndikator">
+          <div id="ntStepDot1" style="width:8px;height:8px;border-radius:50%;background:var(--dark);transition:all .2s"></div>
+          <div style="flex:1;height:2px;background:var(--border);border-radius:1px" id="ntStepLine1"></div>
+          <div id="ntStepDot2" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .2s"></div>
+          <div style="flex:1;height:2px;background:var(--border);border-radius:1px" id="ntStepLine2"></div>
+          <div id="ntStepDot3" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .2s"></div>
+          <span id="ntStepLabel" style="font-size:.72rem;color:var(--muted);font-weight:600;margin-left:.25rem">Trin 1 af 3</span>
         </div>
 
-        <!-- STEMME PANEL -->
-        <div id="ntStemmePanel" style="display:none;background:#f0f4ff;border:1.5px solid #c7d7fe;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center">
-          <div id="ntStemmeStatus" style="font-size:.85rem;font-weight:700;color:#2563eb;margin-bottom:.5rem">🎙️ Lytter... tal nu</div>
-          <div id="ntStemmeTekst" style="font-size:.78rem;color:#374151;min-height:40px;line-height:1.5;margin-bottom:.75rem;text-align:left;background:#fff;border-radius:8px;padding:.5rem .75rem;border:1px solid #e0e7ff"></div>
-          <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
-            <button id="ntStopMicBtn" onclick="stopStemmeOptagelse()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">■ Stop</button>
-            <button id="ntFortsætMicBtn" onclick="startStemmeOptagelse()" style="display:none;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">🎙️ Tilføj mere</button>
-            <button id="ntBrugTaleBtn" onclick="brugStemmeData()" style="display:none;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">✓ Brug tekst</button>
+        <!-- ── STEP 1: Kundeinfo + opgave ── -->
+        <div id="ntStep1">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+            <div style="font-size:.95rem;font-weight:700;color:var(--dark)">Opret tilbud</div>
+            <button id="ntMicBtn" onclick="startStemmeOptagelse()" style="display:flex;align-items:center;gap:.4rem;background:#f0f4ff;border:1.5px solid #c7d7fe;color:#2563eb;border-radius:10px;padding:.45rem .9rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">
+              🎙️ Dikter
+            </button>
           </div>
-        </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
-          <div>
-            <label>Kundenavn *</label>
-            <input id="ntKundeNavn" placeholder="Fx. Lars Nielsen"/>
+          <!-- STEMME PANEL -->
+          <div id="ntStemmePanel" style="display:none;background:#f0f4ff;border:1.5px solid #c7d7fe;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:center">
+            <div id="ntStemmeStatus" style="font-size:.85rem;font-weight:700;color:#2563eb;margin-bottom:.5rem">🎙️ Lytter... tal nu</div>
+            <div id="ntStemmeTekst" style="font-size:.78rem;color:#374151;min-height:40px;line-height:1.5;margin-bottom:.75rem;text-align:left;background:#fff;border-radius:8px;padding:.5rem .75rem;border:1px solid #e0e7ff"></div>
+            <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
+              <button id="ntStopMicBtn" onclick="stopStemmeOptagelse()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">■ Stop</button>
+              <button id="ntFortsætMicBtn" onclick="startStemmeOptagelse()" style="display:none;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">🎙️ Tilføj mere</button>
+              <button id="ntBrugTaleBtn" onclick="brugStemmeData()" style="display:none;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">✓ Brug tekst</button>
+            </div>
           </div>
-          <div>
-            <label>Kunde email *</label>
-            <input id="ntKundeEmail" type="email" placeholder="lars@firma.dk"/>
-          </div>
-        </div>
 
-        <div style="display:grid;grid-template-columns:1fr 110px;gap:.75rem;margin-bottom:.75rem">
-          <div>
-            <label>Adresse (valgfrit)</label>
-            <input id="ntKundeAdresse" placeholder="Fx. Vestergade 12"/>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+              <label>Kundenavn *</label>
+              <input id="ntKundeNavn" placeholder="Fx. Lars Nielsen"/>
+            </div>
+            <div>
+              <label>Telefon</label>
+              <input id="ntKundeTelefon" placeholder="20 12 34 56" type="tel"/>
+            </div>
           </div>
-          <div>
-            <label>Postnummer</label>
-            <input id="ntKundePostnummer" placeholder="8700"/>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+              <label>Kunde email *</label>
+              <input id="ntKundeEmail" type="email" placeholder="lars@firma.dk"/>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 90px;gap:.5rem">
+              <div>
+                <label>Adresse</label>
+                <input id="ntKundeAdresse" placeholder="Vestergade 12"/>
+              </div>
+              <div>
+                <label>Postnr.</label>
+                <input id="ntKundePostnummer" placeholder="8700"/>
+              </div>
+            </div>
           </div>
-        </div>
 
         <div style="margin-bottom:.75rem">
           <label>Beskriv opgaven / kundens behov *</label>
@@ -796,8 +845,63 @@
           <button onclick="lukNytTilbudModal()" style="background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.6rem 1.2rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Annuller</button>
           <button id="ntGenBtn" onclick="genererNytTilbud()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.6rem 1.4rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">✨ Generer tilbud</button>
         </div>
-      </div>
-    </div>
+        </div><!-- /ntStep1 -->
+
+        <!-- ── STEP 2: Email preview ── -->
+        <div id="ntStep2" style="display:none">
+          <div style="font-size:.95rem;font-weight:700;color:var(--dark);margin-bottom:1.1rem">Forhåndsvisning af email</div>
+
+          <div style="margin-bottom:.75rem">
+            <label>Emne</label>
+            <input id="ntEmailEmne" placeholder="Tilbud fra os"/>
+          </div>
+
+          <div style="margin-bottom:.75rem;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+            <div style="background:#f8f9fa;padding:.5rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:.75rem;font-weight:600;color:var(--muted)">Sendes til</span>
+              <span id="ntEmailSendTil" style="font-size:.75rem;color:var(--dark);font-weight:600"></span>
+            </div>
+            <div id="ntEmailPreviewWrap" style="height:300px;overflow:hidden;background:#fafafa">
+              <div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Henter preview...</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:.25rem">
+            <button onclick="gåTilStep(1)" style="background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.6rem 1.2rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">← Tilbage</button>
+            <button onclick="gåTilStep(3)" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.6rem 1.4rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Opfølgning →</button>
+          </div>
+        </div><!-- /ntStep2 -->
+
+        <!-- ── STEP 3: Opfølgning ── -->
+        <div id="ntStep3" style="display:none">
+          <div style="font-size:.95rem;font-weight:700;color:var(--dark);margin-bottom:1.1rem">Opfølgningsmail</div>
+
+          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:.75rem 1rem;margin-bottom:.9rem;font-size:.8rem;color:#0369a1;line-height:1.5">
+            📅 Sendes automatisk efter 3 dage hvis kunden ikke har svaret — du kan altid deaktivere
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;padding:.7rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--bg)">
+            <span style="font-size:.85rem;font-weight:600;color:var(--dark)">Aktiver automatisk opfølgning</span>
+            <input type="checkbox" id="ntFollowupAktiv" checked style="width:22px;height:22px;cursor:pointer;accent-color:var(--dark)"/>
+          </div>
+
+          <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem">
+            <div style="background:#f8f9fa;padding:.5rem 1rem;border-bottom:1px solid var(--border)">
+              <span style="font-size:.75rem;font-weight:600;color:var(--muted)">Preview af opfølgningsmail</span>
+            </div>
+            <div id="ntFollowupPreviewWrap" style="height:260px;overflow:hidden;background:#fafafa">
+              <div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Henter preview...</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.75rem;justify-content:flex-end">
+            <button onclick="gåTilStep(2)" style="background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.6rem 1.2rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">← Tilbage</button>
+            <button id="ntSendBtn" onclick="sendTilbudPortal()" style="background:var(--green);color:#fff;border:none;border-radius:9px;padding:.6rem 1.5rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">📨 Send tilbud</button>
+          </div>
+        </div><!-- /ntStep3 -->
+
+      </div><!-- /tilbud-modal -->
+    </div><!-- /overlay -->
 
     <!-- PIPELINE -->
     <div id="view-pipeline" class="hidden">
@@ -2026,11 +2130,16 @@ function renderValgteMaterialer() {
     </div>`;
 }
 
-function åbnNytTilbudModal() {
-  ['ntKundeNavn','ntKundeEmail','ntKundeAdresse','ntKundePostnummer','ntOpgave','ntNoter','ntForbehold'].forEach(id => {
+function åbnNytTilbudModal(email, navn, telefon) {
+  ['ntKundeNavn','ntKundeEmail','ntKundeAdresse','ntKundePostnummer','ntOpgave','ntNoter','ntForbehold','ntKundeTelefon','ntEmailEmne'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  gemtTilbudId = null;
+  if (email)   document.getElementById('ntKundeEmail').value    = email;
+  if (navn)    document.getElementById('ntKundeNavn').value     = navn;
+  if (telefon) document.getElementById('ntKundeTelefon').value  = telefon;
+  gåTilStep(1);
   document.getElementById('ntStatus').style.display = 'none';
   document.getElementById('ntGenBtn').disabled = false;
   document.getElementById('ntGenBtn').textContent = '✨ Generer tilbud';
@@ -2095,6 +2204,7 @@ async function genererNytTilbud() {
         klient_id:        CLIENT_ID,
         kunde_navn:       kundeNavn,
         kunde_email:      kundeEmail,
+        kunde_telefon:    document.getElementById('ntKundeTelefon').value.trim(),
         kunde_adresse:    document.getElementById('ntKundeAdresse').value.trim(),
         kunde_postnummer: document.getElementById('ntKundePostnummer').value.trim(),
         forbehold:        document.getElementById('ntForbehold').value.trim(),
@@ -2119,12 +2229,17 @@ async function genererNytTilbud() {
     const data = await res.json();
     if (!data.ok) { alert(data.error || 'Fejl ved generering'); btn.disabled = false; btn.textContent = '✨ Generer tilbud'; document.getElementById('ntStatus').style.display = 'none'; return; }
 
-    lukNytTilbudModal();
-    // Genindlæs tilbudsliste og vis det nye tilbud
+    gemtTilbudId = data.tilbud_id;
     tilbudData = null;
     await loadTilbud();
-    // Åbn det nye tilbud direkte
-    if (data.tilbud_id) åbnTilbud(data.tilbud_id);
+    // Gå til step 2: email preview
+    const kundeEmailVal = document.getElementById('ntKundeEmail').value.trim();
+    document.getElementById('ntEmailSendTil').textContent = kundeEmailVal;
+    document.getElementById('ntEmailEmne').value = data.titel ? `Tilbud: ${data.titel}` : 'Tilbud til dig';
+    btn.disabled = false;
+    btn.textContent = '✨ Generer tilbud';
+    document.getElementById('ntStatus').style.display = 'none';
+    gåTilStep(2);
   } catch(e) {
     alert('Netværksfejl — prøv igen');
     btn.disabled = false;
@@ -2145,6 +2260,10 @@ function downloadTilbudPdf(tilbudId) {
 
 // ── PIPELINE ───────────────────────────────────────────
 let pipelineData = null;
+let gemtTilbudId = null;
+let crmAktivEmail = '';
+let crmAktivNavn  = '';
+let crmAktivTelefon = '';
 
 async function loadPipeline() {
   if (!CLIENT_ID) return;
@@ -2338,110 +2457,247 @@ async function markerGapLøst(idx, gapId) {
   } catch(e) {}
 }
 
+// ── STEP NAVIGATION ────────────────────────────────────────────────
+function gåTilStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('ntStep'+i);
+    if (el) el.style.display = i === n ? 'block' : 'none';
+  });
+  document.getElementById('ntStepLabel').textContent = `Trin ${n} af 3`;
+  const dots  = ['ntStepDot1','ntStepDot2','ntStepDot3'];
+  const lines = ['ntStepLine1','ntStepLine2'];
+  dots.forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const done   = i+1 < n;
+    const active = i+1 === n;
+    el.style.background = done ? 'var(--green)' : active ? 'var(--dark)' : 'var(--border)';
+    el.style.width  = active ? '10px' : '8px';
+    el.style.height = active ? '10px' : '8px';
+  });
+  lines.forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (el) el.style.background = i+1 < n ? 'var(--green)' : 'var(--border)';
+  });
+  if (n === 2) visEmailPreview();
+  if (n === 3) visFollowupPreview();
+}
+
+async function visEmailPreview() {
+  if (!gemtTilbudId) return;
+  const wrap = document.getElementById('ntEmailPreviewWrap');
+  wrap.innerHTML = '<div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Henter preview...</div>';
+  const token = localStorage.getItem('klaiai_token') || '';
+  try {
+    const res = await fetch(`${API}/portal/tilbud/vis/${gemtTilbudId}?token=${encodeURIComponent(token)}`);
+    if (res.ok) {
+      const html = await res.text();
+      const safeHtml = html.replace(/"/g, '&quot;');
+      wrap.innerHTML = `<iframe srcdoc="${safeHtml}" style="width:100%;height:300px;border:none" title="Email preview"></iframe>`;
+    } else {
+      wrap.innerHTML = '<div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Preview ikke tilgængeligt</div>';
+    }
+  } catch(e) {
+    wrap.innerHTML = '<div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Preview ikke tilgængeligt</div>';
+  }
+}
+
+async function visFollowupPreview() {
+  if (!gemtTilbudId) return;
+  const wrap = document.getElementById('ntFollowupPreviewWrap');
+  wrap.innerHTML = '<div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Henter preview...</div>';
+  try {
+    const res = await fetch(`${API}/portal/tilbud/followup-preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ tilbud_id: gemtTilbudId, klient_id: CLIENT_ID })
+    });
+    const data = await res.json();
+    if (data.html) {
+      const safeHtml = data.html.replace(/"/g, '&quot;');
+      wrap.innerHTML = `<iframe srcdoc="${safeHtml}" style="width:100%;height:260px;border:none" title="Opfølgning preview"></iframe>`;
+    } else {
+      wrap.innerHTML = '<div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Preview ikke tilgængeligt</div>';
+    }
+  } catch(e) {
+    wrap.innerHTML = '<div style="padding:2rem;font-size:.82rem;color:var(--muted);text-align:center">Preview ikke tilgængeligt</div>';
+  }
+}
+
+async function sendTilbudPortal() {
+  if (!gemtTilbudId) return;
+  const btn = document.getElementById('ntSendBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Sender...';
+  try {
+    const res = await fetch(`${API}/portal/tilbud/send/${gemtTilbudId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({
+        email_emne: document.getElementById('ntEmailEmne').value.trim(),
+        aktiver_followup: document.getElementById('ntFollowupAktiv').checked
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      lukNytTilbudModal();
+      tilbudData = null;
+      await loadTilbud();
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#16a34a;color:#fff;padding:.75rem 1.25rem;border-radius:10px;font-size:.85rem;font-weight:700;z-index:9999';
+      toast.textContent = '✓ Tilbud sendt!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } else {
+      alert(data.error || 'Fejl ved afsendelse');
+      btn.disabled = false;
+      btn.textContent = '📨 Send tilbud';
+    }
+  } catch(e) {
+    alert('Netværksfejl — prøv igen');
+    btn.disabled = false;
+    btn.textContent = '📨 Send tilbud';
+  }
+}
+
 // ── CRM / KUNDEHISTORIK ────────────────────────────────────────────
-function åbnCRM(email, navn) {
-  document.getElementById('crmNavn').textContent = navn || email;
-  document.getElementById('crmEmail').textContent = email;
-  document.getElementById('crmIndhold').innerHTML = '<div class="loading" style="padding:3rem">Henter kundedata...</div>';
-  document.getElementById('crmOverlay').classList.add('open');
+function åbnCRM(email, navn, telefon) {
+  crmAktivEmail   = email   || '';
+  crmAktivNavn    = navn    || '';
+  crmAktivTelefon = telefon || '';
+
+  const initial = (crmAktivNavn || crmAktivEmail || '?')[0].toUpperCase();
+  document.getElementById('crmAvatar').textContent = initial;
+  document.getElementById('crmNavn').textContent = crmAktivNavn || crmAktivEmail || '—';
+  const kontaktParts = [];
+  if (crmAktivEmail)   kontaktParts.push(crmAktivEmail);
+  if (crmAktivTelefon) kontaktParts.push(crmAktivTelefon);
+  document.getElementById('crmKontaktLinje').textContent = kontaktParts.join(' · ') || '—';
+
+  document.getElementById('crmRingLink').href = crmAktivTelefon ? `tel:${crmAktivTelefon.replace(/\s/g,'')}` : '#';
+  document.getElementById('crmMailLink').href = crmAktivEmail   ? `mailto:${crmAktivEmail}` : '#';
+  document.getElementById('crmNoteInput').value = '';
+  document.getElementById('crmTidslinje').innerHTML = '<div class="loading" style="padding:2rem 1.25rem">Henter historik...</div>';
+  document.getElementById('crmStatusPills').innerHTML = '';
+  document.getElementById('crmFooterStats').textContent = '';
+
+  document.getElementById('crmSidePanel').style.right = '0';
+  document.getElementById('crmSideOverlay').style.display = 'block';
+
   hentCRMData(email);
 }
 
 function lukCRM() {
-  document.getElementById('crmOverlay').classList.remove('open');
+  document.getElementById('crmSidePanel').style.right = '-460px';
+  document.getElementById('crmSideOverlay').style.display = 'none';
 }
 
 async function hentCRMData(email) {
+  if (!email) return;
+  const token = localStorage.getItem('klaiai_token') || '';
   try {
-    const encoded = encodeURIComponent(email);
-    const res = await fetch(`${API}/portal/kunde/${CLIENT_ID}/${encoded}`, {
-      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
-    });
-    if (!res.ok) { document.getElementById('crmIndhold').innerHTML = '<div class="empty" style="padding:2rem">Kunne ikke hente data.</div>'; return; }
-    const d = await res.json();
-    renderCRM(d);
+    const [r1, r2] = await Promise.all([
+      fetch(`${API}/portal/kunde/${CLIENT_ID}/${encodeURIComponent(email)}`, { headers: { Authorization: token } }),
+      fetch(`${API}/portal/crm/${CLIENT_ID}/${encodeURIComponent(email)}`,  { headers: { Authorization: token } })
+    ]);
+    const historik  = r1.ok ? await r1.json() : {};
+    const crmResp   = r2.ok ? await r2.json() : {};
+    const crmData   = crmResp.kontakt || null;
+    renderCRM(historik, crmData);
   } catch(e) {
-    document.getElementById('crmIndhold').innerHTML = '<div class="empty" style="padding:2rem">Netværksfejl.</div>';
+    document.getElementById('crmTidslinje').innerHTML = '<div style="padding:2rem 1.25rem;font-size:.82rem;color:var(--muted)">Fejl ved hentning</div>';
   }
 }
 
-function renderCRM(d) {
-  const leads = d.leads || [];
-  const tilbud = d.tilbud || [];
-  const bookinger = d.bookinger || [];
-  const accepteret = d.total_tilbud_accepteret || 0;
+function renderCRM(historik, crmData) {
+  const statuser     = ['ny','kontaktet','møde','kunde'];
+  const nuværende    = crmData?.status || 'ny';
+  const statusLabels2 = { ny:'Ny', kontaktet:'Kontaktet', møde:'Møde aftalt', kunde:'Kunde' };
+  const statusFarver2 = { ny:'#6b7280', kontaktet:'#1d4ed8', møde:'#a16207', kunde:'#15803d' };
 
-  document.getElementById('crmNavn').textContent = d.navn || d.email;
+  document.getElementById('crmStatusPills').innerHTML = statuser.map(s => `
+    <button onclick="opdaterCRMStatus('${s}')" style="padding:.3rem .7rem;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid ${s===nuværende ? statusFarver2[s] : 'var(--border)'};background:${s===nuværende ? statusFarver2[s]+'18' : 'transparent'};color:${s===nuværende ? statusFarver2[s] : 'var(--muted)'}">
+      ${statusLabels2[s]}
+    </button>`).join('');
 
-  let html = '';
+  // Build combined timeline
+  const events = [];
 
-  // Stats øverst
-  html += `<div class="crm-section">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem">
-      <div class="crm-stat"><div class="crm-stat-num">${leads.length}</div><div class="crm-stat-label">Leads</div></div>
-      <div class="crm-stat"><div class="crm-stat-num">${tilbud.length}</div><div class="crm-stat-label">Tilbud</div></div>
-      <div class="crm-stat"><div class="crm-stat-num">${bookinger.length}</div><div class="crm-stat-label">Bookinger</div></div>
-      <div class="crm-stat"><div class="crm-stat-num" style="color:var(--green)">${accepteret > 0 ? accepteret.toLocaleString('da-DK') + ' kr' : '—'}</div><div class="crm-stat-label">Accepteret</div></div>
-    </div>
-  </div>`;
-
-  // Tilbud
-  if (tilbud.length) {
-    html += `<div class="crm-section"><div class="crm-section-title">Tilbud</div>`;
-    tilbud.forEach(t => {
-      const statusFarve = { accepteret: ['#15803d','#f0fdf4'], sendt: ['#1d4ed8','#eff6ff'], udkast: ['#6b7280','#f3f4f6'], afvist: ['#991b1b','#fef2f2'] };
-      const [fc, bc] = statusFarve[t.status] || ['#6b7280','#f3f4f6'];
-      const dato = t.oprettet ? new Date(t.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', year:'numeric' }) : '';
-      const pris = t.total_pris ? t.total_pris.toLocaleString('da-DK') + ' kr' : '';
-      html += `<div class="crm-row">
-        <div class="crm-row-icon" style="background:${bc};color:${fc}">📄</div>
-        <div class="crm-row-body">
-          <div class="crm-row-title">${t.titel || 'Tilbud'}${pris ? ' — ' + pris : ''}</div>
-          <div class="crm-row-sub">${dato} · <span style="color:${fc};font-weight:600">${t.status}</span></div>
-        </div>
-        <button onclick="åbnTilbud('${t.id}')" style="font-size:.72rem;padding:.3rem .7rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap">Se →</button>
-      </div>`;
+  if (crmData?.noter && Array.isArray(crmData.noter)) {
+    crmData.noter.forEach(n => {
+      const tekst = typeof n === 'string' ? n : n.tekst || '';
+      const ts    = typeof n === 'object' ? (n.ts || n.dato || '') : '';
+      if (tekst) events.push({ ts, type:'note', tekst, ikon:'📝' });
     });
-    html += `</div>`;
   }
 
-  // Leads
-  if (leads.length) {
-    html += `<div class="crm-section"><div class="crm-section-title">Leads</div>`;
-    leads.forEach(l => {
-      const dato = l.oprettet ? new Date(l.oprettet).toLocaleDateString('da-DK', { day:'numeric', month:'short', year:'numeric' }) : '';
-      html += `<div class="crm-row">
-        <div class="crm-row-icon" style="background:#eff6ff;color:#1d4ed8">◎</div>
-        <div class="crm-row-body">
-          <div class="crm-row-title">${l.navn || '—'}</div>
-          <div class="crm-row-sub">${dato}${l.besked ? ' · "' + l.besked.slice(0,80) + (l.besked.length > 80 ? '…' : '') + '"' : ''}</div>
+  (historik.tilbud || []).forEach(t => {
+    const pris = t.total_pris ? ` — ${t.total_pris.toLocaleString('da-DK')} kr` : '';
+    events.push({ ts: t.oprettet, type:'tilbud', tekst:(t.titel||'Tilbud')+pris, status:t.status, id:t.id, ikon:'📄' });
+  });
+
+  (historik.leads || []).forEach(l => {
+    const tekst = l.besked ? `"${l.besked.slice(0,80)}${l.besked.length>80?'…':''}"` : 'Lead indsendt';
+    events.push({ ts: l.oprettet, type:'lead', tekst, ikon:'◎' });
+  });
+
+  (historik.bookinger || []).forEach(b => {
+    const tekst = (b.navn||'Booking') + (b.ydelse ? ` · ${b.ydelse}` : '');
+    events.push({ ts: b.dato, type:'booking', tekst, ikon:'📅' });
+  });
+
+  events.sort((a,b) => new Date(b.ts||0) - new Date(a.ts||0));
+
+  const sf = { accepteret:'#15803d', sendt:'#1d4ed8', udkast:'#6b7280', afvist:'#991b1b' };
+  if (!events.length) {
+    document.getElementById('crmTidslinje').innerHTML = '<div style="padding:2rem 1.25rem;font-size:.82rem;color:var(--muted);text-align:center">Ingen historik endnu</div>';
+  } else {
+    document.getElementById('crmTidslinje').innerHTML = events.map(ev => {
+      const dato    = ev.ts ? new Date(ev.ts).toLocaleDateString('da-DK',{day:'numeric',month:'short',year:'numeric'}) : '';
+      const stHtml  = ev.status ? `<span style="color:${sf[ev.status]||'#6b7280'};font-weight:700;margin-left:.35rem;font-size:.7rem">${ev.status}</span>` : '';
+      const seKnap  = ev.type==='tilbud' ? `<button onclick="åbnTilbud('${ev.id}')" style="font-size:.7rem;padding:.2rem .6rem;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap;flex-shrink:0">Se →</button>` : '';
+      return `<div style="display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border)">
+        <div style="font-size:1rem;margin-top:.05rem;flex-shrink:0">${ev.ikon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;color:var(--dark)">${ev.tekst}${stHtml}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">${dato}</div>
         </div>
+        ${seKnap}
       </div>`;
+    }).join('');
+  }
+
+  const tilbudCount = (historik.tilbud||[]).length;
+  const accepteret  = historik.total_tilbud_accepteret || 0;
+  document.getElementById('crmFooterStats').innerHTML =
+    tilbudCount ? `${tilbudCount} tilbud${accepteret > 0 ? ` · ${accepteret.toLocaleString('da-DK')} kr accepteret` : ''}` : '';
+}
+
+async function gemCRMNote() {
+  const input = document.getElementById('crmNoteInput');
+  const tekst = input.value.trim();
+  if (!tekst || !crmAktivEmail) return;
+  input.value = '';
+  try {
+    await fetch(`${API}/portal/crm/note`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ klient_id: CLIENT_ID, email: crmAktivEmail, tekst })
     });
-    html += `</div>`;
-  }
+    hentCRMData(crmAktivEmail);
+  } catch(e) {}
+}
 
-  // Bookinger
-  if (bookinger.length) {
-    html += `<div class="crm-section"><div class="crm-section-title">Bookinger</div>`;
-    bookinger.forEach(b => {
-      const dato = b.dato || '';
-      html += `<div class="crm-row">
-        <div class="crm-row-icon" style="background:#f5f3ff;color:#7c3aed">▦</div>
-        <div class="crm-row-body">
-          <div class="crm-row-title">${b.navn || '—'}${b.ydelse ? ' · ' + b.ydelse : ''}</div>
-          <div class="crm-row-sub">${dato}${b.tid ? ' kl. ' + b.tid : ''}</div>
-        </div>
-      </div>`;
+async function opdaterCRMStatus(nyStatus) {
+  if (!crmAktivEmail) return;
+  try {
+    await fetch(`${API}/portal/crm/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ klient_id: CLIENT_ID, email: crmAktivEmail, status: nyStatus })
     });
-    html += `</div>`;
-  }
-
-  if (!leads.length && !tilbud.length && !bookinger.length) {
-    html += `<div class="crm-section"><div class="empty" style="padding:2rem">Ingen historik fundet for denne email.</div></div>`;
-  }
-
-  document.getElementById('crmIndhold').innerHTML = html;
+    hentCRMData(crmAktivEmail);
+  } catch(e) {}
 }
 
 // ── RAPPORT ────────────────────────────────────────────

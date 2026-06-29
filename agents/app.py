@@ -6530,6 +6530,223 @@ def send_tilbud(tilbud_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/portal/tilbud/send/<tilbud_id>', methods=['POST'])
+@require_token
+def portal_send_tilbud(tilbud_id):
+    """Klient sender sit eget tilbud til kunden — med valgfri email-tekst override"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
+        tilbud = res.data
+        if not tilbud:
+            return jsonify({'error': 'Tilbud ikke fundet'}), 404
+
+        klient_id = tilbud.get('klient_id', '')
+        if str(request.user_klient_id) != str(klient_id):
+            return jsonify({'error': 'Ikke adgang til dette tilbud'}), 403
+
+        kunde_email = tilbud.get('kunde_email', '')
+        kunde_navn  = tilbud.get('kunde_navn', '')
+        titel       = tilbud.get('titel', 'Tilbud')
+        html        = tilbud.get('html_indhold', '')
+
+        if not kunde_email or '@' not in kunde_email:
+            return jsonify({'error': 'Ingen gyldig email på tilbuddet'}), 400
+
+        body = request.json or {}
+        email_emne_override   = body.get('email_emne', '').strip()
+        aktiver_followup      = body.get('aktiver_followup', True)
+
+        fra_navn = 'NexOlsen'
+        klient_hjemmeside = ''
+        try:
+            k = db.table('klienter').select('navn,hjemmeside,email').eq('id', klient_id).single().execute()
+            if k.data:
+                fra_navn = k.data.get('navn', fra_navn)
+                klient_hjemmeside = k.data.get('hjemmeside', '')
+        except:
+            pass
+
+        import uuid as _uuid
+        accept_token = str(_uuid.uuid4()).replace('-', '')
+        db.table('tilbud').update({'accept_token': accept_token}).eq('id', tilbud_id).execute()
+
+        accept_url = f'{SERVER_URL}/tilbud/godkend/{tilbud_id}/{accept_token}'
+        domain = klient_hjemmeside.replace('https://','').replace('http://','').replace('www.','').rstrip('/')
+        trustpilot_url = f'https://dk.trustpilot.com/review/{domain}' if domain else 'https://dk.trustpilot.com'
+
+        import re as _re
+        html_til_kunde = _re.sub(r'<!-- KONKURRENT.*?KONKURRENT -->', '', html, flags=_re.DOTALL)
+
+        ekstra_blok = f"""
+  <tr><td style="background:#fff;padding:8px 40px 32px;text-align:center">
+    <div style="font-size:15px;color:#374151;margin-bottom:16px;font-weight:600">Klar til at komme i gang?</div>
+    <a href="{accept_url}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:15px 44px;border-radius:10px;letter-spacing:.3px">&#10003;&nbsp;&nbsp;Godkend tilbud</a>
+    <div style="font-size:11px;color:#9ca3af;margin-top:12px;line-height:1.7">
+      Ved at klikke bekræfter du at acceptere dette tilbud bindende i henhold til dansk Aftaleloven.<br>
+      Du modtager straks en skriftlig bekræftelse på denne email-adresse.
+    </div>
+  </td></tr>
+  <tr><td style="background:#f9fafb;padding:28px 40px;text-align:center;border-top:1px solid #f0f0f0">
+    <a href="{trustpilot_url}" style="display:inline-block;background:#00b67a;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:10px 24px;border-radius:8px">Skriv en anmeldelse &#8594;</a>
+  </td></tr>"""
+
+        html_til_kunde = html_til_kunde.replace('<!-- FOOTER -->', ekstra_blok + '\n  <!-- FOOTER -->')
+
+        pdf_bytes = generer_tilbud_pdf(html_til_kunde)
+        sikkert_filnavn = ''.join(c for c in titel if c.isalnum() or c in ' -_')[:40].strip() or 'tilbud'
+
+        emne = email_emne_override or f'Tilbud: {titel}'
+
+        send_mail(
+            kunde_email, emne,
+            f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF.',
+            fra_navn=fra_navn,
+            html_content=html_til_kunde,
+            pdf_vedhæft=pdf_bytes,
+            pdf_filnavn=f'{sikkert_filnavn}.pdf'
+        )
+
+        from datetime import datetime as _dt2
+        db.table('tilbud').update({
+            'status': 'sendt',
+            'sendt_dato': _dt2.now().isoformat(),
+            'followup_aktiveret': aktiver_followup
+        }).eq('id', tilbud_id).execute()
+
+        # Auto-upsert CRM kontakt
+        try:
+            supabase.table('crm_kontakter').upsert({
+                'klient_id': str(klient_id),
+                'email': kunde_email,
+                'navn': kunde_navn,
+                'sidst_opdateret': _dt2.utcnow().isoformat()
+            }, on_conflict='klient_id,email').execute()
+        except:
+            pass
+
+        return jsonify({'ok': True, 'sendt_til': kunde_email})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/portal/tilbud/followup-preview', methods=['POST'])
+@require_token
+def portal_followup_preview():
+    """Returnerer preview-HTML for opfølgningsmail trin 1"""
+    body = request.json or {}
+    fornavn   = body.get('fornavn', 'kunde')
+    titel     = body.get('titel', 'tilbuddet')
+    total     = body.get('total_pris', 0)
+    fra_navn  = body.get('fra_navn', 'os')
+    hjemmeside = body.get('hjemmeside', '')
+    accept_knap = '<div style="text-align:center;margin:20px 0"><a href="#" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 40px;border-radius:10px">✓ Godkend tilbud</a></div>'
+    kunde_navn = fornavn
+    html, emne = _byg_followup_html(fra_navn, hjemmeside, kunde_navn, titel, accept_knap, 1, total)
+    # Udtræk plain text intro
+    tekst = f'Hej {fornavn},\n\nJeg ville høre om du har haft mulighed for at kigge på tilbuddet på {titel}?\n\nHar du spørgsmål er du meget velkommen til at svare direkte på denne mail.\n\nMed venlig hilsen\n{fra_navn}'
+    return jsonify({'ok': True, 'html': html, 'emne': emne, 'tekst': tekst})
+
+
+# ── CRM KONTAKTER (portal) ──────────────────────────────
+@app.route('/portal/crm/upsert', methods=['POST'])
+@require_token
+def portal_crm_upsert():
+    """Gem eller opdater kontaktinfo på en kunde"""
+    body = request.json or {}
+    klient_id = str(request.user_klient_id)
+    email = body.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Email mangler'}), 400
+    from datetime import datetime as _dt2
+    try:
+        supabase.table('crm_kontakter').upsert({
+            'klient_id': klient_id,
+            'email': email,
+            'navn': body.get('navn', ''),
+            'telefon': body.get('telefon', ''),
+            'adresse': body.get('adresse', ''),
+            'postnummer': body.get('postnummer', ''),
+            'sidst_opdateret': _dt2.utcnow().isoformat()
+        }, on_conflict='klient_id,email').execute()
+        # Tilføj automatisk note hvis der er en
+        note = body.get('note', '').strip()
+        if note:
+            existing = supabase.table('crm_kontakter').select('noter').eq('klient_id', klient_id).eq('email', email).maybe_single().execute()
+            noter = existing.data.get('noter') or [] if existing.data else []
+            if isinstance(noter, str):
+                import json as _j; noter = _j.loads(noter)
+            noter.insert(0, {'tekst': note, 'dato': _dt2.utcnow().isoformat()})
+            supabase.table('crm_kontakter').update({'noter': noter}).eq('klient_id', klient_id).eq('email', email).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/portal/crm/note', methods=['POST'])
+@require_token
+def portal_crm_note():
+    """Tilføj note til en kontakt"""
+    body = request.json or {}
+    klient_id = str(request.user_klient_id)
+    email = body.get('email', '').strip().lower()
+    tekst = body.get('tekst', '').strip()
+    if not email or not tekst:
+        return jsonify({'error': 'Email og tekst kræves'}), 400
+    from datetime import datetime as _dt2
+    try:
+        existing = supabase.table('crm_kontakter').select('noter').eq('klient_id', klient_id).eq('email', email).maybe_single().execute()
+        noter = []
+        if existing.data:
+            noter = existing.data.get('noter') or []
+            if isinstance(noter, str):
+                import json as _j; noter = _j.loads(noter)
+        noter.insert(0, {'tekst': tekst, 'dato': _dt2.utcnow().isoformat()})
+        supabase.table('crm_kontakter').upsert({
+            'klient_id': klient_id, 'email': email, 'noter': noter,
+            'sidst_opdateret': _dt2.utcnow().isoformat()
+        }, on_conflict='klient_id,email').execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/portal/crm/status', methods=['PATCH'])
+@require_token
+def portal_crm_status():
+    """Opdater kontaktstatus (ny/kontaktet/møde/kunde)"""
+    body = request.json or {}
+    klient_id = str(request.user_klient_id)
+    email = body.get('email', '').strip().lower()
+    status = body.get('status', 'ny')
+    if status not in ('ny', 'kontaktet', 'møde', 'kunde'):
+        return jsonify({'error': 'Ugyldig status'}), 400
+    from datetime import datetime as _dt2
+    try:
+        supabase.table('crm_kontakter').upsert({
+            'klient_id': klient_id, 'email': email, 'status': status,
+            'sidst_opdateret': _dt2.utcnow().isoformat()
+        }, on_conflict='klient_id,email').execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/portal/crm/<klient_id>/<email>', methods=['GET'])
+@require_token
+def portal_crm_hent(klient_id, email):
+    """Hent CRM kontaktdata for én email (status + noter)"""
+    email = email.strip().lower()
+    try:
+        res = supabase.table('crm_kontakter').select('*').eq('klient_id', klient_id).eq('email', email).maybe_single().execute()
+        if not res.data:
+            return jsonify({'ok': True, 'kontakt': None})
+        return jsonify({'ok': True, 'kontakt': res.data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/tilbud/godkend/<tilbud_id>/<token>', methods=['GET'])
 def godkend_tilbud(tilbud_id, token):
     """Offentligt endpoint — kunden klikker 'Godkend tilbud' i mailen"""
