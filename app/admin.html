@@ -25,10 +25,22 @@
       --red: #dc2626; --red-bg: #fee2e2;
       --blue-bg: #dbeafe;
       --purple: #7c3aed; --purple-bg: #ede9fe;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
     .hidden { display: none !important; }
+
+    /* ── ENTRANCE ANIMATION ── */
+    @keyframes viewRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .view-anim > * { animation: viewRise .55s var(--ease) both; }
+    .view-anim > *:nth-child(1) { animation-delay: .02s; }
+    .view-anim > *:nth-child(2) { animation-delay: .07s; }
+    .view-anim > *:nth-child(3) { animation-delay: .12s; }
+    .view-anim > *:nth-child(4) { animation-delay: .17s; }
+    .view-anim > *:nth-child(5) { animation-delay: .22s; }
+    .view-anim > *:nth-child(n+6) { animation-delay: .26s; }
+    @media (prefers-reduced-motion: reduce) { .view-anim > * { animation: none; } }
 
     /* ── SIDEBAR ── */
     .sidebar {
@@ -2494,7 +2506,13 @@ const topbarInfo = {
 
 function showView(v) {
   views.forEach(id => document.getElementById('view-'+id)?.classList.add('hidden'));
-  document.getElementById('view-'+v)?.classList.remove('hidden');
+  const _viewEl = document.getElementById('view-'+v);
+  _viewEl?.classList.remove('hidden');
+  if (_viewEl) {
+    _viewEl.classList.remove('view-anim');
+    void _viewEl.offsetWidth;
+    _viewEl.classList.add('view-anim');
+  }
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.querySelector(`.nav-item[data-view="${v}"]`)?.classList.add('active');
   const [title, sub] = topbarInfo[v] || [v, ''];

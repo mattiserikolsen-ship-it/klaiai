@@ -1653,6 +1653,24 @@ async function loadData() {
 // ── OVERBLIK: ROI + AKTIVITETSFEED ─────────────────────
 let aktivitetInterval = null;
 
+// ── COUNT-UP ANIMATION ───────────────────────────────
+function countUp(el, target, { suffix = '', duration = 900 } = {}) {
+  if (!el) return;
+  target = Number(target) || 0;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fmt = v => Math.round(v).toLocaleString('da-DK');
+  if (reduce || target <= 0) { el.textContent = fmt(target) + suffix; return; }
+  const start = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  function frame(now) {
+    const p = Math.min((now - start) / duration, 1);
+    el.textContent = fmt(target * ease(p)) + suffix;
+    if (p < 1) requestAnimationFrame(frame);
+    else el.textContent = fmt(target) + suffix;
+  }
+  requestAnimationFrame(frame);
+}
+
 async function loadOverblik() {
   if (!CLIENT_ID) return;
   try {
@@ -1670,9 +1688,10 @@ async function loadOverblik() {
     if (harROI) {
       // Fuld ROI-mode
       document.getElementById('roiLabel').textContent = 'Din AI har tjent dig — denne måned';
-      document.getElementById('roiBeloeb').textContent = (roi.accepteret_maaned || 0).toLocaleString('da-DK') + ' kr';
+      countUp(document.getElementById('roiBeloeb'), roi.accepteret_maaned || 0, { suffix: ' kr' });
       const faktor = roi.roi_faktor || 0;
-      document.getElementById('roiFaktor').textContent = faktor > 0 ? faktor + 'x' : '—';
+      if (faktor > 0) countUp(document.getElementById('roiFaktor'), faktor, { suffix: 'x' });
+      else document.getElementById('roiFaktor').textContent = '—';
       const iAlt = (roi.accepteret_i_alt || 0).toLocaleString('da-DK');
       document.getElementById('roiSub').textContent =
         `${iAlt} kr genereret i alt · Abonnement: ${(roi.abo_pris||799).toLocaleString('da-DK')} kr/md`;
@@ -1680,7 +1699,7 @@ async function loadOverblik() {
     } else if (harLeads) {
       // Har leads men ingen accepterede tilbud endnu
       document.getElementById('roiLabel').textContent = 'Din AI arbejder — leads klar til tilbud';
-      document.getElementById('roiBeloeb').textContent = (roi.leads_i_alt || 0) + ' leads';
+      countUp(document.getElementById('roiBeloeb'), roi.leads_i_alt || 0, { suffix: ' leads' });
       document.getElementById('roiFaktor').textContent = '0 kr';
       document.getElementById('roiSub').textContent =
         `Send et tilbud til dine leads for at starte din ROI · Abonnement: ${(roi.abo_pris||799).toLocaleString('da-DK')} kr/md`;
@@ -1695,10 +1714,10 @@ async function loadOverblik() {
       document.getElementById('roiBadgeWrap').style.display = 'none';
     }
 
-    document.getElementById('roiLeads').textContent = roi.leads_maaned ?? '0';
-    document.getElementById('roiBookinger').textContent = roi.bookinger_maaned ?? '0';
-    document.getElementById('roiTilbudAccepteret').textContent = roi.tilbud_accepteret_maaned ?? '0';
-    document.getElementById('roiTilbudAfventer').textContent = roi.tilbud_afventende ?? '0';
+    countUp(document.getElementById('roiLeads'), roi.leads_maaned || 0);
+    countUp(document.getElementById('roiBookinger'), roi.bookinger_maaned || 0);
+    countUp(document.getElementById('roiTilbudAccepteret'), roi.tilbud_accepteret_maaned || 0);
+    countUp(document.getElementById('roiTilbudAfventer'), roi.tilbud_afventende || 0);
 
     // Lead indbakke
     renderLeadIndbakke(d.leads_recent || []);
