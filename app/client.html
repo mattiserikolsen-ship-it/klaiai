@@ -1113,6 +1113,34 @@
       </div>
     </div>
 
+      <!-- E-CONOMIC INTEGRATION -->
+      <div class="card" style="margin-top:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div>
+            <div class="card-title" style="margin:0">e-conomic integration</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Synkroniser tilbud til e-conomic som kladde-fakturaer</div>
+          </div>
+          <div id="econBadge" style="display:none;background:#dcfce7;color:#15803d;font-size:.72rem;font-weight:700;padding:.25rem .7rem;border-radius:99px">✓ Forbundet</div>
+        </div>
+        <div id="econForbundetPanel" style="display:none">
+          <div id="econVirksomhedNavn" style="font-size:.85rem;font-weight:600;color:var(--dark);margin-bottom:.75rem"></div>
+          <button onclick="econDisconnect()" style="background:#fee2e2;color:#dc2626;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">Afbryd forbindelse</button>
+        </div>
+        <div id="econForbindPanel">
+          <p style="font-size:.83rem;color:var(--muted);margin-bottom:.9rem;line-height:1.65">
+            Find dit <strong>Agreement Grant Token</strong> i e-conomic under:<br>
+            <span style="color:var(--dark);font-weight:600">Indstillinger → Tilføjelser → API adgang</span>
+          </p>
+          <div style="display:flex;gap:.6rem">
+            <input id="econTokenInput" placeholder="Indsæt Agreement Grant Token..." style="flex:1;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.85rem;font-family:inherit;outline:none"/>
+            <button onclick="econConnect()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.65rem 1.1rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Forbind</button>
+          </div>
+          <div id="econConnectStatus" style="font-size:.8rem;margin-top:.5rem;display:none"></div>
+        </div>
+      </div>
+
+    </div>
+
     <!-- AGENTER -->
     <div id="view-agenter" class="hidden">
       <div class="card">
@@ -1722,6 +1750,8 @@ function renderTilbud() {
           <div style="display:flex;gap:.4rem;margin-top:.2rem">
             <button onclick="åbnTilbud('${t.id}')" style="background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
             <button onclick="downloadTilbudPdf('${t.id}')" title="Download PDF" style="background:#f0efec;color:var(--dark);border:1px solid var(--border);border-radius:7px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">⬇ PDF</button>
+            ${(t.status === 'sendt' || t.status === 'accepteret') && !t.economic_faktura_nr ? `<button onclick="econSyncTilbud('${t.id}',this)" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit" title="Synkroniser til e-conomic">e-conomic ↑</button>` : ''}
+            ${t.economic_faktura_nr ? `<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600">✓ e-conomic #${t.economic_faktura_nr}</span>` : ''}
           </div>
           <div style="font-size:.68rem;color:var(--muted)">${dato}</div>
         </div>
@@ -2640,12 +2670,90 @@ async function åbnFaktureringsportal() {
   }
 }
 
+// ── E-CONOMIC ───────────────────────────────────────────
+async function econLoadStatus() {
+  try {
+    const res = await fetch(`${API}/econ/status/${CLIENT_ID}`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    const data = await res.json();
+    const forbundetPanel = document.getElementById('econForbundetPanel');
+    const forbindPanel   = document.getElementById('econForbindPanel');
+    const badge          = document.getElementById('econBadge');
+    if (data.forbundet) {
+      forbundetPanel.style.display = 'block';
+      forbindPanel.style.display   = 'none';
+      badge.style.display          = 'inline-block';
+      document.getElementById('econVirksomhedNavn').textContent = '🔗 Forbundet til: ' + (data.virksomhed || 'e-conomic');
+    } else {
+      forbundetPanel.style.display = 'none';
+      forbindPanel.style.display   = 'block';
+      badge.style.display          = 'none';
+    }
+  } catch(e) { console.error('e-conomic status fejl:', e); }
+}
+
+async function econConnect() {
+  const token  = document.getElementById('econTokenInput').value.trim();
+  const status = document.getElementById('econConnectStatus');
+  if (!token) { status.style.display='block'; status.style.color='#dc2626'; status.textContent='Indsæt dit Agreement Grant Token'; return; }
+  status.style.display='block'; status.style.color='var(--muted)'; status.textContent='Forbinder...';
+  try {
+    const res = await fetch(`${API}/econ/connect/${CLIENT_ID}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      status.style.color = '#15803d';
+      status.textContent = '✓ Forbundet til ' + data.virksomhed;
+      document.getElementById('econTokenInput').value = '';
+      await econLoadStatus();
+    } else {
+      status.style.color = '#dc2626';
+      status.textContent = data.error || 'Fejl ved forbindelsen';
+    }
+  } catch(e) { status.style.color='#dc2626'; status.textContent='Netværksfejl'; }
+}
+
+async function econDisconnect() {
+  if (!confirm('Afbryd e-conomic forbindelsen?')) return;
+  await fetch(`${API}/econ/disconnect/${CLIENT_ID}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${TOKEN}` }
+  });
+  await econLoadStatus();
+}
+
+async function econSyncTilbud(tilbudId, knap) {
+  knap.disabled = true;
+  knap.textContent = 'Synkroniserer...';
+  try {
+    const res = await fetch(`${API}/econ/sync-tilbud/${tilbudId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    const data = await res.json();
+    if (data.ok) {
+      knap.textContent = '✓ Sendt som kladde #' + data.faktura_nr;
+      knap.style.background = '#dcfce7';
+      knap.style.color = '#15803d';
+    } else {
+      knap.textContent = '⚠ ' + (data.error || 'Fejl');
+      knap.style.color = '#dc2626';
+      knap.disabled = false;
+    }
+  } catch(e) { knap.textContent = 'Netværksfejl'; knap.disabled = false; }
+}
+
 // ── INDSTILLINGER ──────────────────────────────────────
 let indstillingerIndlæst = false;
 
 async function loadIndstillinger() {
   if (indstillingerIndlæst) return;
   loadKlientKatalog();
+  econLoadStatus();
   try {
     const res = await fetch(`${API}/widget/${CLIENT_ID}`);
     if (!res.ok) return;

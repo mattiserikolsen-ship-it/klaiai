@@ -3156,6 +3156,212 @@ def admin_login_page():
     app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
     return send_from_directory(app_dir, 'admin.html')
 
+# ══════════════════════════════════════════════════════════════════
+#  E-CONOMIC INTEGRATION
+#  REST API: https://restapi.e-conomic.com
+#  Auth: X-AppSecretToken (vores app) + X-AgreementGrantToken (klientens)
+#
+#  SQL migration (kør én gang i Supabase):
+#  CREATE TABLE IF NOT EXISTS klient_integrationer (
+#    id SERIAL PRIMARY KEY,
+#    klient_id TEXT NOT NULL UNIQUE,
+#    economic_token TEXT,
+#    economic_navn TEXT,
+#    opdateret TIMESTAMPTZ DEFAULT NOW()
+#  );
+#  ALTER TABLE tilbud ADD COLUMN IF NOT EXISTS economic_faktura_nr INTEGER;
+#  ALTER TABLE tilbud ADD COLUMN IF NOT EXISTS economic_synced TIMESTAMPTZ;
+# ══════════════════════════════════════════════════════════════════
+
+ECONOMIC_APP_SECRET = os.environ.get('ECONOMIC_APP_SECRET', '')
+ECONOMIC_BASE = 'https://restapi.e-conomic.com'
+
+def _economic_headers(agreement_token):
+    return {
+        'X-AppSecretToken': ECONOMIC_APP_SECRET,
+        'X-AgreementGrantToken': agreement_token,
+        'Content-Type': 'application/json'
+    }
+
+def _hent_economic_token(klient_id):
+    try:
+        res = supabase.table('klient_integrationer')\
+            .select('economic_token')\
+            .eq('klient_id', str(klient_id))\
+            .maybe_single()\
+            .execute()
+        return res.data.get('economic_token') if res.data else None
+    except:
+        return None
+
+@app.route('/econ/connect/<klient_id>', methods=['POST'])
+@require_token
+def econ_connect(klient_id):
+    """Gem og valider e-conomic Agreement Grant Token"""
+    if str(request.user_klient_id) != str(klient_id):
+        return jsonify({'error': 'Ikke adgang'}), 403
+    data = request.json or {}
+    token = data.get('token', '').strip()
+    if not token:
+        return jsonify({'error': 'Token mangler'}), 400
+    if not ECONOMIC_APP_SECRET:
+        return jsonify({'error': 'e-conomic App Secret ikke konfigureret på serveren'}), 503
+    # Validér token mod e-conomic
+    try:
+        r = http_requests.get(f'{ECONOMIC_BASE}/self',
+            headers=_economic_headers(token), timeout=8)
+        if r.status_code != 200:
+            return jsonify({'error': 'Ugyldigt token — tjek dit Agreement Grant Token i e-conomic'}), 400
+        info = r.json()
+        virksomhed = info.get('company', {}).get('name', '')
+    except Exception as e:
+        return jsonify({'error': f'Kunne ikke forbinde: {e}'}), 502
+    from datetime import datetime as _dt
+    supabase.table('klient_integrationer').upsert({
+        'klient_id': str(klient_id),
+        'economic_token': token,
+        'economic_navn': virksomhed,
+        'opdateret': _dt.utcnow().isoformat()
+    }, on_conflict='klient_id').execute()
+    return jsonify({'ok': True, 'virksomhed': virksomhed})
+
+@app.route('/econ/status/<klient_id>', methods=['GET'])
+@require_token
+def econ_status(klient_id):
+    """Check om e-conomic er forbundet og token virker"""
+    if str(request.user_klient_id) != str(klient_id):
+        return jsonify({'error': 'Ikke adgang'}), 403
+    token = _hent_economic_token(klient_id)
+    if not token:
+        return jsonify({'forbundet': False})
+    try:
+        r = http_requests.get(f'{ECONOMIC_BASE}/self',
+            headers=_economic_headers(token), timeout=8)
+        if r.status_code == 200:
+            info = r.json()
+            return jsonify({'forbundet': True,
+                'virksomhed': info.get('company', {}).get('name', '')})
+    except:
+        pass
+    return jsonify({'forbundet': False, 'fejl': 'Token virker ikke — tilslut igen'})
+
+@app.route('/econ/disconnect/<klient_id>', methods=['DELETE'])
+@require_token
+def econ_disconnect(klient_id):
+    """Fjern e-conomic forbindelse"""
+    if str(request.user_klient_id) != str(klient_id):
+        return jsonify({'error': 'Ikke adgang'}), 403
+    supabase.table('klient_integrationer').delete()\
+        .eq('klient_id', str(klient_id)).execute()
+    return jsonify({'ok': True})
+
+@app.route('/econ/sync-tilbud/<tilbud_id>', methods=['POST'])
+@require_token
+def econ_sync_tilbud(tilbud_id):
+    """Synkroniser et tilbud til e-conomic som kladde-faktura"""
+    from datetime import datetime as _dt
+    # Hent tilbud
+    t_res = supabase.table('tilbud').select('*').eq('id', tilbud_id).maybe_single().execute()
+    if not t_res.data:
+        return jsonify({'error': 'Tilbud ikke fundet'}), 404
+    t = t_res.data
+    klient_id = t.get('klient_id')
+    if str(request.user_klient_id) != str(klient_id):
+        return jsonify({'error': 'Ikke adgang'}), 403
+    token = _hent_economic_token(klient_id)
+    if not token:
+        return jsonify({'error': 'e-conomic ikke forbundet — gå til Indstillinger'}), 400
+    hdrs = _economic_headers(token)
+    # Find eller opret kunde
+    kunde_email = t.get('email', '')
+    kunde_navn  = t.get('kunde_navn', 'Ukendt kunde')
+    econ_kunde_nr = None
+    if kunde_email:
+        s = http_requests.get(f'{ECONOMIC_BASE}/customers?filter=email$eq:{kunde_email}',
+            headers=hdrs, timeout=8)
+        if s.status_code == 200:
+            kol = s.json().get('collection', [])
+            if kol:
+                econ_kunde_nr = kol[0].get('customerNumber')
+    if not econ_kunde_nr:
+        ny = {'name': kunde_navn, 'email': kunde_email,
+              'customerGroup': {'customerGroupNumber': 1},
+              'currency': 'DKK',
+              'vatZone': {'vatZoneNumber': 1},
+              'paymentTerms': {'paymentTermsNumber': 1}}
+        cr = http_requests.post(f'{ECONOMIC_BASE}/customers', headers=hdrs, json=ny, timeout=8)
+        if cr.status_code in (200, 201):
+            econ_kunde_nr = cr.json().get('customerNumber')
+        else:
+            return jsonify({'error': f'Kunne ikke oprette kunde i e-conomic: {cr.text}'}), 502
+    # Byg faktura-linjer
+    linjer_raw = t.get('linjer') or t.get('poster') or []
+    if isinstance(linjer_raw, str):
+        try: linjer_raw = json.loads(linjer_raw)
+        except: linjer_raw = []
+    faktura_linjer = []
+    for i, linje in enumerate(linjer_raw):
+        beskr = linje.get('beskrivelse') or linje.get('navn') or linje.get('ydelse', 'Ydelse')
+        antal = float(linje.get('antal') or linje.get('mængde') or 1)
+        epris = float(linje.get('enhedspris') or linje.get('pris') or 0)
+        faktura_linjer.append({'lineNumber': i+1, 'description': beskr,
+            'quantity': antal, 'unitNetPrice': epris, 'unit': {'unitNumber': 1}})
+    if not faktura_linjer:
+        total = float(t.get('total_ekskl_moms') or t.get('beloeb') or 0)
+        faktura_linjer = [{'lineNumber': 1,
+            'description': t.get('opgave_beskrivelse') or 'Se vedhæftet tilbud',
+            'quantity': 1, 'unitNetPrice': total, 'unit': {'unitNumber': 1}}]
+    # Opret kladde-faktura
+    kladde = {
+        'date': _dt.utcnow().strftime('%Y-%m-%d'),
+        'currency': 'DKK',
+        'paymentTerms': {'paymentTermsNumber': 1},
+        'customer': {'customerNumber': econ_kunde_nr},
+        'recipient': {'name': kunde_navn, 'vatZone': {'vatZoneNumber': 1}},
+        'notes': {'heading': f"Tilbud {t.get('tilbud_nr', tilbud_id[:8].upper())}",
+                  'textLine1': t.get('opgave_beskrivelse', '')},
+        'lines': faktura_linjer
+    }
+    resp = http_requests.post(f'{ECONOMIC_BASE}/invoices/drafts',
+        headers=hdrs, json=kladde, timeout=10)
+    if resp.status_code in (200, 201):
+        faktura_nr = resp.json().get('draftInvoiceNumber')
+        supabase.table('tilbud').update({
+            'economic_faktura_nr': faktura_nr,
+            'economic_synced': _dt.utcnow().isoformat()
+        }).eq('id', tilbud_id).execute()
+        return jsonify({'ok': True, 'faktura_nr': faktura_nr})
+    return jsonify({'error': f'e-conomic fejl: {resp.text}'}), 502
+
+@app.route('/econ/admin/oversigt', methods=['GET'])
+@require_admin
+def econ_admin_oversigt():
+    """Admin: se hvilke klienter der har e-conomic forbundet"""
+    try:
+        res = supabase.table('klient_integrationer').select('*').execute()
+        return jsonify(res.data or [])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/econ/vaerker', methods=['GET'])
+@require_token
+def econ_hent_vaerker():
+    """Hent tilgængelige betalingsbetingelser og grupper fra e-conomic"""
+    klient_id = request.user_klient_id
+    token = _hent_economic_token(klient_id)
+    if not token:
+        return jsonify({'error': 'Ikke forbundet'}), 400
+    hdrs = _economic_headers(token)
+    try:
+        pt = http_requests.get(f'{ECONOMIC_BASE}/payment-terms', headers=hdrs, timeout=8)
+        cg = http_requests.get(f'{ECONOMIC_BASE}/customer-groups', headers=hdrs, timeout=8)
+        return jsonify({
+            'betalingsbetingelser': pt.json().get('collection', []) if pt.status_code == 200 else [],
+            'kundegrupper': cg.json().get('collection', []) if cg.status_code == 200 else []
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+
 def _ryd_gamle_sessions():
     """Fjern demo_sessions ældre end 2 timer, udløbne tokens og prospekter ældre end 7 dage"""
     _ryd_tokens()

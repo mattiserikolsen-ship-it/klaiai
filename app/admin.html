@@ -397,6 +397,9 @@
     <div class="nav-item" data-view="outbound" onclick="showView('outbound')">
       <span class="ni">🚀</span> Outbound
     </div>
+    <div class="nav-item" data-view="economic" onclick="showView('economic');loadEconOversigt()">
+      <span class="ni">🔗</span> e-conomic
+    </div>
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
@@ -656,6 +659,35 @@
             <button class="btn btn-primary" id="emailModalSendBtn" onclick="sendEmailFraModal()">✉ Send email</button>
           </div>
           <div id="emailModalStatus" style="font-size:.82rem;margin-top:.75rem;text-align:center"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── E-CONOMIC ADMIN VIEW ── -->
+    <div id="view-economic" class="hidden">
+      <div class="card" style="margin-bottom:1.5rem">
+        <div style="font-size:1rem;font-weight:700;margin-bottom:.25rem">e-conomic integrationer</div>
+        <div style="font-size:.82rem;color:var(--muted)">Oversigt over hvilke klienter der har forbundet e-conomic — og status på seneste sync.</div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:.9rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:.82rem;font-weight:700;color:var(--muted)">Klienter med e-conomic</div>
+          <button class="btn btn-secondary btn-sm" onclick="loadEconOversigt()">⟳ Opdater</button>
+        </div>
+        <div id="econOversigt" style="padding:1rem;font-size:.85rem;color:var(--muted)">Indlæser...</div>
+      </div>
+      <div class="card" style="margin-top:1.25rem;background:#f0f9ff;border-color:#bae6fd">
+        <div style="font-size:.85rem;font-weight:700;color:#0369a1;margin-bottom:.5rem">Opsætning — hvad klienten skal gøre</div>
+        <ol style="font-size:.82rem;color:#0c4a6e;line-height:1.9;margin-left:1rem">
+          <li>Log ind på <strong>e-conomic.dk</strong></li>
+          <li>Gå til <strong>Indstillinger → Tilføjelser → API adgang</strong></li>
+          <li>Klik <strong>"Giv adgang til en tilføjelse"</strong></li>
+          <li>Indsæt app-nøgle: <code style="background:#e0f2fe;padding:.1rem .4rem;border-radius:4px;font-family:monospace">NexOlsen</code></li>
+          <li>Kopier det genererede <strong>Agreement Grant Token</strong></li>
+          <li>Indsæt i NexOlsen under <strong>Indstillinger → e-conomic integration</strong></li>
+        </ol>
+        <div style="margin-top:.75rem;font-size:.78rem;color:#0369a1">
+          <strong>ECONOMIC_APP_SECRET</strong> skal være sat som env var på Render — kontakt Mattis hvis ikke.
         </div>
       </div>
     </div>
@@ -2297,7 +2329,7 @@ async function syncChatbotConfigToDB(clientId, cfg) {
 }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound'];
+const views = ['dashboard','clients','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound','economic'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
@@ -2313,6 +2345,7 @@ const topbarInfo = {
   'crm':           ['CRM – Lead Pipeline', 'Håndter og følg op på alle dine leads'],
   'indsigter':     ['Indsigter & Rapporter', 'Grafer, statistik og månedlige rapporter til klienter'],
   'outbound':      ['🚀 Outbound Salgsmaskine', 'Find prospekter, scan sites og send personlige cold emails automatisk'],
+  'economic':      ['e-conomic', 'Overblik over klienters e-conomic integration'],
 };
 
 function showView(v) {
@@ -2332,6 +2365,32 @@ function showView(v) {
   if (v === 'crm') { populateCRMFilter(); loadCRM(); }
   if (v === 'indsigter') { populateIndsigterFilter(); if (document.getElementById('indsigterKlient').value) loadIndsigter(); }
   if (v === 'outbound') loadOutbound();
+}
+
+async function loadEconOversigt() {
+  const el = document.getElementById('econOversigt');
+  if (!el) return;
+  el.innerHTML = 'Indlæser...';
+  try {
+    const res = await fetch(`${API}/econ/admin/oversigt`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    const data = await res.json();
+    if (!data.length) {
+      el.innerHTML = '<div style="padding:.5rem 0;color:var(--muted)">Ingen klienter har forbundet e-conomic endnu.</div>';
+      return;
+    }
+    el.innerHTML = data.map(r => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:600;font-size:.875rem">${r.economic_navn || 'Ukendt virksomhed'}</div>
+          <div style="font-size:.75rem;color:var(--muted)">Klient-ID: ${r.klient_id} · Forbundet: ${r.opdateret ? new Date(r.opdateret).toLocaleDateString('da-DK') : '—'}</div>
+        </div>
+        <span style="background:#dcfce7;color:#15803d;font-size:.72rem;font-weight:700;padding:.2rem .7rem;border-radius:99px">✓ Aktiv</span>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:#dc2626">Fejl ved hentning: ' + e.message + '</div>';
+  }
 }
 
 function switchTab(t) {

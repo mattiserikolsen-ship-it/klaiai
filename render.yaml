@@ -11,3 +11,5 @@ services:
         sync: false
       - key: GMAIL_APP_PASSWORD
         sync: false
+      - key: ECONOMIC_APP_SECRET
+        sync: false
