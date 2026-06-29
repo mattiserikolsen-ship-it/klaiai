@@ -3528,6 +3528,78 @@ def admin_health_scores():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/admin/onboarding-status', methods=['GET'])
+@require_admin
+def admin_onboarding_status():
+    """Admin: vis onboarding-fremgang per klient baseret på DB-signaler"""
+    if not db:
+        return jsonify([])
+    try:
+        klienter_res = db.table('klienter').select('id,navn,email,hjemmeside,aktiv,oprettet').order('oprettet', desc=True).execute()
+        klienter = klienter_res.data or []
+
+        # Hent alle tilbud, leads, bookinger (kun id + klient_id + status)
+        tilbud_res    = db.table('tilbud').select('klient_id,status,oprettet').execute()
+        leads_res     = db.table('leads').select('klient_id,oprettet').execute()
+        bookinger_res = db.table('bookinger').select('klient_id,oprettet').execute()
+
+        from collections import defaultdict
+        tilbud_pr = defaultdict(list)
+        leads_pr  = defaultdict(list)
+        book_pr   = defaultdict(list)
+
+        for t in (tilbud_res.data or []):
+            tilbud_pr[t['klient_id']].append(t)
+        for l in (leads_res.data or []):
+            leads_pr[l['klient_id']].append(l)
+        for b in (bookinger_res.data or []):
+            book_pr[b['klient_id']].append(b)
+
+        result = []
+        for k in klienter:
+            kid = k['id']
+            tilbud    = tilbud_pr[kid]
+            leads     = leads_pr[kid]
+            bookinger = book_pr[kid]
+
+            sendt_tilbud = [t for t in tilbud if t.get('status') in ('sendt', 'accepteret', 'afvist')]
+
+            trin = {
+                'klient_oprettet':    True,
+                'hjemmeside_sat':     bool(k.get('hjemmeside')),
+                'widget_installeret': len(leads) > 0,
+                'forste_lead':        len(leads) > 0,
+                'forste_tilbud':      len(tilbud) > 0,
+                'tilbud_sendt':       len(sendt_tilbud) > 0,
+                'forste_booking':     len(bookinger) > 0,
+            }
+
+            done  = sum(1 for v in trin.values() if v)
+            total = len(trin)
+            pct   = round(done / total * 100)
+
+            result.append({
+                'klient_id':  kid,
+                'navn':       k.get('navn', ''),
+                'email':      k.get('email', ''),
+                'aktiv':      k.get('aktiv', True),
+                'oprettet':   k.get('oprettet', ''),
+                'trin':       trin,
+                'done':       done,
+                'total':      total,
+                'pct':        pct,
+                'leads':      len(leads),
+                'tilbud':     len(tilbud),
+                'bookinger':  len(bookinger),
+            })
+
+        # Sorter: lavest pct øverst (dem der mangler mest hjælp)
+        result.sort(key=lambda x: (x['pct'], x['navn']))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/econ/admin/oversigt', methods=['GET'])
 @require_admin
 def econ_admin_oversigt():

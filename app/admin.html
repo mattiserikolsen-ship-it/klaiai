@@ -387,6 +387,9 @@
     <div class="nav-item" data-view="mrr" onclick="showView('mrr');renderMRR()">
       <span class="ni">📊</span> MRR & Vækst
     </div>
+    <div class="nav-item" data-view="onboarding" onclick="showView('onboarding');loadOnboarding()">
+      <span class="ni">🚀</span> Onboarding
+    </div>
     <div class="nav-item" onclick="syncAlleKlienter()" title="Synkroniser alle klienter til databasen">
       <span class="ni">↻</span> Synk DB
     </div>
@@ -620,6 +623,48 @@
         <div class="card">
           <div style="font-size:.9rem;font-weight:700;margin-bottom:1.1rem">⚠️ Kræver handling</div>
           <div id="mrrChurnListe" style="font-size:.85rem;color:var(--muted)">Indlæser...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ONBOARDING ── -->
+    <div id="view-onboarding" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+        <div>
+          <div style="font-size:1rem;font-weight:800">Onboarding Status</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem">Fremgang per klient — hvem mangler hjælp til at komme i gang?</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadOnboarding()">↻ Opdater</button>
+      </div>
+
+      <!-- SUMMARY STATS -->
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:1.5rem">
+        <div class="stat-card" style="border-left:4px solid var(--green)">
+          <div class="stat-num" id="obFuldt" style="color:var(--green)">—</div>
+          <div class="stat-label">Fuldt onboardet</div>
+          <div class="stat-sub">100% gennemført</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid #f59e0b">
+          <div class="stat-num" id="obIgang" style="color:#f59e0b">—</div>
+          <div class="stat-label">I gang</div>
+          <div class="stat-sub">Delvist gennemført</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid var(--red)">
+          <div class="stat-num" id="obIkkeStartet" style="color:var(--red)">—</div>
+          <div class="stat-label">Ikke startet</div>
+          <div class="stat-sub">Under 15% gennemført</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid var(--accent)">
+          <div class="stat-num" id="obGennemsnit" style="color:var(--accent)">—</div>
+          <div class="stat-label">Gns. fremgang</div>
+          <div class="stat-sub">Alle aktive klienter</div>
+        </div>
+      </div>
+
+      <!-- ONBOARDING TABLE -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="onboardingTableWrap">
+          <div style="padding:2rem;text-align:center;color:var(--muted)">Henter onboarding status...</div>
         </div>
       </div>
     </div>
@@ -2425,12 +2470,13 @@ async function syncChatbotConfigToDB(clientId, cfg) {
 }
 
 // ── NAVIGATION ────────────────────────────────────────
-const views = ['dashboard','clients','health','mrr','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound','economic'];
+const views = ['dashboard','clients','health','mrr','onboarding','new-client','client-detail','agents','fakturaer','gen-chatbot','gen-lead','gen-mail','gen-booking','gen-rapport','crm','indsigter','outbound','economic'];
 const topbarInfo = {
   'dashboard':     ['Dashboard', 'Overblik over alle klienter og generatorer'],
   'clients':       ['Alle klienter', 'Oversigt og status på alle klienter'],
   'health':        ['Health Score', 'Aktivitet, churn-risiko og status per klient'],
   'mrr':           ['MRR & Vækst', 'Månedlig omsætning, ARR og churn-oversigt'],
+  'onboarding':    ['Onboarding Status', 'Fremgang og manglende opsætningsskridt per klient'],
   'new-client':    ['Ny klient', 'Opret og konfigurer ny klient'],
   'client-detail': ['Klient', ''],
   'agents':        ['AI-agenter', 'Automatiske agenter der kører for alle dine klienter'],
@@ -2562,6 +2608,91 @@ function renderHealthTable(data) {
         }).join('')}
       </tbody>
     </table>`;
+}
+
+// ── ONBOARDING STATUS ─────────────────────────────────
+async function loadOnboarding() {
+  const wrap = document.getElementById('onboardingTableWrap');
+  if (wrap) wrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">Henter onboarding data...</div>';
+  try {
+    const res = await apiFetch(`${AGENT_URL}/admin/onboarding-status`);
+    if (!res.ok) throw new Error('fetch fejl');
+    const data = await res.json();
+    renderOnboardingTable(data);
+  } catch(e) {
+    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">Fejl: ${e.message}</div>`;
+  }
+}
+
+function renderOnboardingTable(data) {
+  const aktive = data.filter(k => k.aktiv !== false);
+
+  // Summary stats
+  const fuldt      = aktive.filter(k => k.pct === 100).length;
+  const igang      = aktive.filter(k => k.pct >= 15 && k.pct < 100).length;
+  const ikkeStart  = aktive.filter(k => k.pct < 15).length;
+  const gnsTotal   = aktive.length ? Math.round(aktive.reduce((s,k) => s + k.pct, 0) / aktive.length) : 0;
+
+  document.getElementById('obFuldt').textContent       = fuldt;
+  document.getElementById('obIgang').textContent       = igang;
+  document.getElementById('obIkkeStartet').textContent = ikkeStart;
+  document.getElementById('obGennemsnit').textContent  = gnsTotal + '%';
+
+  const TRIN_LABELS = {
+    klient_oprettet:    'Klient oprettet',
+    hjemmeside_sat:     'Hjemmeside sat',
+    widget_installeret: 'Widget installeret',
+    forste_lead:        'Første lead',
+    forste_tilbud:      'Tilbud oprettet',
+    tilbud_sendt:       'Tilbud sendt',
+    forste_booking:     'Første booking',
+  };
+
+  const wrap = document.getElementById('onboardingTableWrap');
+  if (!data.length) {
+    wrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">Ingen klienter</div>';
+    return;
+  }
+
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.82rem">
+    <thead>
+      <tr style="border-bottom:2px solid var(--border)">
+        <th style="text-align:left;padding:.75rem 1rem;font-weight:700">Klient</th>
+        <th style="text-align:center;padding:.75rem .5rem;font-weight:700">Fremgang</th>
+        ${Object.keys(TRIN_LABELS).map(k => `<th style="text-align:center;padding:.5rem .3rem;font-weight:600;font-size:.72rem;color:var(--muted)" title="${TRIN_LABELS[k]}">${TRIN_LABELS[k].split(' ')[0]}<br>${TRIN_LABELS[k].split(' ').slice(1).join(' ')}</th>`).join('')}
+        <th style="text-align:right;padding:.75rem 1rem;font-weight:700">Handling</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${data.map(k => {
+        const barColor = k.pct === 100 ? 'var(--green)' : k.pct >= 50 ? 'var(--accent)' : k.pct >= 15 ? '#f59e0b' : 'var(--red)';
+        return `<tr style="border-bottom:1px solid var(--border);${!k.aktiv ? 'opacity:.45' : ''}">
+          <td style="padding:.75rem 1rem">
+            <div style="font-weight:600">${k.navn}</div>
+            <div style="font-size:.72rem;color:var(--muted)">${k.email}</div>
+          </td>
+          <td style="padding:.75rem .5rem;min-width:130px">
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <div style="flex:1;background:var(--border);border-radius:4px;height:7px;overflow:hidden">
+                <div style="width:${k.pct}%;height:100%;background:${barColor};transition:width .4s"></div>
+              </div>
+              <span style="font-size:.75rem;font-weight:700;color:${barColor};min-width:32px">${k.pct}%</span>
+            </div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">${k.done}/${k.total} trin</div>
+          </td>
+          ${Object.keys(TRIN_LABELS).map(tid => {
+            const done = k.trin && k.trin[tid];
+            return `<td style="text-align:center;padding:.5rem .3rem">
+              <span style="font-size:1rem">${done ? '✅' : '⬜'}</span>
+            </td>`;
+          }).join('')}
+          <td style="padding:.75rem 1rem;text-align:right">
+            <button class="btn btn-ghost btn-sm" onclick="openClient('${k.klient_id}')">Se klient →</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
 }
 
 // ── MRR & VÆKST ──────────────────────────────────────
