@@ -329,6 +329,42 @@ Trin 4 — OPSAML LEAD naturligt og uforpligtende:
 - Undgå bullets og lange lister — tal som et menneske"""
 
 
+def opsaml_kontakt(klient_id, email, navn='', telefon='', adresse='', postnummer=''):
+    """Rygraden: sikrer at personen findes som central CRM-kontakt.
+
+    Email er den fælles nøgle alle moduler (leads, tilbud, bookinger) binder sammen på.
+    Udfylder kun tomme felter — overskriver aldrig data kunden allerede har rettet.
+    """
+    if not db or str(klient_id) == 'demo':
+        return
+    email = (email or '').strip().lower()
+    if not email or '@' not in email:
+        return  # uden email-nøgle kan kontakten ikke bindes til rygraden
+    try:
+        from datetime import datetime as _dt
+        nu = _dt.utcnow().isoformat()
+        eksisterende = db.table('crm_kontakter').select('navn,telefon,adresse,postnummer') \
+            .eq('klient_id', str(klient_id)).eq('email', email).maybe_single().execute()
+        if eksisterende and eksisterende.data:
+            d = eksisterende.data
+            patch = {'sidst_opdateret': nu}
+            if navn and not d.get('navn'): patch['navn'] = navn
+            if telefon and not d.get('telefon'): patch['telefon'] = telefon
+            if adresse and not d.get('adresse'): patch['adresse'] = adresse
+            if postnummer and not d.get('postnummer'): patch['postnummer'] = postnummer
+            db.table('crm_kontakter').update(patch) \
+                .eq('klient_id', str(klient_id)).eq('email', email).execute()
+        else:
+            db.table('crm_kontakter').insert({
+                'klient_id': str(klient_id), 'email': email,
+                'navn': navn, 'telefon': telefon,
+                'adresse': adresse, 'postnummer': postnummer,
+                'status': 'ny', 'sidst_opdateret': nu
+            }).execute()
+    except Exception as e:
+        print(f"Kontakt-opsamling fejl: {e}")
+
+
 def gem_lead_i_db(klient_id, lead_data):
     """Gemmer lead i Supabase og sender notifikation til klient."""
     if db:
@@ -343,6 +379,7 @@ def gem_lead_i_db(klient_id, lead_data):
                 'kilde': 'chatbot',
                 'status': 'ny'
             }).execute()
+            opsaml_kontakt(klient_id, lead_data.get('email', ''), lead_data.get('navn', ''), lead_data.get('telefon', ''))
         except Exception as e:
             print(f"Lead DB fejl: {e}")
 
@@ -628,6 +665,7 @@ def modtag_lead():
                 'besked': lead.get('besked', ''),
                 'status': 'ny'
             }).execute()
+            opsaml_kontakt(klient_id, lead.get('email', ''), lead.get('navn', ''), lead.get('telefon', ''))
         except Exception as e:
             print(f"Lead DB fejl: {e}")
 
@@ -996,6 +1034,7 @@ def modtag_booking():
                 'besked': booking.get('besked', ''),
                 'status': 'bekræftet'
             }).execute()
+            opsaml_kontakt(klient_id, booking.get('email', ''), booking.get('navn', ''), booking.get('telefon', ''))
         except Exception as e:
             print(f"Booking DB fejl: {e}")
 
