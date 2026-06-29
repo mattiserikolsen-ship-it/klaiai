@@ -6594,6 +6594,77 @@ def portal_overblik(klient_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/portal/overblik-total/<klient_id>', methods=['GET'])
+@require_token
+def portal_overblik_total(klient_id):
+    """Forretnings-overblik på tværs af moduler: tragt, vundne penge og fælles tidslinje.
+
+    Tallene beregnes fra kildetabellerne (fuld historik, virker straks).
+    Tidslinjen læses fra aktivitet-tabellen (fylder op efterhånden som hændelser sker).
+    """
+    from datetime import datetime, timezone
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not db:
+        return jsonify({'maaned': {}, 'i_alt': {}, 'tidslinje': []})
+
+    try:
+        nu = datetime.now(timezone.utc)
+        maaned_start = nu.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+        # ── Tragten: samme person hele vejen, beregnet fra kildetabeller ──
+        leads = db.table('leads').select('oprettet').eq('klient_id', klient_id).execute().data or []
+        tilbud = db.table('tilbud').select('total_pris,status,sendt_dato,godkendt_dato').eq('klient_id', klient_id).execute().data or []
+        bookinger = db.table('bookinger').select('oprettet').eq('klient_id', klient_id).execute().data or []
+
+        def i_maaned(rows, felt):
+            return [r for r in rows if (r.get(felt) or '') >= maaned_start]
+
+        tilbud_sendt = [t for t in tilbud if t.get('sendt_dato')]
+        tilbud_vundet = [t for t in tilbud if t.get('status') == 'accepteret']
+
+        tilbud_sendt_m = i_maaned(tilbud_sendt, 'sendt_dato')
+        tilbud_vundet_m = i_maaned(tilbud_vundet, 'godkendt_dato')
+
+        def sum_beloeb(rows):
+            return sum(int(t.get('total_pris', 0) or 0) for t in rows)
+
+        def tragt(leads_n, sendt_n, vundet_n):
+            return {
+                'leads': leads_n,
+                'tilbud_sendt': sendt_n,
+                'tilbud_vundet': vundet_n,
+                'konvertering': round(vundet_n / sendt_n * 100) if sendt_n else 0,
+            }
+
+        maaned = {
+            **tragt(len(i_maaned(leads, 'oprettet')), len(tilbud_sendt_m), len(tilbud_vundet_m)),
+            'bookinger': len(i_maaned(bookinger, 'oprettet')),
+            'vundet_beloeb': sum_beloeb(tilbud_vundet_m),
+        }
+        i_alt = {
+            **tragt(len(leads), len(tilbud_sendt), len(tilbud_vundet)),
+            'bookinger': len(bookinger),
+            'vundet_beloeb': sum_beloeb(tilbud_vundet),
+        }
+
+        # ── Fælles tidslinje fra aktivitet-tabellen (graceful hvis tom/mangler) ──
+        tidslinje = []
+        try:
+            akt = db.table('aktivitet').select('type,titel,beloeb,kontakt_email,modul,oprettet') \
+                .eq('klient_id', klient_id).order('oprettet', desc=True).limit(30).execute()
+            tidslinje = akt.data or []
+        except Exception as e:
+            print(f"Aktivitet-laesning fejl (koer migrations/aktivitet.sql?): {e}")
+
+        return jsonify({'maaned': maaned, 'i_alt': i_alt, 'tidslinje': tidslinje})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/portal/tilbud/<klient_id>', methods=['GET'])
 @require_token
 def portal_tilbud_liste(klient_id):
