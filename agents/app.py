@@ -3389,6 +3389,30 @@ def econ_sync_tilbud(tilbud_id):
         return jsonify({'ok': True, 'faktura_nr': faktura_nr})
     return jsonify({'error': f'e-conomic fejl: {resp.text}'}), 502
 
+@app.route('/admin/impersonate/<klient_id>', methods=['POST'])
+@require_admin
+def admin_impersonate(klient_id):
+    """Admin: generer et midlertidigt portal-token og returner login-URL"""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        k = db.table('klienter').select('id,navn,aktiv').eq('id', klient_id).maybe_single().execute()
+        if not k.data:
+            return jsonify({'error': 'Klient ikke fundet'}), 404
+        import secrets
+        token = secrets.token_urlsafe(32)
+        _gem_token(token, {
+            'role': 'client',
+            'klient_id': klient_id,
+            'created_at': _time.time(),
+            'impersonated': True,
+        })
+        url = f'/portal?id={klient_id}&token={token}'
+        return jsonify({'ok': True, 'url': url, 'token': token, 'klient_id': klient_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/admin/health-scores', methods=['GET'])
 @require_admin
 def admin_health_scores():

@@ -1017,6 +1017,7 @@
           <button class="btn btn-secondary btn-sm" onclick="openEditModal()">✏️ Rediger</button>
           <button class="btn btn-secondary btn-sm" onclick="gensendVelkomst()" title="Send onboarding-email med login-credentials til klienten">📧 Velkomst</button>
           <button class="btn btn-secondary btn-sm" onclick="openClientPortal()">Åbn portal →</button>
+          <button class="btn btn-primary btn-sm" onclick="impersonerKlient()" title="Log ind i klientens portal som dem — ingen kodeord nødvendigt">👤 Log ind som kunde</button>
           <button id="toggleAktivBtn" class="btn btn-sm" onclick="toggleKlientAktiv()" style="background:var(--orange-bg);color:var(--orange)">⏸ Deaktiver</button>
           <button class="btn btn-danger btn-sm" onclick="deleteClient()">🗑 Slet</button>
         </div>
@@ -3625,6 +3626,25 @@ async function toggleKlientAktiv() {
 
 function openClientPortal() {
   window.open(AGENT_URL + '/portal/' + currentClient?.id, '_blank');
+}
+
+async function impersonerKlient() {
+  if (!currentClient?.id) return;
+  const btn = event?.target;
+  const origTxt = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Henter adgang...'; }
+  try {
+    const res = await apiFetch(`${AGENT_URL}/admin/impersonate/${currentClient.id}`, { method: 'POST' });
+    const d = await res.json();
+    if (!d.ok) { alert(d.error || 'Fejl'); return; }
+    // Åbn klientportalen med det genererede token
+    const portalUrl = `${AGENT_URL}/portal?id=${currentClient.id}&token=${d.token}`;
+    window.open(portalUrl, '_blank');
+  } catch(e) {
+    alert('Netværksfejl');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origTxt; }
+  }
 }
 
 async function gensendVelkomst() {

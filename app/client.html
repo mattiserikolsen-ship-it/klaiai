@@ -1470,6 +1470,18 @@
 <script>
 // ── AUTH GUARD ─────────────────────────────────────────
 (function() {
+  // Impersonation: admin kan sende ?token=xxx&id=yyy i URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlToken = urlParams.get('token');
+  const urlId    = urlParams.get('id');
+  if (urlToken && urlId) {
+    localStorage.setItem('klaiai_token', urlToken);
+    localStorage.setItem('klaiai_klient_id', urlId);
+    localStorage.setItem('klaiai_role', 'client');
+    // Fjern token fra URL uden reload
+    const cleanUrl = window.location.pathname + '?id=' + urlId;
+    window.history.replaceState({}, '', cleanUrl);
+  }
   const token = localStorage.getItem('klaiai_token');
   const role  = localStorage.getItem('klaiai_role');
   if (!token || role !== 'client') {
