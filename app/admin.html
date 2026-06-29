@@ -2537,11 +2537,14 @@ async function loadHealthScores() {
   if (wrap) wrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">Beregner health scores...</div>';
   try {
     const res = await apiFetch(`${AGENT_URL}/admin/health-scores`);
-    if (!res.ok) throw new Error('fetch fejl');
+    if (!res) return; // 401 håndteret af apiFetch (login)
+    if (res.status >= 500) throw new Error('Serveren starter op — prøv igen om et øjeblik');
+    if (!res.ok) throw new Error('Kunne ikke hente data (' + res.status + ')');
     healthData = await res.json();
     renderHealthTable(healthData);
   } catch(e) {
-    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">Fejl: ${e.message}</div>`;
+    const besked = e.message === 'Failed to fetch' ? 'Ingen forbindelse til serveren' : e.message;
+    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">${besked}<br><button onclick="loadHealthScores()" style="margin-top:1rem;background:var(--accent);color:#fff;border:none;padding:.55rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Prøv igen</button></div>`;
   }
 }
 
@@ -2634,11 +2637,14 @@ async function loadOnboarding() {
   if (wrap) wrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">Henter onboarding data...</div>';
   try {
     const res = await apiFetch(`${AGENT_URL}/admin/onboarding-status`);
-    if (!res.ok) throw new Error('fetch fejl');
+    if (!res) return; // 401 håndteret af apiFetch (login)
+    if (res.status >= 500) throw new Error('Serveren starter op — prøv igen om et øjeblik');
+    if (!res.ok) throw new Error('Kunne ikke hente data (' + res.status + ')');
     const data = await res.json();
     renderOnboardingTable(data);
   } catch(e) {
-    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">Fejl: ${e.message}</div>`;
+    const besked = e.message === 'Failed to fetch' ? 'Ingen forbindelse til serveren' : e.message;
+    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">${besked}<br><button onclick="loadOnboarding()" style="margin-top:1rem;background:var(--accent);color:#fff;border:none;padding:.55rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Prøv igen</button></div>`;
   }
 }
 
