@@ -276,6 +276,10 @@
     #bookingPanel.open { right:0; }
     #bookingPanelOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:1999; }
     #bookingPanelOverlay.open { display:block; }
+    @media (max-width:768px) {
+      #bookingPanel { top:auto; right:0; bottom:-100vh; width:100%; height:86vh; border-radius:20px 20px 0 0; transition:bottom .28s ease; box-shadow:0 -8px 40px rgba(0,0,0,.14); }
+      #bookingPanel.open { bottom:0; right:0; }
+    }
 
     /* ── OPRET AFTALE MODAL ── */
     .aftale-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:3000; align-items:center; justify-content:center; }
@@ -384,6 +388,17 @@
       .roi-stats { gap: 1rem; }
       .rapport-grid, .rapport-grid-3 { grid-template-columns: 1fr; }
       .pipeline-wrap { grid-template-columns: 1fr 1fr; gap: .5rem; }
+
+      /* Kalender: bedre touch targets */
+      .booking-cal-cell { font-size: .82rem; border-radius: 50%; min-height: 36px; }
+      .booking-cal { gap: 3px; padding: .5rem .75rem 1rem; }
+      .booking-cal-header { padding: .6rem .75rem 0; }
+
+      /* Filter-knapper: kompakt */
+      .booking-filter-btn { font-size: .68rem; padding: .25rem .55rem; }
+
+      /* Siden sidst banner */
+      #sidenSidstCard { padding: .85rem 1rem; }
     }
     @media (max-width: 480px) {
       .stats-row { grid-template-columns: 1fr 1fr; gap: .5rem; }
@@ -858,7 +873,7 @@
 
     <!-- CRM SLIDE-IN PANEL -->
     <div id="crmSideOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1999" onclick="lukCRM()"></div>
-    <div id="crmSidePanel" style="position:fixed;top:0;right:-460px;width:440px;max-width:100vw;height:100vh;background:#fff;z-index:2000;box-shadow:-8px 0 40px rgba(0,0,0,.12);transition:right .25s ease;display:flex;flex-direction:column;overflow:hidden">
+    <div id="crmSidePanel" style="position:fixed;top:0;right:-460px;width:440px;max-width:100vw;height:100vh;background:#fff;z-index:2000;box-shadow:-8px 0 40px rgba(0,0,0,.12);transition:right .25s ease,bottom .28s ease;display:flex;flex-direction:column;overflow:hidden">
 
       <!-- CRM HEADER -->
       <div style="padding:1.25rem 1.25rem .9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-shrink:0">
@@ -3064,14 +3079,29 @@ function åbnCRM(email, navn, telefon) {
   document.getElementById('crmStatusPills').innerHTML = '';
   document.getElementById('crmFooterStats').textContent = '';
 
-  document.getElementById('crmSidePanel').style.right = '0';
+  const _crmPanel = document.getElementById('crmSidePanel');
+  if (window.innerWidth <= 768) {
+    _crmPanel.style.right = '0';
+    _crmPanel.style.bottom = '0';
+    _crmPanel.style.top = 'auto';
+    _crmPanel.style.width = '100%';
+    _crmPanel.style.height = '86vh';
+    _crmPanel.style.borderRadius = '20px 20px 0 0';
+  } else {
+    _crmPanel.style.right = '0';
+  }
   document.getElementById('crmSideOverlay').style.display = 'block';
 
   hentCRMData(email);
 }
 
 function lukCRM() {
-  document.getElementById('crmSidePanel').style.right = '-460px';
+  const _crmPanel = document.getElementById('crmSidePanel');
+  if (window.innerWidth <= 768) {
+    _crmPanel.style.bottom = '-100vh';
+  } else {
+    _crmPanel.style.right = '-460px';
+  }
   document.getElementById('crmSideOverlay').style.display = 'none';
 }
 
