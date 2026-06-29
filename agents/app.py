@@ -3389,6 +3389,121 @@ def econ_sync_tilbud(tilbud_id):
         return jsonify({'ok': True, 'faktura_nr': faktura_nr})
     return jsonify({'error': f'e-conomic fejl: {resp.text}'}), 502
 
+@app.route('/admin/health-scores', methods=['GET'])
+@require_admin
+def admin_health_scores():
+    """Admin: beregn health score per klient baseret på aktivitet"""
+    if not db:
+        return jsonify([])
+    import datetime as _dt
+    nu = _dt.datetime.utcnow()
+    dag14 = (nu - _dt.timedelta(days=14)).isoformat()
+    dag30 = (nu - _dt.timedelta(days=30)).isoformat()
+    dag7  = (nu - _dt.timedelta(days=7)).isoformat()
+
+    try:
+        klienter_res = db.table('klienter').select('id,navn,aktiv,email').order('navn').execute()
+        klienter = klienter_res.data or []
+
+        # Hent aktivitet på tværs af alle klienter
+        tilbud_res    = db.table('tilbud').select('klient_id,oprettet,status').gte('oprettet', dag30).execute()
+        leads_res     = db.table('leads').select('klient_id,oprettet').gte('oprettet', dag30).execute()
+        bookinger_res = db.table('bookinger').select('klient_id,oprettet').gte('oprettet', dag30).execute()
+
+        # Gruppér per klient
+        from collections import defaultdict
+        tilbud_pr_klient   = defaultdict(list)
+        leads_pr_klient    = defaultdict(list)
+        bookinger_pr_klient = defaultdict(list)
+
+        for t in (tilbud_res.data or []):
+            tilbud_pr_klient[t['klient_id']].append(t)
+        for l in (leads_res.data or []):
+            leads_pr_klient[l['klient_id']].append(l)
+        for b in (bookinger_res.data or []):
+            bookinger_pr_klient[b['klient_id']].append(b)
+
+        result = []
+        for k in klienter:
+            kid = k['id']
+            tilbud   = tilbud_pr_klient[kid]
+            leads    = leads_pr_klient[kid]
+            bookinger = bookinger_pr_klient[kid]
+
+            # Find seneste aktivitet (proxy for "sidst logget ind")
+            alle_tidsstempler = (
+                [t['oprettet'] for t in tilbud if t.get('oprettet')] +
+                [l['oprettet'] for l in leads if l.get('oprettet')] +
+                [b['oprettet'] for b in bookinger if b.get('oprettet')]
+            )
+            sidst_aktiv = max(alle_tidsstempler) if alle_tidsstempler else None
+
+            # Dage siden sidst aktiv
+            if sidst_aktiv:
+                sidst_dt = _dt.datetime.fromisoformat(sidst_aktiv.replace('Z',''))
+                dage_siden = (nu - sidst_dt).days
+            else:
+                dage_siden = 999
+
+            # Tilbud seneste 7 dage
+            tilbud_7d = [t for t in tilbud if t.get('oprettet', '') >= dag7]
+            tilbud_14d = [t for t in tilbud if t.get('oprettet', '') >= dag14]
+            leads_7d  = [l for l in leads if l.get('oprettet', '') >= dag7]
+
+            # Health score beregning (0-100)
+            score = 100
+
+            # Inaktivitet
+            if dage_siden > 30:   score -= 40
+            elif dage_siden > 14: score -= 25
+            elif dage_siden > 7:  score -= 10
+
+            # Ingen tilbud seneste 30 dage
+            if not tilbud:        score -= 20
+            elif not tilbud_14d:  score -= 10
+
+            # Ingen leads seneste 14 dage (proxy: chatbot aktiv?)
+            if not leads:         score -= 15
+            elif not leads_7d:    score -= 5
+
+            # Klient inaktiv i systemet
+            if not k.get('aktiv'): score = max(score - 20, 0)
+
+            score = max(0, min(100, score))
+
+            # Kategori
+            if score >= 75:   kategori = 'sund'
+            elif score >= 45: kategori = 'advarsel'
+            else:             kategori = 'risiko'
+
+            # Churn signal
+            churn_signal = dage_siden > 21 and len(tilbud) == 0
+
+            result.append({
+                'klient_id':    kid,
+                'navn':         k.get('navn', ''),
+                'email':        k.get('email', ''),
+                'aktiv':        k.get('aktiv', True),
+                'score':        score,
+                'kategori':     kategori,
+                'churn_signal': churn_signal,
+                'dage_siden':   dage_siden if dage_siden < 999 else None,
+                'sidst_aktiv':  sidst_aktiv,
+                'tilbud_30d':   len(tilbud),
+                'tilbud_7d':    len(tilbud_7d),
+                'leads_30d':    len(leads),
+                'leads_7d':     len(leads_7d),
+                'bookinger_30d': len(bookinger),
+            })
+
+        # Sorter: risiko øverst, derefter advarsel, sund sidst
+        sort_order = {'risiko': 0, 'advarsel': 1, 'sund': 2}
+        result.sort(key=lambda x: (sort_order.get(x['kategori'], 3), -(x['score'] * -1)))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/econ/admin/oversigt', methods=['GET'])
 @require_admin
 def econ_admin_oversigt():
