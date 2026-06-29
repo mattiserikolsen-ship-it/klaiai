@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NexOlsen Agent Server
+Nordolsen Agent Server
 Samlet Flask-app med Chatbot Agent + Lead Agent
 Klar til deployment på Render / Railway
 """
@@ -151,7 +151,7 @@ def require_auth(f):
             return Response(
                 'Adgang kræver login.',
                 401,
-                {'WWW-Authenticate': 'Basic realm="NexOlsen Admin"'}
+                {'WWW-Authenticate': 'Basic realm="Nordolsen Admin"'}
             )
         return f(*args, **kwargs)
     return decorated
@@ -364,7 +364,7 @@ Telefon: {lead_tlf}
 Email: {lead_email}
 Interesse: {lead_besked}
 
-Log ind på din NexOlsen portal for at se alle leads."""
+Log ind på din Nordolsen portal for at se alle leads."""
 
     # Send notifikation til klient
     if SENDGRID_API_KEY and notif_mail and '@' in notif_mail:
@@ -374,9 +374,9 @@ Log ind på din NexOlsen portal for at se alle leads."""
     else:
         _log_agent('lead_notif', klient_id, lead_navn, f"Nyt lead opsamlet: {lead_navn} — {lead_besked[:60]}")
 
-    # Send notifikation til admin (NexOlsen)
+    # Send notifikation til admin (Nordolsen)
     if SENDGRID_API_KEY and ADMIN_EMAIL and '@' in ADMIN_EMAIL:
-        emne_admin = f"[NexOlsen] Nyt lead hos {klient_navn} — {lead_navn}"
+        emne_admin = f"[Nordolsen] Nyt lead hos {klient_navn} — {lead_navn}"
         tekst_admin = f"""Nyt lead opsamlet via chatbot!
 
 Klient: {klient_navn} ({klient_id})
@@ -387,7 +387,7 @@ Interesse: {lead_besked}
 
 Log ind på admin-panelet for at se detaljer:
 https://klaiai.onrender.com/app/admin.html"""
-        send_mail(ADMIN_EMAIL, emne_admin, tekst_admin, 'NexOlsen')
+        send_mail(ADMIN_EMAIL, emne_admin, tekst_admin, 'Nordolsen')
 
     # Send SMS-notifikation til klient
     if GATEWAYAPI_TOKEN:
@@ -436,7 +436,7 @@ https://klaiai.onrender.com/app/admin.html"""
     <div style="font-size:13px;color:#888">Med venlig hilsen,<br><strong>{klient_navn}</strong></div>
   </td></tr>
   <tr><td style="background:#f8f7f4;padding:16px 32px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
-    <div style="font-size:11px;color:#bbb">Drevet af NexOlsen</div>
+    <div style="font-size:11px;color:#bbb">Drevet af Nordolsen</div>
   </td></tr>
 </table>
 </td></tr></table>
@@ -867,7 +867,7 @@ def send_sms(til_nummer, besked):
             'https://gatewayapi.com/rest/mtsms',
             auth=(GATEWAYAPI_TOKEN, ''),
             json={
-                'sender': 'NexOlsen',
+                'sender': 'Nordolsen',
                 'message': besked[:160],
                 'recipients': [{'msisdn': int(nummer)}]
             },
@@ -1332,7 +1332,7 @@ def get_insights(klient_id):
     formular = len(leads) - chatbot
     chatbot_pct = round(chatbot / len(leads) * 100) if leads else 0
 
-    analyse_prompt = f"""Du er en skarp NexOlsen-konsulent. Analyser denne klients AI-opsætning og returner præcis 4-5 kritiske, konkrete forbedringer i JSON.
+    analyse_prompt = f"""Du er en skarp Nordolsen-konsulent. Analyser denne klients AI-opsætning og returner præcis 4-5 kritiske, konkrete forbedringer i JSON.
 
 KLIENT DATA:
 Navn: {klient.get('navn', '')}
@@ -1672,21 +1672,21 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=None, chat_
 
     fornavn = klient_navn.split()[0] if klient_navn else 'der'
     return f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/><title>NexOlsen Rapport — {mdr_navn}</title></head>
+<html><head><meta charset="UTF-8"/><title>Nordolsen Rapport — {mdr_navn}</title></head>
 <body style="margin:0;padding:0;background:#f8f7f4;font-family:'Helvetica Neue',Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px">
 
   <!-- HEADER -->
   <tr><td style="background:#0a2463;border-radius:14px 14px 0 0;padding:28px 36px">
-    <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">NexOlsen</div>
+    <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px">Nordolsen</div>
     <div style="color:rgba(255,255,255,.4);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;margin-top:3px">Månedlig klientrapport · {mdr_navn}</div>
   </td></tr>
 
   <!-- INTRO -->
   <tr><td style="background:#fff;padding:28px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:6px">Hej, {fornavn}!</div>
-    <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din månedlige rapport fra NexOlsen for <strong>{mdr_navn}</strong>. Her er hvad dine AI-agenter har lavet for dig.</div>
+    <div style="font-size:13px;color:#9a9590;line-height:1.7">Her er din månedlige rapport fra Nordolsen for <strong>{mdr_navn}</strong>. Her er hvad dit system har lavet for dig.</div>
   </td></tr>
 
   <!-- TOP STATS -->
@@ -1761,7 +1761,7 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=None, chat_
   <!-- AI ANBEFALING -->
   <tr><td style="background:#fff;padding:24px 36px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
     <div style="background:#f0f4ff;border-left:3px solid #0a2463;border-radius:0 10px 10px 0;padding:16px 20px">
-      <div style="font-size:11px;font-weight:700;color:#0a2463;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💡 NexOlsen anbefaler</div>
+      <div style="font-size:11px;font-weight:700;color:#0a2463;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">💡 Nordolsen anbefaler</div>
       <div style="font-size:13px;color:#1a1918;line-height:1.7">{anbefaling}</div>
     </div>
   </td></tr>
@@ -1771,7 +1771,7 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=None, chat_
     <a href="https://klaiai.onrender.com/portal/{klient_id}" style="display:inline-block;background:#0a2463;color:#fff;text-decoration:none;font-size:13px;font-weight:700;padding:12px 28px;border-radius:9px">
       Se din portal →
     </a>
-    <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af NexOlsen · Rapport for {mdr_navn}</div>
+    <div style="font-size:11px;color:#c5c2bc;margin-top:16px">Drevet af Nordolsen · Rapport for {mdr_navn}</div>
   </td></tr>
 
 </table>
@@ -1806,13 +1806,13 @@ def send_rapport(klient_id):
 
     from datetime import datetime
     dato_str = datetime.now().strftime('%-d. %B %Y')
-    emne = f"Din NexOlsen rapport — {dato_str}"
+    emne = f"Din Nordolsen rapport — {dato_str}"
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return jsonify({'success': False, 'error': 'Mail ikke konfigureret'}), 500
 
     try:
         message = Mail(
-            from_email=(SENDGRID_FROM, 'NexOlsen'),
+            from_email=(SENDGRID_FROM, 'Nordolsen'),
             to_emails=mail_til,
             subject=emne,
             html_content=html
@@ -2048,14 +2048,14 @@ def send_velkomst(klient_id):
     html = f"""
 <div style="font-family:'Inter',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1918;background:#f8f7f4;padding:2rem 1rem">
   <div style="background:#0a2463;border-radius:14px 14px 0 0;padding:2.5rem 2rem;text-align:center">
-    <div style="font-size:1.8rem;font-weight:900;color:#fff;letter-spacing:-1px">NexOlsen</div>
-    <div style="color:rgba(255,255,255,.6);font-size:.9rem;margin-top:.4rem">Din AI-portal er klar 🎉</div>
+    <div style="font-size:1.8rem;font-weight:900;color:#fff;letter-spacing:-1px">Nordolsen</div>
+    <div style="color:rgba(255,255,255,.6);font-size:.9rem;margin-top:.4rem">Din portal er klar 🎉</div>
   </div>
 
   <div style="background:#fff;border-radius:0 0 14px 14px;padding:2rem;border:1px solid #e5e3de;border-top:none">
     <p style="font-size:1rem;font-weight:700;margin-bottom:.5rem">Hej {fornavn}!</p>
     <p style="color:#4a4845;line-height:1.7;margin-bottom:1.5rem">
-      Din NexOlsen-portal er nu klar. Her kan du følge med i dine leads, bookinger og din chatbots aktivitet — alt på ét sted.
+      Din Nordolsen-portal er nu klar. Her kan du følge med i dine leads, bookinger og din chatbots aktivitet — alt på ét sted.
     </p>
 
     <!-- LOGIN BOKS -->
@@ -2068,7 +2068,7 @@ def send_velkomst(klient_id):
         </div>
         <div>
           <span style="font-size:.78rem;color:#9a9590;display:block;margin-bottom:.15rem">Adgangskode</span>
-          <span style="font-weight:700;font-size:.95rem;font-family:monospace;background:#e5e3de;padding:.2rem .5rem;border-radius:5px">{password if password else '(kontakt NexOlsen)'}</span>
+          <span style="font-weight:700;font-size:.95rem;font-family:monospace;background:#e5e3de;padding:.2rem .5rem;border-radius:5px">{password if password else '(kontakt Nordolsen)'}</span>
         </div>
       </div>
     </div>
@@ -2117,13 +2117,13 @@ def send_velkomst(klient_id):
 
     <p style="color:#9a9590;font-size:.8rem;text-align:center;line-height:1.6">
       Spørgsmål? Skriv til <a href="mailto:support@nexolsen.dk" style="color:#0a2463">support@nexolsen.dk</a><br/>
-      NexOlsen · AI-agenter til din virksomhed
+      Nordolsen · Din samlede IT-løsning
     </p>
   </div>
 </div>"""
 
     try:
-        send_mail(email, f'Din NexOlsen-portal er klar, {fornavn}! 🎉', html, 'NexOlsen')
+        send_mail(email, f'Din Nordolsen-portal er klar, {fornavn}! 🎉', html, 'Nordolsen')
         return jsonify({'success': True, 'sendt_til': email})
     except Exception as e:
         return jsonify({'error': f'Email fejlede: {str(e)}'}), 500
@@ -2285,8 +2285,8 @@ def stripe_webhook():
                 # Send advarsel
                 kr = db.table('klienter').select('email, navn').eq('stripe_subscription_id', sub_id).single().execute()
                 if kr.data:
-                    send_mail(kr.data['email'], 'Betalingsproblem med dit NexOlsen abonnement',
-                        f"Hej {kr.data['navn']},\n\nVi kunne ikke trække betaling for dit abonnement. Opdater din betalingsmetode inden 7 dage for at undgå deaktivering.\n\nhttps://klaiai.dk/login\n\nNexOlsen", 'NexOlsen')
+                    send_mail(kr.data['email'], 'Betalingsproblem med dit Nordolsen abonnement',
+                        f"Hej {kr.data['navn']},\n\nVi kunne ikke trække betaling for dit abonnement. Opdater din betalingsmetode inden 7 dage for at undgå deaktivering.\n\nhttps://klaiai.dk/login\n\nNordolsen", 'Nordolsen')
             except: pass
 
     elif etype == 'customer.subscription.deleted':
@@ -2448,7 +2448,7 @@ def onboarding_opret():
 # ── SCAN JOBS (in-memory) ─────────────────────────────
 scan_jobs = {}  # job_id -> {'status': 'running'/'done'/'error', 'data': ..., 'meta': ...}
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; KlarAI-scanner/1.0)'}
+HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; Nordolsen-scanner/1.0)'}
 
 # Nøgleord → info-sider
 INFO_SIDER = [
@@ -3100,10 +3100,10 @@ def test_mail():
         return jsonify({'error': 'SENDGRID_API_KEY eller SENDGRID_FROM mangler', 'key_sat': bool(SENDGRID_API_KEY), 'from_sat': bool(SENDGRID_FROM)}), 500
     try:
         message = Mail(
-            from_email=(SENDGRID_FROM, 'NexOlsen Test'),
+            from_email=(SENDGRID_FROM, 'Nordolsen Test'),
             to_emails=til,
-            subject='NexOlsen test mail',
-            plain_text_content='Denne mail bekræfter at NexOlsen mail-systemet virker.',
+            subject='Nordolsen test mail',
+            plain_text_content='Denne mail bekræfter at Nordolsen mail-systemet virker.',
         )
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
@@ -3164,7 +3164,7 @@ def login():
             if res.data:
                 klient = res.data
                 if klient.get('aktiv') == False:
-                    return jsonify({'error': 'Adgang er deaktiveret. Kontakt NexOlsen.'}), 403
+                    return jsonify({'error': 'Adgang er deaktiveret. Kontakt Nordolsen.'}), 403
                 klient_pw = klient.get('password', '')
                 if not klient_pw:
                     return jsonify({'error': 'Forkert email eller adgangskode'}), 401
@@ -3667,7 +3667,7 @@ def demo_scan():
     # Hent hjemmeside
     try:
         resp = http_requests.get(raw_url, timeout=10, verify=False,
-            headers={'User-Agent': 'Mozilla/5.0 (compatible; NexOlsen-Demo/1.0)'})
+            headers={'User-Agent': 'Mozilla/5.0 (compatible; Nordolsen-Demo/1.0)'})
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
     except Exception as e:
@@ -3731,7 +3731,7 @@ Svar KUN med gyldig JSON (ingen forklaring) i dette format:
     klient_config = {
         'navn': virk_navn,
         'chatbot_navn': ai_cfg.get('chatbot_navn', 'Alma'),
-        'velkomst': ai_cfg.get('velkomst', f'Hej! Jeg er {virk_navn}s AI-assistent. Hvordan kan jeg hjælpe dig?'),
+        'velkomst': ai_cfg.get('velkomst', f'Hej! Jeg er {virk_navn}s digitale assistent. Hvordan kan jeg hjælpe dig?'),
         'farve': primær_farve,
         'ekstra_viden': ai_cfg.get('ydelser', ''),
         'info': {
@@ -3814,15 +3814,15 @@ def demo_tilmeld():
   <div style="background:#fff;padding:2rem;border-radius:0 0 12px 12px;border:1px solid #e5e3de;border-top:none">
     <p>Vi har registreret din interesse og vender tilbage inden for 24 timer med et personligt tilbud til <strong>{navn or url}</strong>.</p>
     <p>Mens du venter kan du se mere på <a href="https://nexolsen.dk" style="color:#0a2463">nexolsen.dk</a>.</p>
-    <p style="color:#9a9590;font-size:.85rem">NexOlsen · support@nexolsen.dk</p>
+    <p style="color:#9a9590;font-size:.85rem">Nordolsen · support@nexolsen.dk</p>
   </div>
 </div>"""
-        send_mail(email, 'Vi vender tilbage inden for 24 timer 👋', html, 'NexOlsen')
+        send_mail(email, 'Vi vender tilbage inden for 24 timer 👋', html, 'Nordolsen')
 
     # Notifier admin
     if SENDGRID_API_KEY and ADMIN_EMAIL:
         send_mail(ADMIN_EMAIL, f'NY DEMO-INTERESSE: {email} ({navn or url})',
-            f'Email: {email}\nVirksomhed: {navn}\nURL: {url}\n\nFølg op!', 'NexOlsen System')
+            f'Email: {email}\nVirksomhed: {navn}\nURL: {url}\n\nFølg op!', 'Nordolsen System')
 
     return jsonify({'success': True})
 
@@ -3891,7 +3891,7 @@ def prospekt_scan(pid):
     url = p['url']
     try:
         resp = http_requests.get(url, timeout=10, verify=False,
-            headers={'User-Agent': 'Mozilla/5.0 (compatible; NexOlsen/1.0)'})
+            headers={'User-Agent': 'Mozilla/5.0 (compatible; Nordolsen/1.0)'})
         soup = BeautifulSoup(resp.text, 'html.parser')
     except Exception as e:
         p['status'] = 'scan-fejl'
@@ -3920,7 +3920,7 @@ def prospekt_scan(pid):
         ai_resp = ai.messages.create(
             model='claude-haiku-4-5-20251001',
             max_tokens=700,
-            messages=[{'role': 'user', 'content': f"""Du er salgskonsulent hos NexOlsen, der sælger AI-chatbots til danske virksomheder.
+            messages=[{'role': 'user', 'content': f"""Du er salgskonsulent hos Nordolsen, der sælger AI-chatbots til danske virksomheder.
 
 Analysér denne hjemmeside og svar KUN med JSON:
 
@@ -3934,7 +3934,7 @@ JSON-format:
   "beskrivelse": "1 sætning om hvad virksomheden laver",
   "smertepunkt": "den vigtigste grund til at de har brug for en AI-chatbot (leads, bookinger, FAQ...)",
   "email_emne": "fængende emne til cold email (maks 8 ord)",
-  "email_tekst": "personlig cold email på 4-5 linjer dansk. Nævn specifikt hvad de sælger, og hvad de mister ved ikke at have AI. Afslut med en konkret CTA. Underskriv som 'Mattis fra NexOlsen'. INGEN emojis."
+  "email_tekst": "personlig cold email på 4-5 linjer dansk. Nævn specifikt hvad de sælger, og hvad de mister ved ikke at have AI. Afslut med en konkret CTA. Underskriv som 'Mattis fra Nordolsen'. INGEN emojis."
 }}"""}]
         )
         raw = ai_resp.content[0].text.strip()
@@ -3964,20 +3964,20 @@ def prospekt_send_email(pid):
 
     udkast = p.get('email_udkast', '')
     linjer = udkast.split('\n')
-    emne   = linjer[0].replace('Emne:', '').strip() if linjer else f"AI-chatbot til {p['navn']}"
+    emne   = linjer[0].replace('Emne:', '').strip() if linjer else f"Digitalt system til {p['navn']}"
     tekst  = '\n'.join(linjer[2:]).strip() if len(linjer) > 2 else udkast
 
     html = f"""<div style="font-family:Arial,sans-serif;max-width:560px;padding:20px;color:#1a1918">
 {('<br>'.join(tekst.split(chr(10))))}
 <br><br>
 <a href="https://klaiai.onrender.com/demo" style="display:inline-block;background:#0a2463;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:700;font-size:.9rem">
-  Se din gratis AI-demo →
+  Se din gratis demo →
 </a>
 <br><br>
-<span style="font-size:.8rem;color:#9a9590">NexOlsen · AI-agenter til din virksomhed · <a href="mailto:support@nexolsen.dk" style="color:#9a9590">support@nexolsen.dk</a></span>
+<span style="font-size:.8rem;color:#9a9590">Nordolsen · Din samlede IT-løsning · <a href="mailto:support@nexolsen.dk" style="color:#9a9590">support@nexolsen.dk</a></span>
 </div>"""
 
-    ok = send_mail(til_email, emne, html, 'Mattis fra NexOlsen')
+    ok = send_mail(til_email, emne, html, 'Mattis fra Nordolsen')
     if ok:
         p['status'] = 'email-sendt'
         p['email']  = til_email
@@ -4073,7 +4073,7 @@ def _send_opsaetningsmanual(klient, klient_id, plan, produkter):
     platform_navn = platform_navne.get(platform, 'din hjemmeside')
     plan_navn = STRIPE_PRISER.get(plan, STRIPE_PRISER['starter'])['navn']
 
-    prompt = f"""Du er NexOlsen's tekniske support. Skriv en komplet opsætningsmanual på dansk til en ny kunde.
+    prompt = f"""Du er Nordolsen's tekniske support. Skriv en komplet opsætningsmanual på dansk til en ny kunde.
 
 Kundeinfo:
 - Virksomhed: {navn}
@@ -4142,28 +4142,28 @@ Skriv i en venlig, professionel tone. Brug markdown-formatering med overskrifter
         html_content = f"""
         <div style="font-family: 'Inter', Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1918;">
           <div style="background:#0a2463; padding:2rem; border-radius:12px 12px 0 0; text-align:center;">
-            <h1 style="color:#fff; margin:0; font-size:1.5rem">Velkommen til NexOlsen</h1>
+            <h1 style="color:#fff; margin:0; font-size:1.5rem">Velkommen til Nordolsen</h1>
             <p style="color:rgba(255,255,255,.7); margin:.5rem 0 0">Din opsætningsguide til {platform_navn}</p>
           </div>
           <div style="background:#fff; padding:2rem; border-radius:0 0 12px 12px; border:1px solid #e5e3de; border-top:none;">
             {''.join(html_lines)}
             <hr style="border:none;border-top:1px solid #e5e3de; margin:2rem 0"/>
             <p style="color:#9a9590; font-size:.85rem; text-align:center">
-              NexOlsen · support@nexolsen.dk · <a href="https://klaiai.dk/login" style="color:#0a2463">Log ind her</a>
+              Nordolsen · support@nexolsen.dk · <a href="https://klaiai.dk/login" style="color:#0a2463">Log ind her</a>
             </p>
           </div>
         </div>"""
 
-        send_mail(email, f'🚀 Kom i gang med NexOlsen – din guide til {platform_navn}', html_content, 'NexOlsen')
+        send_mail(email, f'🚀 Kom i gang med Nordolsen – din guide til {platform_navn}', html_content, 'Nordolsen')
         print(f"Opsætningsmanual sendt til {email}")
     except Exception as e:
         print(f"Manual generering fejl: {e}")
         # Fallback: send simpel velkomstmail
-        send_mail(email, 'Velkommen til NexOlsen 🎉',
+        send_mail(email, 'Velkommen til Nordolsen 🎉',
             f"""<p>Hej {navn}!</p>
             <p>Din konto er nu aktiv. Log ind på <a href="https://klaiai.dk/login">klaiai.dk/login</a></p>
             <p>Din chatbot-kode:<br><code>&lt;script src="https://klaiai.onrender.com/chatbot.js" data-client="{klient_id}"&gt;&lt;/script&gt;</code></p>
-            <p>Med venlig hilsen,<br>NexOlsen</p>""", 'NexOlsen')
+            <p>Med venlig hilsen,<br>Nordolsen</p>""", 'Nordolsen')
 
 
 def _gem_til_godkendelse(klient_id, lead_id, emne, html, agent_navn, reference_id, mail_nr=1):
@@ -4432,7 +4432,7 @@ def _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url,
 
     ingen = chat_uge == 0 and leads_uge == 0
     hero_tekst = "Stille uge — chatbotten venter på besøgende" if ingen else f"{chat_uge} samtaler og {leads_uge} nye leads denne uge"
-    hero_sub = "Ingen aktivitet endnu — chatbotten er klar og aktiv." if ingen else "Dine AI-agenter har arbejdet for dig i baggrunden."
+    hero_sub = "Ingen aktivitet endnu — chatbotten er klar og aktiv." if ingen else "Dit system har arbejdet for dig i baggrunden."
 
     return f"""<!DOCTYPE html>
 <html lang="da">
@@ -4451,12 +4451,11 @@ def _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url,
     <table cellpadding="0" cellspacing="0" style="margin:0 auto">
       <tr>
         <td style="background:#0a1a3a;border-radius:10px;padding:10px 20px">
-          <span style="color:#fff;font-size:18px;font-weight:900;letter-spacing:-0.5px">NexOlsen</span>
-          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px;letter-spacing:1px;text-transform:uppercase">AI</span>
+          <span style="color:#fff;font-size:18px;font-weight:900;letter-spacing:-0.5px">Nordolsen</span>
         </td>
       </tr>
     </table>
-    <div style="font-size:12px;color:#9ca3af;margin-top:8px">Ugentlig AI-rapport · Uge {uge_nr} · {dato_str}</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px">Ugentlig rapport · Uge {uge_nr} · {dato_str}</div>
   </td></tr>
 
   <!-- MAIN CARD -->
@@ -4540,7 +4539,7 @@ def _byg_uge_status_html(klient_navn, leads_uge, chat_uge, gaps_uge, portal_url,
   <tr><td style="padding:20px 0;text-align:center">
     <div style="font-size:11px;color:#9ca3af;line-height:1.8">
       Denne rapport sendes automatisk hver mandag morgen<br>
-      <strong style="color:#6b7280">NexOlsen AI</strong> · support@nexolsen.dk
+      <strong style="color:#6b7280">Nordolsen</strong> · support@nexolsen.dk
     </div>
   </td></tr>
 
@@ -4725,13 +4724,13 @@ def kør_billing_agent():
             if k.get('email'):
                 send_mail(
                     k['email'],
-                    'Din NexOlsen konto er deaktiveret',
+                    'Din Nordolsen konto er deaktiveret',
                     f"""<p>Hej {k.get('navn', '')},</p>
-                    <p>Vi har desværre måttet deaktivere din NexOlsen konto da vi ikke har kunnet trække betaling i over 7 dage.</p>
+                    <p>Vi har desværre måttet deaktivere din Nordolsen konto da vi ikke har kunnet trække betaling i over 7 dage.</p>
                     <p>Hvis du ønsker at genaktivere din konto, kan du opdatere din betalingsmetode ved at kontakte os på
                     <a href="mailto:support@nexolsen.dk">support@nexolsen.dk</a>.</p>
-                    <p>Med venlig hilsen,<br>NexOlsen</p>""",
-                    'NexOlsen'
+                    <p>Med venlig hilsen,<br>Nordolsen</p>""",
+                    'Nordolsen'
                 )
 
             _log_agent('billing_agent', k['id'], k['id'], f"Konto deaktiveret efter 7 dage med manglende betaling")
@@ -4768,9 +4767,9 @@ def kør_mail_flow_agent():
             # Hent klientens navn til afsender
             try:
                 k_res = db.table('klienter').select('navn').eq('id', klient_id).single().execute()
-                klient_navn = k_res.data.get('navn', 'NexOlsen') if k_res.data else 'NexOlsen'
+                klient_navn = k_res.data.get('navn', 'Nordolsen') if k_res.data else 'Nordolsen'
             except:
-                klient_navn = 'NexOlsen'
+                klient_navn = 'Nordolsen'
 
             for lead in leads_res.data:
                 if not lead.get('email'):
@@ -5011,7 +5010,7 @@ def kør_ubesvarede_leads_reminder():
                 timer = '?'
             linjer.append(f"• {kl_navn}: {len(kl)} ubesvarede lead{'s' if len(kl)>1 else ''} (ældste: {timer} timer)")
 
-        emne = f"[NexOlsen] ⚠️ {len(leads)} ubesvarede leads afventer svar"
+        emne = f"[Nordolsen] ⚠️ {len(leads)} ubesvarede leads afventer svar"
         tekst = f"""Hej Mattis,
 
 Du har leads der har ligget i 'Ny' i over 24 timer uden at blive kontaktet:
@@ -5021,9 +5020,9 @@ Du har leads der har ligget i 'Ny' i over 24 timer uden at blive kontaktet:
 Gå ind i CRM-panelet og følg op:
 https://klaiai.onrender.com/app/admin.html
 
-Mvh NexOlsen
+Mvh Nordolsen
 """
-        send_mail(ADMIN_EMAIL, emne, tekst, 'NexOlsen')
+        send_mail(ADMIN_EMAIL, emne, tekst, 'Nordolsen')
         print(f"✅ Ubesvarede leads reminder sendt: {len(leads)} leads")
     except Exception as e:
         print(f"❌ Fejl i ubesvarede_leads_reminder: {e}")
@@ -5058,9 +5057,9 @@ def kør_månedlig_rapport():
                 html = _byg_rapport_html(k['id'], k.get('navn',''), leads, bookinger, gaps=gaps, chat_count=chat_count, maaned=mdr_start)
                 mdr_navn = mdr_start.strftime('%B %Y')
                 message = Mail(
-                    from_email=(SENDGRID_FROM, 'NexOlsen'),
+                    from_email=(SENDGRID_FROM, 'Nordolsen'),
                     to_emails=email,
-                    subject=f"Din NexOlsen rapport — {mdr_navn}",
+                    subject=f"Din Nordolsen rapport — {mdr_navn}",
                     html_content=html
                 )
                 sg = SendGridAPIClient(SENDGRID_API_KEY)
@@ -5626,7 +5625,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
 
   <!-- FOOTER -->
   <tr><td style="background:#111;border-radius:0 0 16px 16px;padding:18px 44px;text-align:center">
-    <div style="font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px">Tilbud genereret af NexOlsen AI &middot; Gyldigt i 14 dage</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.25);letter-spacing:1px">Tilbud genereret af Nordolsen &middot; Gyldigt i 14 dage</div>
   </td></tr>
 
 </table></td></tr></table>
@@ -5741,7 +5740,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
 
   <!-- FOOTER -->
   <tr><td style="background:#f0f4f8;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center">
-    <div style="font-size:11px;color:#9ca3af">Tilbud genereret af NexOlsen AI &middot; Tilbuddet er gyldigt i 14 dage fra udstedelsesdato</div>
+    <div style="font-size:11px;color:#9ca3af">Tilbud genereret af Nordolsen &middot; Tilbuddet er gyldigt i 14 dage fra udstedelsesdato</div>
   </td></tr>
 
 </table></td></tr></table>
@@ -6732,7 +6731,7 @@ def send_tilbud(tilbud_id):
             return jsonify({'error': 'Ingen gyldig email på tilbuddet'}), 400
 
         # Hent klientens navn + hjemmeside til afsender og links
-        fra_navn = 'NexOlsen'
+        fra_navn = 'Nordolsen'
         klient_hjemmeside = ''
         klient_email = ''
         try:
@@ -6831,7 +6830,7 @@ def portal_send_tilbud(tilbud_id):
         email_emne_override   = body.get('email_emne', '').strip()
         aktiver_followup      = body.get('aktiver_followup', True)
 
-        fra_navn = 'NexOlsen'
+        fra_navn = 'Nordolsen'
         klient_hjemmeside = ''
         try:
             k = db.table('klienter').select('navn,hjemmeside,email').eq('id', klient_id).single().execute()
@@ -7136,14 +7135,14 @@ def godkend_tilbud(tilbud_id, token):
   </td></tr>
 
   <tr><td style="background:#f9fafb;padding:18px 36px;text-align:center;border-top:1px solid #f0f0f0">
-    <div style="font-size:11px;color:#9ca3af">Reference: {ref_nr} &middot; Genereret af NexOlsen AI</div>
+    <div style="font-size:11px;color:#9ca3af">Reference: {ref_nr} &middot; Genereret af Nordolsen</div>
   </td></tr>
 
 </table></td></tr></table>
 </body></html>"""
 
         try:
-            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'NexOlsen', html_content=bekræftelse_html)
+            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'Nordolsen', html_content=bekræftelse_html)
         except Exception as e:
             print(f'Bekræftelsesmail fejl: {e}')
 
@@ -7160,7 +7159,7 @@ def godkend_tilbud(tilbud_id, token):
                     f'<tr><td style="padding:8px;color:#666">Reference</td><td style="padding:8px;font-family:monospace">{ref_nr}</td></tr>'
                     f'</table></div>'
                 )
-                send_mail(klient_email, f'✅ Tilbud accepteret: {titel}', f'{kunde_navn} har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).', fra_navn='NexOlsen AI', html_content=notif_html)
+                send_mail(klient_email, f'✅ Tilbud accepteret: {titel}', f'{kunde_navn} har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).', fra_navn='Nordolsen', html_content=notif_html)
         except:
             pass
 
@@ -7281,5 +7280,5 @@ def portal_kunde_historik(klient_id, kunde_email_encoded):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    print(f"🤖 NexOlsen Agent Server kører på port {port}")
+    print(f"🤖 Nordolsen Agent Server kører på port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)

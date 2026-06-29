@@ -1,6 +1,6 @@
 #!/bin/bash
 # ──────────────────────────────────────────────────────
-#  NexOlsen Admin — Lokal starter
+#  Nordolsen Admin — Lokal starter
 #  Dobbeltklik på denne fil for at starte admin-panelet
 # ──────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ echo "📦 Tjekker Python-pakker..."
 pip install -q -r requirements.txt
 
 # Start Flask-server i baggrunden
-echo "🚀 Starter NexOlsen server på port ${PORT:-5001}..."
+echo "🚀 Starter Nordolsen server på port ${PORT:-5001}..."
 python3 -m flask --app agents.app run --port "${PORT:-5001}" &
 SERVER_PID=$!
 
@@ -57,7 +57,7 @@ echo "🌐 Åbner admin-panel..."
 open "http://localhost:${PORT:-5001}/app/admin.html"
 
 echo ""
-echo "✅ NexOlsen Admin kører på http://localhost:${PORT:-5001}/app/admin.html"
+echo "✅ Nordolsen Admin kører på http://localhost:${PORT:-5001}/app/admin.html"
 echo "   Tryk Ctrl+C eller luk dette vindue for at stoppe serveren."
 echo ""
 

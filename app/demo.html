@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NexOlsen — Se din AI-chatbot live på 60 sekunder</title>
+  <title>Nordolsen — Se din chatbot live på 60 sekunder</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -256,7 +256,7 @@
     <div class="badge-dot"></div>
     Gratis demo — ingen kreditkort
   </div>
-  <h1>Se din AI-chatbot<br/><span>live på 60 sekunder</span></h1>
+  <h1>Se din chatbot<br/><span>live på 60 sekunder</span></h1>
   <p>Skriv din hjemmeside-URL og vi bygger en skræddersyet chatbot-demo til din virksomhed — med dine ydelser, farver og tone.</p>
 
   <form class="url-form" onsubmit="startDemo(event)">
@@ -282,7 +282,7 @@
     <div class="step-card">
       <div class="step-num">2</div>
       <h3>Generér</h3>
-      <p>AI bygger en chatbot tilpasset dine ydelser, priser og tone</p>
+      <p>Systemet bygger en chatbot tilpasset dine ydelser, priser og tone</p>
     </div>
     <div class="step-card">
       <div class="step-num">3</div>
@@ -304,7 +304,7 @@
   <div style="font-size:.82rem;color:rgba(255,255,255,.4)" id="loadingUrl"></div>
   <div class="loading-steps">
     <div class="step aktiv" id="step1">⟳ Henter hjemmeside</div>
-    <div class="step" id="step2">○ Analyserer indhold med AI</div>
+    <div class="step" id="step2">○ Analyserer indhold</div>
     <div class="step" id="step3">○ Genererer chatbot-config</div>
     <div class="step" id="step4">○ Bygger din demo</div>
   </div>
@@ -319,7 +319,7 @@
   </div>
 
   <div id="harChatbotAdv" class="har-chatbot-adv" style="display:none">
-    ⚠️ Vi kan se I allerede bruger et chat-system. NexOlsen er smartere — den genererer leads automatisk og sender dem til din email. Se selv herunder.
+    ⚠️ Vi kan se I allerede bruger et chat-system. Nordolsen er smartere — den genererer leads automatisk og sender dem til din email. Se selv herunder.
   </div>
 
   <div class="chatbot-preview-wrap">
@@ -337,7 +337,7 @@
       <input class="cb-input-fake" id="cbInput" placeholder="Skriv en besked og chat med din demo-chatbot..."/>
       <div class="cb-send-fake" id="cbSendBtn" style="background:#0a2463">➤</div>
     </div>
-    <div class="cb-powered">Drevet af <strong>NexOlsen</strong></div>
+    <div class="cb-powered">Drevet af <strong>Nordolsen</strong></div>
   </div>
 
   <!-- CTA -->
@@ -360,7 +360,7 @@
   <div class="trust-item"><span class="trust-icon">🇩🇰</span> Dansk virksomhed</div>
   <div class="trust-item"><span class="trust-icon">⚡</span> Live på 10 minutter</div>
   <div class="trust-item"><span class="trust-icon">🔒</span> GDPR-compliant</div>
-  <div class="trust-item"><span class="trust-icon">🤖</span> Drevet af Claude AI</div>
+  <div class="trust-item"><span class="trust-icon">🔒</span> Drevet af Nordolsen</div>
 </div>
 
 <script>
@@ -387,7 +387,7 @@ async function startDemo(e) {
 
   // Animer loading-steps
   const steps = ['step1','step2','step3','step4'];
-  const labels = ['⟳ Henter hjemmeside','⟳ Analyserer indhold med AI','⟳ Genererer chatbot-config','⟳ Bygger din demo'];
+  const labels = ['⟳ Henter hjemmeside','⟳ Analyserer indhold','⟳ Genererer chatbot-config','⟳ Bygger din demo'];
   let si = 0;
   const stepInterval = setInterval(() => {
     if (si > 0) {

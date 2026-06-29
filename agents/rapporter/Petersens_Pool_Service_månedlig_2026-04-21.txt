@@ -1,4 +1,4 @@
-KlarAI — Automatisk genereret rapport
+Nordolsen — Automatisk genereret rapport
 =====================================
 Klient: Petersens Pool Service
 Type: månedlig

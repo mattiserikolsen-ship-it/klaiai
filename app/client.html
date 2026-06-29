@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NexOlsen – Min portal</title>
+  <title>Nordolsen – Min portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
@@ -526,7 +526,7 @@
 
 <!-- MOBILE HEADER -->
 <div class="mobile-header">
-  <div class="mobile-logo">NexOlsen</div>
+  <div class="mobile-logo">Nordolsen</div>
   <button class="mobile-hamburger" onclick="toggleMobileNav()">☰</button>
 </div>
 <div class="mobile-overlay" id="mobileOverlay" onclick="closeMobileNav()"></div>
@@ -534,7 +534,7 @@
 <!-- SIDEBAR -->
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-text">NexOlsen</div>
+    <div class="sidebar-logo-text">Nordolsen</div>
     <div class="sidebar-logo-sub">Klientportal</div>
   </div>
   <div class="sidebar-company">
@@ -585,7 +585,7 @@
     <button onclick="logud()" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);border-radius:8px;padding:.5rem .9rem;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;transition:all .15s;margin-bottom:.6rem" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
       ↩ Log ud
     </button>
-    <div class="powered">Drevet af NexOlsen</div>
+    <div class="powered">Drevet af Nordolsen</div>
   </div>
 </nav>
 
@@ -650,7 +650,7 @@
   <div class="topbar">
     <div>
       <div class="topbar-title" id="topbarTitle">Overblik</div>
-      <div class="topbar-sub" id="topbarSub">Din NexOlsen portal</div>
+      <div class="topbar-sub" id="topbarSub">Din Nordolsen portal</div>
     </div>
     <div style="display:flex;align-items:center;gap:.75rem">
       <button class="topbar-refresh" onclick="loadData()">↻ Opdater</button>
@@ -665,7 +665,7 @@
       <div class="roi-card" id="roiCard">
         <div class="roi-grid">
           <div>
-            <div class="roi-label" id="roiLabel">Din AI har tjent dig — denne måned</div>
+            <div class="roi-label" id="roiLabel">Dit system har tjent dig — denne måned</div>
             <div class="roi-main-num" id="roiBeloeb">—</div>
             <div class="roi-sub" id="roiSub">Indlæser...</div>
           </div>
@@ -1027,7 +1027,7 @@
           </div>
         </div>
 
-        <div id="ntStatus" style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem;display:none">⏳ Genererer tilbud med AI... (5-15 sek.)</div>
+        <div id="ntStatus" style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem;display:none">⏳ Genererer tilbud... (5-15 sek.)</div>
 
         <div style="display:flex;gap:.75rem;justify-content:flex-end">
           <button onclick="lukNytTilbudModal()" style="background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.6rem 1.2rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Annuller</button>
@@ -1333,7 +1333,7 @@
         <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div>
             <div class="card-title" style="margin:0">Priskatalog</div>
-            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Disse priser bruges automatisk når AI genererer tilbud</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Disse priser bruges automatisk når systemet genererer tilbud</div>
           </div>
           <button onclick="åbnNyPrispost()" style="background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">+ Tilføj</button>
         </div>
@@ -1453,7 +1453,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
           <div>
             <div class="card-title" style="margin:0">Kom i gang — tjekliste</div>
-            <div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">Følg disse trin for at få det mest ud af KlarAI</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">Følg disse trin for at få det mest ud af Nordolsen</div>
           </div>
           <div id="tjekProcent" style="font-size:1.4rem;font-weight:800;color:#7c3aed">0%</div>
         </div>
@@ -1554,13 +1554,13 @@ function closeMobileNav() {
 // ── VIEWS ──────────────────────────────────────────────
 const views = ['overblik','leads','bookinger','tilbud','pipeline','gaps','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
 const titles = {
-  overblik:      ['Overblik',       'Din NexOlsen portal'],
+  overblik:      ['Overblik',       'Din Nordolsen portal'],
   leads:         ['Leads',          'Kunder der har henvendt sig'],
   bookinger:     ['Bookinger',      'Bekræftede bookinger'],
   tilbud:        ['Tilbud',         'Tilbud du har sendt til kunder'],
   pipeline:      ['Pipeline',       'Status på alle dine tilbud'],
   gaps:          ['Spørgsmål',      'Spørgsmål chatbotten ikke kunne besvare'],
-  agenter:       ['Mine agenter',   'AI-agenter der kører for dig'],
+  agenter:       ['Mine agenter',   'Automatiseringer der kører for dig'],
   rapport:       ['Rapport',        'Statistik og grafisk overblik'],
   abonnement:    ['Abonnement',     'Din plan og fakturering'],
   indstillinger: ['Indstillinger',  'Tilpas din chatbot'],
@@ -1624,7 +1624,7 @@ async function loadData() {
 
     const navn = data.chatbot?.navn || 'din virksomhed';
     document.getElementById('sidebarName').textContent = navn;
-    document.title = `NexOlsen – ${navn}`;
+    document.title = `Nordolsen – ${navn}`;
 
     const leads = data.leads.length;
     const bookinger = data.bookinger.length;
@@ -1687,7 +1687,7 @@ async function loadOverblik() {
 
     if (harROI) {
       // Fuld ROI-mode
-      document.getElementById('roiLabel').textContent = 'Din AI har tjent dig — denne måned';
+      document.getElementById('roiLabel').textContent = 'Dit system har tjent dig — denne måned';
       countUp(document.getElementById('roiBeloeb'), roi.accepteret_maaned || 0, { suffix: ' kr' });
       const faktor = roi.roi_faktor || 0;
       if (faktor > 0) countUp(document.getElementById('roiFaktor'), faktor, { suffix: 'x' });
@@ -1698,7 +1698,7 @@ async function loadOverblik() {
       document.getElementById('roiBadgeWrap').style.display = '';
     } else if (harLeads) {
       // Har leads men ingen accepterede tilbud endnu
-      document.getElementById('roiLabel').textContent = 'Din AI arbejder — leads klar til tilbud';
+      document.getElementById('roiLabel').textContent = 'Dit system arbejder — leads klar til tilbud';
       countUp(document.getElementById('roiBeloeb'), roi.leads_i_alt || 0, { suffix: ' leads' });
       document.getElementById('roiFaktor').textContent = '0 kr';
       document.getElementById('roiSub').textContent =
@@ -1706,7 +1706,7 @@ async function loadOverblik() {
       document.getElementById('roiBadgeWrap').style.display = '';
     } else {
       // Helt ny — ingen leads endnu
-      document.getElementById('roiLabel').textContent = 'Din AI er klar — leads starter snart';
+      document.getElementById('roiLabel').textContent = 'Dit system er klar — leads starter snart';
       document.getElementById('roiBeloeb').textContent = '0 kr';
       document.getElementById('roiFaktor').textContent = '0×';
       document.getElementById('roiSub').textContent =
@@ -2555,7 +2555,7 @@ async function brugStemmeData() {
   const brugBtn = document.getElementById('ntBrugTaleBtn');
   const status = document.getElementById('ntStemmeStatus');
   brugBtn.disabled = true;
-  brugBtn.textContent = '⏳ AI analyserer...';
+  brugBtn.textContent = '⏳ Analyserer...';
   status.textContent = '⏳ Claude forstår dine noter...';
 
   try {
@@ -2946,7 +2946,7 @@ function renderGaps() {
           <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
             <button onclick="aiForslag(${i},'${(g.id||'').replace(/'/g,"\\'")}','${(g.spoergsmaal||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')"
               style="font-size:.72rem;font-weight:600;padding:.3rem .75rem;border:1px solid #e0e7ff;background:#eff6ff;color:#1d4ed8;border-radius:6px;cursor:pointer;font-family:inherit">
-              ✨ AI-forslag
+              ✨ Foreslå svar
             </button>
             <button onclick="markerGapLøst(${i},'${g.id||''}')"
               style="font-size:.72rem;font-weight:600;padding:.3rem .75rem;border:1px solid var(--border);background:var(--bg);color:var(--muted);border-radius:6px;cursor:pointer;font-family:inherit">
@@ -2961,7 +2961,7 @@ function renderGaps() {
 
 async function aiForslag(idx, gapId, spoergsmaal) {
   const wrap = document.getElementById(`gap-answer-${idx}`);
-  wrap.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.4rem 0">⏳ AI genererer forslag...</div>';
+  wrap.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.4rem 0">⏳ Genererer forslag...</div>';
   try {
     const res = await fetch(`${API}/udfyld-gap/${CLIENT_ID}`, {
       method: 'POST',
@@ -2972,7 +2972,7 @@ async function aiForslag(idx, gapId, spoergsmaal) {
     if (d.success) {
       wrap.innerHTML = `
         <div style="margin-top:.5rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.65rem .85rem">
-          <div style="font-size:.7rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem">AI-forslag til "${d.felt}"</div>
+          <div style="font-size:.7rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem">Forslag til "${d.felt}"</div>
           <div style="font-size:.82rem;color:#166534;line-height:1.6;margin-bottom:.5rem">${d.forslag}</div>
           <div style="font-size:.7rem;color:#4ade80">${d.forklaring}</div>
         </div>
@@ -3418,9 +3418,9 @@ async function sendRapport() {
 
 // ── ABONNEMENT ─────────────────────────────────────────
 const planInfo = {
-  starter: { navn: 'Starter', pris: '799 kr/md', farve: '#6b7280', features: ['AI Chatbot 24/7', 'Lead-opsamling', 'Email-notifikationer'] },
+  starter: { navn: 'Starter', pris: '799 kr/md', farve: '#6b7280', features: ['Chatbot 24/7', 'Lead-opsamling', 'Email-notifikationer'] },
   pro:     { navn: 'Pro',     pris: '1.499 kr/md', farve: '#7c3aed', features: ['Alt i Starter', 'Bookingsystem', 'Automatiske rapporter', 'Lead-mail opfølgning'] },
-  vaekst:  { navn: 'Vækst',  pris: '2.499 kr/md', farve: '#0a2463', features: ['Alt i Pro', 'AI Insights analyse', 'Branche-research AI', 'Genopvarmnings-agent'] },
+  vaekst:  { navn: 'Vækst',  pris: '2.499 kr/md', farve: '#0a2463', features: ['Alt i Pro', 'Insights-analyse', 'Branche-research', 'Genopvarmnings-agent'] },
 };
 
 const statusLabels = {
@@ -4019,7 +4019,7 @@ async function brugPrisStemmeData() {
   if (!tekst) return;
   const btn = document.getElementById('ppBrugTaleBtn');
   const status = document.getElementById('ppStemmeStatus');
-  btn.disabled = true; btn.textContent = '⏳ AI analyserer...';
+  btn.disabled = true; btn.textContent = '⏳ Analyserer...';
   status.textContent = '⏳ Claude forstår prisen...';
   try {
     const res = await fetch(`${API}/tale/pris`, {

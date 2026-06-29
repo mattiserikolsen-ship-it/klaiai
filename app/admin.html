@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NexOlsen – Admin</title>
+  <title>Nordolsen – Admin</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -377,7 +377,7 @@
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <div class="sidebar-logo">NexOlsen <small>Admin panel</small></div>
+  <div class="sidebar-logo">Nordolsen <small>Admin panel</small></div>
   <nav class="sidebar-nav">
     <div class="nav-label">I dag</div>
     <div class="nav-item active" data-view="dashboard" onclick="showView('dashboard')">
@@ -834,9 +834,9 @@
           <li>Log ind på <strong>e-conomic.dk</strong></li>
           <li>Gå til <strong>Indstillinger → Tilføjelser → API adgang</strong></li>
           <li>Klik <strong>"Giv adgang til en tilføjelse"</strong></li>
-          <li>Indsæt app-nøgle: <code style="background:#e0f2fe;padding:.1rem .4rem;border-radius:4px;font-family:monospace">NexOlsen</code></li>
+          <li>Indsæt app-nøgle: <code style="background:#e0f2fe;padding:.1rem .4rem;border-radius:4px;font-family:monospace">Nordolsen</code></li>
           <li>Kopier det genererede <strong>Agreement Grant Token</strong></li>
-          <li>Indsæt i NexOlsen under <strong>Indstillinger → e-conomic integration</strong></li>
+          <li>Indsæt i Nordolsen under <strong>Indstillinger → e-conomic integration</strong></li>
         </ol>
         <div style="margin-top:.75rem;font-size:.78rem;color:#0369a1">
           <strong>ECONOMIC_APP_SECRET</strong> skal være sat som env var på Render — kontakt Mattis hvis ikke.
@@ -2357,7 +2357,7 @@ function visLoginOverlay() {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:2rem;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-      <div style="font-size:1.1rem;font-weight:800;color:#0a1628;margin-bottom:1.5rem">Log ind på NexOlsen</div>
+      <div style="font-size:1.1rem;font-weight:800;color:#0a1628;margin-bottom:1.5rem">Log ind på Nordolsen</div>
       <input id="lo_email" type="email" placeholder="Email" style="width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:.75rem;box-sizing:border-box"/>
       <input id="lo_pw" type="password" placeholder="Password" style="width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:1rem;box-sizing:border-box"/>
       <div id="lo_fejl" style="color:#dc2626;font-size:.82rem;margin-bottom:.75rem;display:none"></div>
@@ -3556,7 +3556,7 @@ function wzFill2() {
   // Bot-navn og velkomst
   if (!document.getElementById('nc_bot_velkomst').value) {
     document.getElementById('nc_bot_velkomst').value =
-      sd.velkomst || `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`;
+      sd.velkomst || `Hej! Jeg er ${name}s digitale assistent. Hvordan kan jeg hjælpe dig?`;
   }
   // Ydelser, priser, kontakt, åbningstider, adresse
   if (sd.ydelser) document.getElementById('nc_bot_ydelser').value = sd.ydelser;
@@ -3662,7 +3662,7 @@ function createClient() {
   // Chatbot config fra trin 2
   syncChatbotConfigToDB(client.id, {
     chatbot_navn: document.getElementById('nc_bot_navn').value || 'Alma',
-    velkomst: document.getElementById('nc_bot_velkomst').value || `Hej! Jeg er ${name}s AI-assistent. Hvordan kan jeg hjælpe dig?`,
+    velkomst: document.getElementById('nc_bot_velkomst').value || `Hej! Jeg er ${name}s digitale assistent. Hvordan kan jeg hjælpe dig?`,
     farve: document.getElementById('nc_bot_farve').value || '#0a2463',
     ydelser: document.getElementById('nc_bot_ydelser').value || '',
     priser: document.getElementById('nc_bot_priser').value || '',
@@ -4102,7 +4102,7 @@ function generateChatbot() {
   }
 
   const clientId = klientId || 'demo';
-  const embed = `<!-- NexOlsen Chatbot ${client?'· '+client.name:''} -->
+  const embed = `<!-- Nordolsen Chatbot ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/chatbot.js"
   data-name="${name}"
   data-greeting="${greeting}"
@@ -4153,7 +4153,7 @@ function generateLead() {
   if (client) {
     markProductGenerated(client.id, 'lead');
     const color = client.chatbotConfig?.farve || '#0a2463';
-    const embed = `<!-- NexOlsen Lead Form · ${client.name} -->
+    const embed = `<!-- Nordolsen Lead Form · ${client.name} -->
 <script src="https://klaiai.dk/lead-form.js"
   data-client="${client.id}"
   data-color="${color}"
@@ -4358,7 +4358,7 @@ async function generateBooking() {
     markProductGenerated(client.id, 'booking');
   }
 
-  const embed = `<!-- NexOlsen Booking Widget ${client?'· '+client.name:''} -->
+  const embed = `<!-- Nordolsen Booking Widget ${client?'· '+client.name:''} -->
 <script src="https://klaiai.dk/booking-widget.js"
   data-client="${client?.id||'demo'}">
 <\/script>`;
@@ -4864,7 +4864,7 @@ function prefillInvoiceClient() {
   if (!c) return;
   invoiceLines = [];
   if (c.startpris) invoiceLines.push({ desc: 'Opsætning & konfiguration', qty: 1, price: parseInt(c.startpris) });
-  if (c.mdpris) invoiceLines.push({ desc: 'Månedlig abonnement — NexOlsen', qty: 1, price: parseInt(c.mdpris) });
+  if (c.mdpris) invoiceLines.push({ desc: 'Månedlig abonnement — Nordolsen', qty: 1, price: parseInt(c.mdpris) });
   (c.products||[]).forEach(p => {
     // already included in packages, just log
   });
@@ -4923,7 +4923,7 @@ function previewInvoice() {
     <div style="font-size:.78rem">
       <div style="display:flex;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:2px solid var(--accent)">
         <div>
-          <div style="font-size:1rem;font-weight:800;color:var(--accent)">NexOlsen</div>
+          <div style="font-size:1rem;font-weight:800;color:var(--accent)">Nordolsen</div>
           ${cvr ? `<div style="color:var(--muted);font-size:.72rem">CVR: ${cvr}</div>` : ''}
         </div>
         <div style="text-align:right">

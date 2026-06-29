@@ -1,5 +1,5 @@
 /**
- * KlarAI Chatbot Widget
+ * Nordolsen Chatbot Widget
  * Embed: <script src="https://klaiai.onrender.com/chatbot.js" data-client="KLIENT_ID"></script>
  */
 (function () {
@@ -167,7 +167,7 @@
         <input id="klaiai-input" placeholder="Skriv en besked..." autocomplete="off"/>
         <button id="klaiai-send">➤</button>
       </div>
-      <div id="klaiai-powered">Drevet af <strong>KlarAI</strong></div>
+      <div id="klaiai-powered">Drevet af <strong>Nordolsen</strong></div>
     </div>
   `;
   document.body.appendChild(widget);
