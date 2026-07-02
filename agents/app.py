@@ -773,7 +773,7 @@ def modtag_lead():
                 auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
                 mail_image_url = cfg.data[0].get('mail_image_url') or None
             # Hent lead id
-            lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('created_at', desc=True).limit(1).execute()
+            lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('oprettet', desc=True).limit(1).execute()
             if lead_res.data:
                 lead_db_id = str(lead_res.data[0]['id'])
         except:
@@ -1169,7 +1169,7 @@ def get_leads(klient_id):
     if not db:
         return jsonify({'leads': []})
     try:
-        res = db.table('leads').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
+        res = db.table('leads').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify({'leads': res.data or []})
     except Exception as e:
         print(f"get_leads fejl: {e}")
@@ -4768,9 +4768,9 @@ def kør_ugerapport_agent():
             # Tæl leads denne uge og forrige uge
             leads_uge, leads_forrige = 0, 0
             try:
-                lr = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', uge_start).execute()
+                lr = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('oprettet', uge_start).execute()
                 leads_uge = lr.count or 0
-                lr2 = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('created_at', forrige_start).lt('created_at', uge_start).execute()
+                lr2 = db.table('leads').select('id', count='exact').eq('klient_id', klient_id).gte('oprettet', forrige_start).lt('oprettet', uge_start).execute()
                 leads_forrige = lr2.count or 0
             except: pass
 
@@ -5058,7 +5058,7 @@ def klient_cockpit(klient_id):
         syv_dage_siden = nu - timedelta(days=7)
 
         # ── Leads ──
-        leads_res = db.table('leads').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
+        leads_res = db.table('leads').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         leads = leads_res.data or []
 
         # Leads per dag (sidste 7 dage) — sammenlign kun dato-delen (YYYY-MM-DD)
@@ -5076,7 +5076,7 @@ def klient_cockpit(klient_id):
                     denne_uge_count += 1
 
         # ── Bookinger ──
-        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('created_at', desc=True).limit(20).execute()
+        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('oprettet', desc=True).limit(20).execute()
         bookinger = book_res.data or []
         book_i_dag = sum(1 for b in bookinger if b.get('dato') == nu.strftime('%Y-%m-%d'))
 
@@ -5610,14 +5610,10 @@ def crm_leads():
         return jsonify([]), 200
     try:
         klient_id = request.args.get('klient_id')
-        q = db.table('leads').select('id, klient_id, navn, email, telefon, besked, status, noter, oprettet, created_at').order('created_at', desc=True)
+        q = db.table('leads').select('id, klient_id, navn, email, telefon, besked, status, noter, oprettet').order('oprettet', desc=True)
         if klient_id:
             q = q.eq('klient_id', klient_id)
         leads = q.execute().data or []
-        # Normaliser tidsstempel — brug oprettet hvis det findes, ellers created_at
-        for l in leads:
-            if not l.get('oprettet'):
-                l['oprettet'] = l.get('created_at', '')
 
         # Hent klientnavne
         klient_res = db.table('klienter').select('id, navn').execute()
