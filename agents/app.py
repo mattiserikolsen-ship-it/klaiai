@@ -764,83 +764,96 @@ def modtag_lead():
         except Exception as e:
             print(f"Lead opsaml/log fejl: {e}")
 
-    # Hent klientinfo fra Supabase eller JSON
-    klient = get_klient(klient_id)
-    klient_info = {
-        'navn': klient.get('navn', 'Virksomheden'),
-        'ydelser': klient.get('info', {}).get('ydelser', ''),
-        'tilbud': klient.get('lead_tilbud', 'Gratis uforpligtende samtale'),
-        'kontakt': klient.get('info', {}).get('kontakt', '')
-    }
-
-    mails = []
-    for nr in [1, 2, 3]:
-        mail = generer_lead_mail(lead, klient_info, nr)
-        mail['sendt'] = False
-        mails.append(mail)
-
-    # Tjek om klient har auto-godkend slået til + hent hero-billede URL
-    auto_godkend = False
-    mail_image_url = None
-    klient_hjemmeside = klient.get('hjemmeside', '')
-    lead_db_id = None
-    if db:
-        try:
-            cfg = db.table('chatbot_config').select('auto_godkend_mails,mail_image_url').eq('klient_id', klient_id).execute()
-            if cfg.data:
-                auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
-                mail_image_url = cfg.data[0].get('mail_image_url') or None
-            # Hent lead id — praecist via dedup_id naar muligt, ellers fald tilbage til navn
-            lead_q = db.table('leads').select('id').eq('klient_id', klient_id)
-            lead_q = lead_q.eq('dedup_id', dedup_id) if dedup_id else lead_q.eq('navn', lead.get('navn',''))
-            lead_res = lead_q.order('oprettet', desc=True).limit(1).execute()
-            if lead_res.data:
-                lead_db_id = str(lead_res.data[0]['id'])
-        except:
-            pass
-
-    if auto_godkend and lead.get('email') and SENDGRID_API_KEY:
-        # Send straks med professionel HTML-mail
-        for mail in mails:
-            html = byg_html_mail(
-                lead_navn=lead.get('navn', ''),
-                tekst=mail['tekst'],
-                klient_navn=klient_info['navn'],
-                klient_hjemmeside=klient_hjemmeside,
-                hero_image_url=mail_image_url,
-                cta_tekst='Besøg vores hjemmeside',
-                cta_url=klient_hjemmeside or None
-            )
-            sendt = send_mail(lead['email'], mail['emne'], mail['tekst'], klient_info['navn'], html_content=html)
-            mail['sendt'] = sendt
-        if db and lead_db_id:
-            try:
-                for mail in mails:
-                    db.table('lead_mails').insert({
-                        'lead_id': lead_db_id, 'klient_id': klient_id,
-                        'mail_nr': mail['mail_nr'], 'emne': mail['emne'],
-                        'tekst': mail['tekst'], 'status': 'sendt'
-                    }).execute()
-            except: pass
-    else:
-        # Gem som "afventer godkendelse"
-        if db and lead_db_id:
-            try:
-                for mail in mails:
-                    db.table('lead_mails').insert({
-                        'lead_id': lead_db_id, 'klient_id': klient_id,
-                        'mail_nr': mail['mail_nr'], 'emne': mail['emne'],
-                        'tekst': mail['tekst'], 'status': 'afventer'
-                    }).execute()
-            except: pass
+    # Mail-generering kalder Claude 3x (langsomt: 10-30s). Det maa ALDRIG holde
+    # widget-svaret op — leadet er allerede fanget. Kør det i baggrunden, saa
+    # den besoegende faar straks kvittering, og mailene laves bagefter.
+    threading.Thread(
+        target=_generer_lead_mails,
+        args=(klient_id, dict(lead), dedup_id),
+        daemon=True
+    ).start()
 
     return jsonify({
         'success': True,
         'lead': lead.get('navn'),
-        'mails_genereret': len(mails),
-        'auto_godkendt': auto_godkend,
-        'mails': mails
+        'mails_i_kø': True
     })
+
+
+def _generer_lead_mails(klient_id, lead, dedup_id):
+    """Genererer (og evt. sender) de 3 opfoelgningsmails i baggrunden.
+    Leadet er allerede gemt foer denne kaldes — fejl her taber ikke leadet."""
+    try:
+        klient = get_klient(klient_id)
+        klient_info = {
+            'navn': klient.get('navn', 'Virksomheden'),
+            'ydelser': klient.get('info', {}).get('ydelser', ''),
+            'tilbud': klient.get('lead_tilbud', 'Gratis uforpligtende samtale'),
+            'kontakt': klient.get('info', {}).get('kontakt', '')
+        }
+
+        mails = []
+        for nr in [1, 2, 3]:
+            mail = generer_lead_mail(lead, klient_info, nr)
+            mail['sendt'] = False
+            mails.append(mail)
+
+        # Tjek om klient har auto-godkend slået til + hent hero-billede URL
+        auto_godkend = False
+        mail_image_url = None
+        klient_hjemmeside = klient.get('hjemmeside', '')
+        lead_db_id = None
+        if db:
+            try:
+                cfg = db.table('chatbot_config').select('auto_godkend_mails,mail_image_url').eq('klient_id', klient_id).execute()
+                if cfg.data:
+                    auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
+                    mail_image_url = cfg.data[0].get('mail_image_url') or None
+                # Hent lead id — praecist via dedup_id naar muligt, ellers fald tilbage til navn
+                lead_q = db.table('leads').select('id').eq('klient_id', klient_id)
+                lead_q = lead_q.eq('dedup_id', dedup_id) if dedup_id else lead_q.eq('navn', lead.get('navn',''))
+                lead_res = lead_q.order('oprettet', desc=True).limit(1).execute()
+                if lead_res.data:
+                    lead_db_id = str(lead_res.data[0]['id'])
+            except:
+                pass
+
+        if auto_godkend and lead.get('email') and SENDGRID_API_KEY:
+            # Send straks med professionel HTML-mail
+            for mail in mails:
+                html = byg_html_mail(
+                    lead_navn=lead.get('navn', ''),
+                    tekst=mail['tekst'],
+                    klient_navn=klient_info['navn'],
+                    klient_hjemmeside=klient_hjemmeside,
+                    hero_image_url=mail_image_url,
+                    cta_tekst='Besøg vores hjemmeside',
+                    cta_url=klient_hjemmeside or None
+                )
+                sendt = send_mail(lead['email'], mail['emne'], mail['tekst'], klient_info['navn'], html_content=html)
+                mail['sendt'] = sendt
+            if db and lead_db_id:
+                try:
+                    for mail in mails:
+                        db.table('lead_mails').insert({
+                            'lead_id': lead_db_id, 'klient_id': klient_id,
+                            'mail_nr': mail['mail_nr'], 'emne': mail['emne'],
+                            'tekst': mail['tekst'], 'status': 'sendt'
+                        }).execute()
+                except: pass
+        else:
+            # Gem som "afventer godkendelse"
+            if db and lead_db_id:
+                try:
+                    for mail in mails:
+                        db.table('lead_mails').insert({
+                            'lead_id': lead_db_id, 'klient_id': klient_id,
+                            'mail_nr': mail['mail_nr'], 'emne': mail['emne'],
+                            'tekst': mail['tekst'], 'status': 'afventer'
+                        }).execute()
+                except: pass
+    except Exception as e:
+        print(f"Lead mail-generering fejl (lead er gemt): {e}")
 
 
 def generer_lead_mail(lead, klient, mail_nr):
