@@ -328,6 +328,15 @@
     .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; }
     .empty-state h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: .4rem; }
     .empty-state p { font-size: .875rem; line-height: 1.6; }
+    /* Fejltilstand med retry — kontekstuel, rolig, altid en vej videre */
+    .error-state { text-align: center; padding: 2.5rem 2rem; color: var(--muted); }
+    .error-state-icon { width: 44px; height: 44px; margin: 0 auto .9rem; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--red-bg); color: var(--red); }
+    .error-state-icon svg { width: 24px; height: 24px; }
+    .error-state-title { font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: .35rem; }
+    .error-state-msg { font-size: .85rem; line-height: 1.55; max-width: 340px; margin: 0 auto 1.1rem; }
+    .retry-btn { display: inline-flex; align-items: center; gap: .45rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: .55rem 1.1rem; font-size: .85rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .15s; }
+    .retry-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .retry-btn svg { width: 15px; height: 15px; }
 
     /* ── MONTHLY REVENUE ── */
     .revenue-bar { height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: .5rem; }
@@ -2563,6 +2572,19 @@ function showView(v) {
 // ── HEALTH SCORE ─────────────────────────────────────
 let healthData = null;
 
+// Genbrugelig fejltilstand — ikon, rolig kontekstuel besked og en rigtig "Prøv igen"-knap.
+// retryCall: JS-kald som streng, fx "loadHealthScores()". Falder tilbage til generisk tekst hvis udeladt.
+function errorState(retryCall, opts) {
+  opts = opts || {};
+  const title = opts.title || 'Kunne ikke indlæses';
+  const msg = opts.msg || 'Noget gik galt. Tjek forbindelsen og prøv igen.';
+  const warnIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const retryIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+  const btn = retryCall ? `<button class="retry-btn" onclick="${retryCall}">${retryIcon} Prøv igen</button>` : '';
+  return `<div class="error-state"><div class="error-state-icon">${warnIcon}</div><div class="error-state-title">${title}</div><div class="error-state-msg">${msg}</div>${btn}</div>`;
+}
+window.errorState = errorState;
+
 async function loadHealthScores() {
   const wrap = document.getElementById('healthTableWrap');
   if (wrap) wrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)">Beregner health scores...</div>';
@@ -2574,8 +2596,8 @@ async function loadHealthScores() {
     healthData = await res.json();
     renderHealthTable(healthData);
   } catch(e) {
-    const besked = e.message === 'Failed to fetch' ? 'Ingen forbindelse til serveren' : e.message;
-    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">${besked}<br><button onclick="loadHealthScores()" style="margin-top:1rem;background:var(--accent);color:#fff;border:none;padding:.55rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Prøv igen</button></div>`;
+    const besked = e.message === 'Failed to fetch' ? 'Vi kunne ikke få kontakt til serveren. Tjek forbindelsen og prøv igen.' : e.message;
+    if (wrap) wrap.innerHTML = errorState('loadHealthScores()', { title: 'Kunne ikke hente health scores', msg: besked });
   }
 }
 
@@ -2674,8 +2696,8 @@ async function loadOnboarding() {
     const data = await res.json();
     renderOnboardingTable(data);
   } catch(e) {
-    const besked = e.message === 'Failed to fetch' ? 'Ingen forbindelse til serveren' : e.message;
-    if (wrap) wrap.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--red)">${besked}<br><button onclick="loadOnboarding()" style="margin-top:1rem;background:var(--accent);color:#fff;border:none;padding:.55rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer">Prøv igen</button></div>`;
+    const besked = e.message === 'Failed to fetch' ? 'Vi kunne ikke få kontakt til serveren. Tjek forbindelsen og prøv igen.' : e.message;
+    if (wrap) wrap.innerHTML = errorState('loadOnboarding()', { title: 'Kunne ikke hente onboarding', msg: besked });
   }
 }
 
@@ -2846,7 +2868,7 @@ async function loadEconOversigt() {
         <span style="background:#dcfce7;color:#15803d;font-size:.72rem;font-weight:700;padding:.2rem .7rem;border-radius:99px">✓ Aktiv</span>
       </div>`).join('');
   } catch(e) {
-    el.innerHTML = '<div style="color:#dc2626">Fejl ved hentning: ' + e.message + '</div>';
+    el.innerHTML = errorState('loadEconOversigt()', { title: 'Kunne ikke hente e-conomic', msg: 'Vi kunne ikke hente e-conomic-forbindelserne lige nu. Prøv igen om et øjeblik.' });
   }
 }
 
@@ -2929,7 +2951,7 @@ async function hentKlientLeads() {
       </div>`;
     }).join('');
   } catch(e) {
-    liste.innerHTML = '<div style="color:var(--red);font-size:.82rem;padding:1rem">Fejl ved hentning af leads</div>';
+    liste.innerHTML = errorState('hentKlientLeads()', { title: 'Kunne ikke hente leads', msg: 'Vi kunne ikke hente klientens leads lige nu. Prøv igen om et øjeblik.' });
   }
 }
 
@@ -5235,7 +5257,7 @@ async function loadStats() {
     }
 
   } catch(e) {
-    document.getElementById('dashHealthList').innerHTML = '<div style="text-align:center; color:var(--red); padding:1.5rem; font-size:.85rem">Kunne ikke hente data — tjek serveren</div>';
+    document.getElementById('dashHealthList').innerHTML = errorState('loadStats()', { title: 'Kunne ikke hente data', msg: 'Vi kunne ikke få kontakt til serveren. Tjek forbindelsen og prøv igen.' });
   }
 }
 
@@ -5620,7 +5642,7 @@ async function hentPriskatalog() {
           </div>`).join('')}
       </div>`).join('');
   } catch(e) {
-    liste.innerHTML = '<div style="font-size:.78rem;color:var(--red)">Fejl ved hentning af katalog</div>';
+    liste.innerHTML = errorState('hentPriskatalog()', { title: 'Kunne ikke hente katalog', msg: 'Vi kunne ikke hente priskataloget lige nu. Prøv igen om et øjeblik.' });
   }
 }
 

@@ -327,6 +327,15 @@
     .empty-icon { font-size: 1.75rem; margin-bottom: .75rem; opacity: .5; }
     .empty-text { font-size: .85rem; line-height: 1.6; }
     .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: .82rem; }
+    /* Fejltilstand med retry — kontekstuel, rolig, altid en vej videre */
+    .error-state { text-align: center; padding: 2.5rem 2rem; color: var(--muted); }
+    .error-state-icon { width: 44px; height: 44px; margin: 0 auto .9rem; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(192,57,43,.08); color: #c0392b; }
+    .error-state-icon svg { width: 24px; height: 24px; }
+    .error-state-title { font-size: .92rem; font-weight: 700; color: var(--dark); margin-bottom: .35rem; }
+    .error-state-msg { font-size: .82rem; line-height: 1.55; max-width: 320px; margin: 0 auto 1.1rem; }
+    .retry-btn { display: inline-flex; align-items: center; gap: .45rem; background: var(--green, #4a6741); color: #fff; border: none; border-radius: 8px; padding: .55rem 1.1rem; font-size: .82rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .15s; }
+    .retry-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .retry-btn svg { width: 15px; height: 15px; }
 
     /* ── RAPPORT ── */
     .rapport-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
@@ -2467,6 +2476,19 @@ async function loadLeadsOgBookinger() {
 // ── TILBUD ─────────────────────────────────────────────
 let tilbudData = null;
 
+// Genbrugelig fejltilstand — ikon, rolig kontekstuel besked og en rigtig "Prøv igen"-knap.
+// retryCall: JS-kald som streng, fx "loadTilbud()". Falder tilbage til generisk tekst hvis udeladt.
+function errorState(retryCall, opts) {
+  opts = opts || {};
+  const title = opts.title || 'Kunne ikke indlæses';
+  const msg = opts.msg || 'Noget gik galt. Tjek din internetforbindelse og prøv igen.';
+  const warnIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const retryIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>';
+  const btn = retryCall ? `<button class="retry-btn" onclick="${retryCall}">${retryIcon} Prøv igen</button>` : '';
+  return `<div class="error-state"><div class="error-state-icon">${warnIcon}</div><div class="error-state-title">${title}</div><div class="error-state-msg">${msg}</div>${btn}</div>`;
+}
+window.errorState = errorState;
+
 async function loadTilbud() {
   if (!CLIENT_ID) return;
   const el = document.getElementById('tilbudList');
@@ -2478,13 +2500,13 @@ async function loadTilbud() {
       headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
     });
     if (!res.ok) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Kunne ikke hente tilbud. Prøv igen.</div></div>';
+      el.innerHTML = errorState('loadTilbud()', { title: 'Kunne ikke hente tilbud', msg: 'Vi kunne ikke hente dine tilbud lige nu. Prøv igen om et øjeblik.' });
       return;
     }
     tilbudData = await res.json();
     renderTilbud();
   } catch(e) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Netværksfejl — prøv igen.</div></div>';
+    el.innerHTML = errorState('loadTilbud()', { title: 'Ingen forbindelse', msg: 'Vi kunne ikke få kontakt til serveren. Tjek din internetforbindelse og prøv igen.' });
   }
 }
 
@@ -3077,11 +3099,11 @@ async function loadGaps() {
   el.innerHTML = '<div class="loading">Henter spørgsmål...</div>';
   try {
     const res = await fetch(`${API}/gaps/${CLIENT_ID}`);
-    if (!res.ok) { el.innerHTML = '<div class="empty"><div class="empty-text">Kunne ikke hente spørgsmål.</div></div>'; return; }
+    if (!res.ok) { el.innerHTML = errorState('loadGaps()', { title: 'Kunne ikke hente spørgsmål', msg: 'Vi kunne ikke hente de ubesvarede spørgsmål lige nu. Prøv igen om et øjeblik.' }); return; }
     gapsData = (await res.json()).gaps || [];
     renderGaps();
   } catch(e) {
-    el.innerHTML = '<div class="empty"><div class="empty-text">Netværksfejl.</div></div>';
+    el.innerHTML = errorState('loadGaps()', { title: 'Ingen forbindelse', msg: 'Vi kunne ikke få kontakt til serveren. Tjek din internetforbindelse og prøv igen.' });
   }
 }
 
@@ -3323,6 +3345,7 @@ function lukCRM() {
 
 async function hentCRMData(email) {
   if (!email) return;
+  window.__lastCRMEmail = email;
   const token = localStorage.getItem('klaiai_token') || '';
   try {
     const [r1, r2] = await Promise.all([
@@ -3334,7 +3357,7 @@ async function hentCRMData(email) {
     const crmData   = crmResp.kontakt || null;
     renderCRM(historik, crmData);
   } catch(e) {
-    document.getElementById('crmTidslinje').innerHTML = '<div style="padding:2rem 1.25rem;font-size:.82rem;color:var(--muted)">Fejl ved hentning</div>';
+    document.getElementById('crmTidslinje').innerHTML = errorState('hentCRMData(window.__lastCRMEmail)', { title: 'Kunne ikke hente historik', msg: 'Vi kunne ikke hente kundens historik lige nu. Prøv igen om et øjeblik.' });
   }
 }
 
@@ -3603,7 +3626,7 @@ async function loadAbonnement() {
     const abo = await res.json();
     renderAbonnement(abo);
   } catch(e) {
-    document.getElementById('aboIndhold').innerHTML = '<div style="color:#c0392b;font-size:.85rem">Kunne ikke hente abonnementsinfo.</div>';
+    document.getElementById('aboIndhold').innerHTML = errorState('loadAbonnement()', { title: 'Kunne ikke hente abonnement', msg: 'Vi kunne ikke hente din abonnementsinfo lige nu. Prøv igen om et øjeblik.' });
   }
 }
 
@@ -3982,7 +4005,7 @@ async function loadKlientKatalog() {
     klientKatalog = await res.json() || [];
     renderKlientKatalog();
   } catch(e) {
-    liste.innerHTML = '<div class="loading">Kunne ikke hente katalog</div>';
+    liste.innerHTML = errorState('loadKlientKatalog()', { title: 'Kunne ikke hente katalog', msg: 'Vi kunne ikke hente dit priskatalog lige nu. Prøv igen om et øjeblik.' });
   }
 }
 
