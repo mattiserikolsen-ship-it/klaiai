@@ -253,6 +253,11 @@
     .footer-logo { font-size: 1.4rem; font-weight: 900; color: #fff; margin-bottom: .75rem; }
     .footer-logo span { color: var(--accent); }
     footer p { color: rgba(255,255,255,.3); font-size: .85rem; }
+    .footer-status { display:inline-flex; align-items:center; gap:.45rem; margin-top:1rem; font-size:.8rem; color:rgba(255,255,255,.35); text-decoration:none; transition:color .15s; }
+    a.footer-status:hover { color:rgba(255,255,255,.7); }
+    .footer-status .dot { width:8px; height:8px; border-radius:50%; background:#9a9590; flex-shrink:0; transition:background .2s, box-shadow .2s; }
+    .footer-status .dot.ok  { background:#4ade80; box-shadow:0 0 0 3px rgba(74,222,128,.15); }
+    .footer-status .dot.err { background:#f87171; box-shadow:0 0 0 3px rgba(248,113,113,.15); }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
@@ -741,9 +746,37 @@
 <footer>
   <div class="footer-logo">Nord<span>olsen</span></div>
   <p>© 2026 Nordolsen &nbsp;·&nbsp; Systemer der sparer din tid &nbsp;·&nbsp; support@nexolsen.dk</p>
+  <a id="footerStatus" class="footer-status" target="_blank" rel="noopener" title="Se systemstatus">
+    <span class="dot" id="footerStatusDot"></span>
+    <span id="footerStatusText">Tjekker systemstatus…</span>
+  </a>
 </footer>
 
 <script>
+  // Live systemstatus i footer — pinger backendens /health og linker (naar sat)
+  // ud til den eksterne UptimeRobot-statusside. STATUS_URL tom = kun live prik.
+  (function initFooterStatus() {
+    const HEALTH_URL = 'https://klaiai.onrender.com/health';
+    const STATUS_URL = '';  // <- Indsaet UptimeRobot public-status URL her
+    const el = document.getElementById('footerStatus');
+    const dot = document.getElementById('footerStatusDot');
+    const txt = document.getElementById('footerStatusText');
+    if (!el || !dot || !txt) return;
+    if (STATUS_URL) { el.href = STATUS_URL; el.style.cursor = 'pointer'; }
+    else { el.removeAttribute('href'); el.style.cursor = 'default'; }
+    async function tjek() {
+      try {
+        const r = await fetch(HEALTH_URL, { cache: 'no-store' });
+        if (r.ok) { dot.className = 'dot ok'; txt.textContent = 'Alle systemer kører'; }
+        else { dot.className = 'dot err'; txt.textContent = 'Forstyrrelser'; }
+      } catch (e) {
+        dot.className = 'dot err'; txt.textContent = 'Forbindelsesproblem';
+      }
+    }
+    tjek();
+    setInterval(tjek, 60000);
+  })();
+
   // Scroll reveal
   const reveals = document.querySelectorAll('.reveal');
   const observer = new IntersectionObserver((entries) => {
