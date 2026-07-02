@@ -6790,6 +6790,31 @@ def portal_overblik(klient_id):
                     'tid': t.get('oprettet', '')
                 })
 
+        # Autonome opfoelgningsmails som systemet har sendt paa kundens vegne.
+        # Det staerkeste "selvkoerende"-signal: systemet svarede uden at ejeren
+        # roerte noget. Kun status='sendt' (dvs. auto-godkendt og faktisk afsendt).
+        try:
+            lead_navne = {l.get('id'): l.get('navn', 'en henvendelse') for l in leads_alle}
+            mails_res = db.table('lead_mails').select('lead_id,mail_nr,emne,created_at') \
+                .eq('klient_id', klient_id).eq('status', 'sendt') \
+                .order('created_at', desc=True).limit(30).execute()
+            for m in (mails_res.data or []):
+                navn = lead_navne.get(m.get('lead_id'), 'en henvendelse')
+                titel = (f"System besvarede {navn} automatisk"
+                         if m.get('mail_nr') == 1
+                         else f"System sendte opfoelgning til {navn}")
+                events.append({
+                    'type': 'auto_mail',
+                    'ikon': '🤖',
+                    'farve': '#7c3aed',
+                    'bg': '#f5f3ff',
+                    'titel': titel,
+                    'sub': m.get('emne', 'Opfoelgningsmail'),
+                    'tid': m.get('created_at', '')
+                })
+        except Exception as _e:
+            print(f"Auto-mail events fejl (ikke kritisk): {_e}")
+
         events.sort(key=lambda e: e.get('tid', ''), reverse=True)
 
         leads_recent = []
