@@ -59,6 +59,11 @@
     .nav-item.active .ni { opacity: 1; }
     .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.07); }
     .powered { font-size: .65rem; color: rgba(255,255,255,.25); }
+    .sys-status { display:flex; align-items:center; gap:.45rem; font-size:.66rem; color:rgba(255,255,255,.4); text-decoration:none; margin-bottom:.55rem; transition:color .15s; }
+    a.sys-status:hover { color:rgba(255,255,255,.75); }
+    .sys-dot { width:7px; height:7px; border-radius:50%; background:#9a9590; flex-shrink:0; transition:background .2s, box-shadow .2s; }
+    .sys-dot.ok  { background:#4ade80; box-shadow:0 0 0 3px rgba(74,222,128,.14); }
+    .sys-dot.err { background:#f87171; box-shadow:0 0 0 3px rgba(248,113,113,.14); }
 
     /* ── MOBILE NAV ── */
     .mobile-header {
@@ -637,6 +642,10 @@
     <button onclick="logud()" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);border-radius:8px;padding:.5rem .9rem;font-size:.78rem;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;transition:all .15s;margin-bottom:.6rem" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">
       ↩ Log ud
     </button>
+    <a id="sysStatus" class="sys-status" target="_blank" rel="noopener" title="Se systemstatus">
+      <span class="sys-dot" id="sysDot"></span>
+      <span id="sysStatusText">Tjekker status...</span>
+    </a>
     <div class="powered">Drevet af Nordolsen</div>
   </div>
 </nav>
@@ -1630,6 +1639,33 @@ function logud() {
 }
 
 const API = 'https://klaiai.onrender.com';
+
+// Offentlig statusside (ekstern uafhaengig maaler, fx UptimeRobot). Indsaet
+// din UptimeRobot public-status URL her, saa bliver badget klikbart og foerer
+// kunden til den offentlige oppetids-side. Lad staa tom = badge viser kun
+// live status (dot), uden link.
+const STATUS_URL = '';
+
+// Live systemstatus i sidebar-bunden: pinger /health og viser groen/roed prik.
+(function initSysStatus() {
+  const el = document.getElementById('sysStatus');
+  const dot = document.getElementById('sysDot');
+  const txt = document.getElementById('sysStatusText');
+  if (!el || !dot || !txt) return;
+  if (STATUS_URL) { el.href = STATUS_URL; el.style.cursor = 'pointer'; }
+  else { el.removeAttribute('href'); el.style.cursor = 'default'; }
+  async function tjek() {
+    try {
+      const r = await fetch(`${API}/health`, { cache: 'no-store' });
+      if (r.ok) { dot.className = 'sys-dot ok'; txt.textContent = 'Systemet kører'; }
+      else { dot.className = 'sys-dot err'; txt.textContent = 'Forstyrrelser'; }
+    } catch (e) {
+      dot.className = 'sys-dot err'; txt.textContent = 'Forbindelsesproblem';
+    }
+  }
+  tjek();
+  setInterval(tjek, 60000);
+})();
 const params = new URLSearchParams(window.location.search);
 // Brug klient_id fra localStorage som sikker fallback
 const CLIENT_ID = params.get('id') || localStorage.getItem('klaiai_klient_id') || '';
