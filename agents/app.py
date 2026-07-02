@@ -186,6 +186,9 @@ def require_admin(f):
         token = raw.replace('Bearer ', '').strip()
         if not _token_ok(token, role='admin'):
             return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
+        _info = active_tokens.get(token, {})
+        request.user_klient_id = _info.get('klient_id')
+        request.user_role = _info.get('role')
         return f(*args, **kwargs)
     return decorated
 
@@ -197,6 +200,9 @@ def require_token(f):
         token = raw.replace('Bearer ', '').strip()
         if not _token_ok(token):
             return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
+        _info = active_tokens.get(token, {})
+        request.user_klient_id = _info.get('klient_id')
+        request.user_role = _info.get('role')
         return f(*args, **kwargs)
     return decorated
 
@@ -3408,7 +3414,7 @@ def _hent_economic_token(klient_id):
 @require_token
 def econ_connect(klient_id):
     """Gem og valider e-conomic Agreement Grant Token"""
-    if str(request.user_klient_id) != str(klient_id):
+    if _ingen_adgang(klient_id):
         return jsonify({'error': 'Ikke adgang'}), 403
     data = request.json or {}
     token = data.get('token', '').strip()
@@ -3439,7 +3445,7 @@ def econ_connect(klient_id):
 @require_token
 def econ_status(klient_id):
     """Check om e-conomic er forbundet og token virker"""
-    if str(request.user_klient_id) != str(klient_id):
+    if _ingen_adgang(klient_id):
         return jsonify({'error': 'Ikke adgang'}), 403
     token = _hent_economic_token(klient_id)
     if not token:
@@ -3459,7 +3465,7 @@ def econ_status(klient_id):
 @require_token
 def econ_disconnect(klient_id):
     """Fjern e-conomic forbindelse"""
-    if str(request.user_klient_id) != str(klient_id):
+    if _ingen_adgang(klient_id):
         return jsonify({'error': 'Ikke adgang'}), 403
     supabase.table('klient_integrationer').delete()\
         .eq('klient_id', str(klient_id)).execute()
@@ -3476,7 +3482,7 @@ def econ_sync_tilbud(tilbud_id):
         return jsonify({'error': 'Tilbud ikke fundet'}), 404
     t = t_res.data
     klient_id = t.get('klient_id')
-    if str(request.user_klient_id) != str(klient_id):
+    if _ingen_adgang(klient_id):
         return jsonify({'error': 'Ikke adgang'}), 403
     token = _hent_economic_token(klient_id)
     if not token:
@@ -7050,7 +7056,7 @@ def portal_send_tilbud(tilbud_id):
             return jsonify({'error': 'Tilbud ikke fundet'}), 404
 
         klient_id = tilbud.get('klient_id', '')
-        if str(request.user_klient_id) != str(klient_id):
+        if _ingen_adgang(klient_id):
             return jsonify({'error': 'Ikke adgang til dette tilbud'}), 403
 
         kunde_email = tilbud.get('kunde_email', '')
