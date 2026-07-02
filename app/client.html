@@ -336,6 +336,14 @@
     .retry-btn { display: inline-flex; align-items: center; gap: .45rem; background: var(--green, #4a6741); color: #fff; border: none; border-radius: 8px; padding: .55rem 1.1rem; font-size: .82rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .15s; }
     .retry-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
     .retry-btn svg { width: 15px; height: 15px; }
+    /* Skeleton loaders — bloedt pulserende placeholders der matcher indholdets form */
+    @keyframes skel-shimmer { 0% { background-position: -420px 0; } 100% { background-position: 420px 0; } }
+    .skeleton { background: linear-gradient(90deg, rgba(26,25,24,.06) 25%, rgba(26,25,24,.11) 37%, rgba(26,25,24,.06) 63%); background-size: 840px 100%; animation: skel-shimmer 1.4s ease-in-out infinite; border-radius: 6px; }
+    .skel-row { display: flex; align-items: center; gap: .9rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .skel-row:last-child { border-bottom: none; }
+    .skel-circle { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+    .skel-lines { flex: 1; display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+    .skel-line { height: 10px; }
 
     /* ── RAPPORT ── */
     .rapport-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
@@ -753,7 +761,7 @@
             <button onclick="showView('leads')" style="background:transparent;border:1px solid var(--border);color:var(--mid);padding:.35rem .8rem;border-radius:7px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se alle →</button>
           </div>
         </div>
-        <div id="leadIndbakke"><div class="loading" style="padding:1.5rem">Henter leads...</div></div>
+        <div id="leadIndbakke" data-skel="3,1"></div>
       </div>
 
       <!-- NÆSTE AFTALE BANNER -->
@@ -799,7 +807,7 @@
             <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite"></span>Live
           </span>
         </div>
-        <div id="aktivitetFeed"><div class="loading">Henter aktivitet...</div></div>
+        <div id="aktivitetFeed" data-skel="4,0"></div>
       </div>
 
     </div>
@@ -861,7 +869,7 @@
           <div class="card-title" style="margin:0">Alle leads</div>
           <span id="leadCount" style="font-size:.78rem;color:var(--muted)"></span>
         </div>
-        <div id="leadList"><div class="loading">Henter leads...</div></div>
+        <div id="leadList" data-skel="4,1"></div>
       </div>
     </div>
 
@@ -905,7 +913,7 @@
           <button class="booking-filter-btn"        data-filter="igangværende"    onclick="setBookingFilter('igangværende',this)">Igangværende</button>
           <button class="booking-filter-btn"        data-filter="afsluttet"       onclick="setBookingFilter('afsluttet',this)">Afsluttet</button>
         </div>
-        <div id="bookingList"><div class="loading">Henter bookinger...</div></div>
+        <div id="bookingList" data-skel="4,1"></div>
       </div>
     </div>
 
@@ -1531,7 +1539,7 @@
     <div id="view-agenter" class="hidden">
       <div class="card">
         <div class="card-title">Dine aktive agenter</div>
-        <div id="agentList"><div class="loading">Henter agenter...</div></div>
+        <div id="agentList" data-skel="3,0"></div>
       </div>
       <div class="card" style="background:var(--green-bg);border-color:#c5d6c2">
         <div style="font-size:.85rem;font-weight:700;color:var(--green);margin-bottom:.4rem">Alt kører automatisk</div>
@@ -2489,10 +2497,36 @@ function errorState(retryCall, opts) {
 }
 window.errorState = errorState;
 
+// Genbrugelige skeleton-rækker der efterligner listeindhold mens data hentes.
+// n: antal rækker. avatar: vis cirkel-placeholder (fx til lead/kontakt-rækker).
+function skeletonList(n, avatar) {
+  n = n || 4;
+  const w = [55, 70, 48, 62, 58];
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    out += '<div class="skel-row">' +
+      (avatar ? '<div class="skeleton skel-circle"></div>' : '') +
+      '<div class="skel-lines">' +
+        '<div class="skeleton skel-line" style="width:' + (w[i % w.length] * 0.6 | 0) + '%"></div>' +
+        '<div class="skeleton skel-line" style="width:' + w[i % w.length] + '%"></div>' +
+      '</div>' +
+      '<div class="skeleton skel-line" style="width:36px;flex-shrink:0"></div>' +
+    '</div>';
+  }
+  return out;
+}
+window.skeletonList = skeletonList;
+
+// Fyld skeletter i alle containere med data-skel="antal,avatar" mens data hentes.
+document.querySelectorAll('[data-skel]').forEach(function(el){
+  const p = el.getAttribute('data-skel').split(',');
+  el.innerHTML = skeletonList(parseInt(p[0], 10) || 3, p[1] === '1');
+});
+
 async function loadTilbud() {
   if (!CLIENT_ID) return;
   const el = document.getElementById('tilbudList');
-  el.innerHTML = '<div class="loading">Henter tilbud...</div>';
+  el.innerHTML = skeletonList(4, false);
   // Hent markedspriser i baggrunden (kun intern visning)
   hentMarkedsPriser();
   try {
@@ -3096,7 +3130,7 @@ let gapsData = null;
 async function loadGaps() {
   if (!CLIENT_ID) return;
   const el = document.getElementById('gapsList');
-  el.innerHTML = '<div class="loading">Henter spørgsmål...</div>';
+  el.innerHTML = skeletonList(3, false);
   try {
     const res = await fetch(`${API}/gaps/${CLIENT_ID}`);
     if (!res.ok) { el.innerHTML = errorState('loadGaps()', { title: 'Kunne ikke hente spørgsmål', msg: 'Vi kunne ikke hente de ubesvarede spørgsmål lige nu. Prøv igen om et øjeblik.' }); return; }
