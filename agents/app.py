@@ -242,11 +242,54 @@ def er_klient_aktiv(klient_id):
         pass
     return True
 
+def hent_eller_opret_inbound_token(klient_id):
+    """Returnerer klientens unikke mailbox-token (local-part i deres inbound-adresse).
+    Genereres doven foerste gang portalen beder om adressen — ingen backfill noedvendig.
+    Token er kort + ikke-gaettelig saa adresser ikke kan enumereres."""
+    if not db or str(klient_id) == 'demo':
+        return None
+    try:
+        r = db.table('klienter').select('inbound_token').eq('id', klient_id).single().execute()
+        if r.data and r.data.get('inbound_token'):
+            return r.data['inbound_token']
+    except Exception as e:
+        print(f"inbound_token opslag fejl: {e}")
+    # Ingen token endnu — generer og gem (retry ved sjaelden kollision paa unikt indeks)
+    for _ in range(5):
+        token = secrets.token_hex(5)  # 10 hex-tegn, fx 'a3f9c1b2e0'
+        try:
+            db.table('klienter').update({'inbound_token': token}).eq('id', klient_id).execute()
+            return token
+        except Exception as e:
+            print(f"inbound_token generering fejl: {e}")
+    return None
+
+def inbound_adresse(klient_id):
+    """Fuld videresendelses-adresse kunden skal sende til, fx a3f9c1b2e0@leads.klaai.dk."""
+    token = hent_eller_opret_inbound_token(klient_id)
+    return f"{token}@{INBOUND_DOMAIN}" if token else None
+
+def klient_id_fra_inbound_token(token):
+    """Slaar en indkommen mailbox-token op -> klient_id. None hvis ukendt."""
+    if not db or not token:
+        return None
+    try:
+        r = db.table('klienter').select('id').eq('inbound_token', token).single().execute()
+        if r.data:
+            return r.data.get('id')
+    except Exception as e:
+        print(f"klient_id_fra_inbound_token fejl: {e}")
+    return None
+
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'clients_config.json')
 SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY', '')
 SENDGRID_FROM = os.environ.get('SENDGRID_FROM', '')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 GATEWAYAPI_TOKEN = os.environ.get('GATEWAYAPI_TOKEN', '')
+# Subdomaene som kunders info@ videresendes til. Kunde-noeglen ligger i
+# local-part: {inbound_token}@{INBOUND_DOMAIN}. Kraever MX -> mx.sendgrid.net
+# + SendGrid Inbound Parse konfigureret til dette domaene.
+INBOUND_DOMAIN = os.environ.get('INBOUND_DOMAIN', 'leads.klaai.dk')
 
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
@@ -783,6 +826,99 @@ def modtag_lead():
     })
 
 
+@app.route('/inbound-mail', methods=['POST'])
+def inbound_mail():
+    """SendGrid Inbound Parse webhook. Kundens info@ videresendes til
+    {token}@INBOUND_DOMAIN; token'en i modtager-adressen router til rette klient.
+    Zero-loss: mailen gemmes SYNKRONT (fejler det -> 503 saa SendGrid gensender),
+    kategorisering + evt. lead-oprettelse koerer i baggrunden."""
+    import re, hashlib
+    from email.utils import parseaddr
+
+    form = request.form
+    # Faktisk modtager: envelope.to er mest paalidelig (RCPT TO), ellers To-headeren.
+    modtager = ''
+    try:
+        env = json.loads(form.get('envelope', '{}'))
+        to_liste = env.get('to') or []
+        modtager = to_liste[0] if to_liste else ''
+    except Exception:
+        pass
+    if not modtager:
+        modtager = form.get('to', '')
+
+    _, modt_adr = parseaddr(modtager)
+    token = modt_adr.split('@')[0].strip().lower() if '@' in modt_adr else ''
+    klient_id = klient_id_fra_inbound_token(token)
+    if not klient_id:
+        # Ukendt/forkert-konfigureret adresse: kvittér 200 (undgaa evige gensendinger),
+        # men alarmér saa en fejl-opsat videresendelse opdages.
+        alarm('Mail til ukendt inbound-adresse',
+              f"Modtog en videresendt mail til '{modt_adr}' som ikke matcher nogen klient-token. Tjek kundens videresendelse/Inbound Parse.",
+              noegle='inbound_ukendt')
+        return jsonify({'ignored': True, 'reason': 'ukendt token'}), 200
+
+    fra_navn, fra_email = parseaddr(form.get('from', ''))
+    emne = form.get('subject', '') or ''
+    besked = form.get('text', '') or ''
+    if not besked:
+        # Kun HTML? Fald tilbage til en simpel tekstudgave.
+        html = form.get('html', '') or ''
+        besked = re.sub(r'<[^>]+>', ' ', html)
+        besked = re.sub(r'\s+', ' ', besked).strip()
+
+    # Idempotens: Message-ID hvis muligt, ellers hash af afsender+emne+uddrag.
+    dedup_kilde = ''
+    try:
+        headers = form.get('headers', '') or ''
+        m = re.search(r'(?im)^Message-ID:\s*(.+)$', headers)
+        dedup_kilde = m.group(1).strip() if m else ''
+    except Exception:
+        pass
+    if not dedup_kilde:
+        dedup_kilde = f"{fra_email}|{emne}|{besked[:200]}"
+    dedup_id = hashlib.sha256(dedup_kilde.encode('utf-8', 'ignore')).hexdigest()[:32]
+
+    if db:
+        # Dedup-tjek: gensendt webhook laver ikke en dublet.
+        try:
+            findes = (db.table('indbakke_mails').select('id')
+                        .eq('klient_id', str(klient_id)).eq('dedup_id', dedup_id)
+                        .limit(1).execute())
+            if findes.data:
+                return jsonify({'success': True, 'duplikat': True}), 200
+        except Exception as e:
+            print(f"inbound dedup-tjek fejl: {e}")
+
+        # KRITISK FANGST — gem foer alt andet. Fejler den, gensend (503).
+        try:
+            ny = db.table('indbakke_mails').insert({
+                'klient_id': str(klient_id),
+                'fra_email': fra_email, 'fra_navn': fra_navn,
+                'emne': emne, 'besked': besked,
+                'kategori': 'til_gennemsyn', 'status': 'ny',
+                'dedup_id': dedup_id
+            }).execute()
+            row_id = ny.data[0]['id'] if ny.data else None
+        except Exception as e:
+            print(f"inbound insert fejl: {e}")
+            alarm('Videresendt mail kunne ikke gemmes',
+                  f"En mail til klient {klient_id} fra {fra_email} kunne ikke gemmes. SendGrid gensender. Fejl: {e}",
+                  noegle='inbound_insert', klient_id=klient_id)
+            return jsonify({'error': 'kunne ikke gemme', 'retry': True}), 503
+
+        log_aktivitet(str(klient_id), 'indbakke', f"Ny mail modtaget — {fra_navn or fra_email}", fra_email, modul='indbakke')
+
+        # Kategorisering + evt. lead-flow i baggrunden — holder ikke webhooket op.
+        threading.Thread(
+            target=_behandl_inbound_mail,
+            args=(row_id, str(klient_id), fra_navn, fra_email, emne, besked, dedup_id),
+            daemon=True
+        ).start()
+
+    return jsonify({'success': True}), 200
+
+
 def _generer_lead_mails(klient_id, lead, dedup_id):
     """Genererer (og evt. sender) de 3 opfoelgningsmails i baggrunden.
     Leadet er allerede gemt foer denne kaldes — fejl her taber ikke leadet."""
@@ -945,6 +1081,96 @@ TEKST:
             body.append(line)
 
     return {'emne': emne or f'Opfølgning fra {klient["navn"]}', 'tekst': '\n'.join(body).strip(), 'mail_nr': mail_nr}
+
+
+# ── EMAIL-INGESTION: KATEGORISERING + BEHANDLING ──────────────
+INDBAKKE_KATEGORIER = ('nyt_lead', 'booking', 'eksisterende_kunde', 'faktura', 'erhverv', 'spam')
+
+def kategoriser_mail(emne, besked, fra_email):
+    """Klassificerer en indkommen mail i ét autonomt spor + to signaler.
+    Fail-safe: enhver fejl -> 'til_gennemsyn' + kraever_svar, saa ejeren ser
+    mailen og intet nogensinde tabes stille. Bruger Haiku (billigt ved volumen)."""
+    fallback = {'kategori': 'til_gennemsyn', 'hot': False, 'kraever_svar': True}
+    try:
+        resp = ai.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=120,
+            messages=[{'role': 'user', 'content': f"""Klassificér denne mail til en dansk virksomheds info-indbakke.
+
+Fra: {fra_email}
+Emne: {emne}
+Tekst: {(besked or '')[:1500]}
+
+Vælg PRÆCIS én kategori:
+- nyt_lead: potentiel NY kunde — interesse, forespørgsel, prisønske
+- booking: vil bestille tid, besøg eller aftale
+- eksisterende_kunde: support/spørgsmål/reklamation fra en de allerede handler med
+- faktura: betaling, faktura, rykker, økonomi
+- erhverv: B2B, leverandør, samarbejde, salgshenvendelse TIL virksomheden
+- spam: nyhedsbrev, cold sales, irrelevant, automatisk/no-reply
+
+Vurdér også:
+- hot: true hvis mailen haster, nævner pris/beløb, eller lyder klar til at købe
+- kraever_svar: true hvis afsenderen venter et konkret svar fra virksomheden
+
+Returnér KUN gyldig JSON, intet andet:
+{{"kategori":"...","hot":true/false,"kraever_svar":true/false}}"""}]
+        )
+        raw = resp.content[0].text.strip()
+        start, slut = raw.find('{'), raw.rfind('}')
+        data = json.loads(raw[start:slut+1]) if start >= 0 else {}
+        kat = data.get('kategori', 'til_gennemsyn')
+        if kat not in INDBAKKE_KATEGORIER:
+            kat = 'til_gennemsyn'
+        return {'kategori': kat, 'hot': bool(data.get('hot')), 'kraever_svar': bool(data.get('kraever_svar'))}
+    except Exception as e:
+        print(f"kategoriser_mail fejl: {e}")
+        return fallback
+
+
+def _behandl_inbound_mail(row_id, klient_id, fra_navn, fra_email, emne, besked, dedup_id):
+    """Baggrund: kategorisér mailen, opdatér indbakke-posten, og for lead/booking
+    opret et rigtigt lead (kilde=email) saa hele det autonome flow fyrer af."""
+    try:
+        res = kategoriser_mail(emne, besked, fra_email)
+        opdatering = {'kategori': res['kategori'], 'hot': res['hot'], 'kraever_svar': res['kraever_svar']}
+
+        if res['kategori'] in ('nyt_lead', 'booking') and db:
+            lead = {
+                'navn': fra_navn or (fra_email.split('@')[0] if fra_email else 'Ukendt'),
+                'email': fra_email or '',
+                'telefon': '',
+                'virksomhed': '',
+                'besked': (f"{emne}\n\n{besked}" if emne else besked or '').strip(),
+                'dedup_id': f"inbound_{dedup_id}"
+            }
+            try:
+                db.table('leads').insert({
+                    'klient_id': str(klient_id),
+                    'navn': lead['navn'], 'email': lead['email'], 'telefon': '',
+                    'virksomhed': '', 'besked': lead['besked'],
+                    'kilde': 'email', 'status': 'ny', 'dedup_id': lead['dedup_id']
+                }).execute()
+                # Find lead-id og link tilbage til indbakke-posten
+                lq = (db.table('leads').select('id')
+                        .eq('klient_id', str(klient_id)).eq('dedup_id', lead['dedup_id'])
+                        .limit(1).execute())
+                if lq.data:
+                    opdatering['lead_id'] = lq.data[0]['id']
+                opsaml_kontakt(str(klient_id), lead['email'], lead['navn'], '')
+                log_aktivitet(str(klient_id), 'lead', f"Nyt lead via email — {lead['navn']}", lead['email'], modul='leads')
+                # Autonomt opfoelgnings-flow (vi er allerede i baggrundstraad)
+                _generer_lead_mails(str(klient_id), dict(lead), lead['dedup_id'])
+            except Exception as e:
+                print(f"inbound lead-oprettelse fejl: {e}")
+
+        if db:
+            db.table('indbakke_mails').update(opdatering).eq('id', row_id).execute()
+    except Exception as e:
+        print(f"_behandl_inbound_mail fejl: {e}")
+        alarm('Indbakke-mail kunne ikke behandles',
+              f"En videresendt mail for klient {klient_id} blev gemt men ikke kategoriseret. Fejl: {e}",
+              noegle='inbound_behandl', klient_id=klient_id)
 
 
 def byg_html_mail(lead_navn, tekst, klient_navn, klient_hjemmeside, hero_image_url=None, cta_tekst='Se vores produkter', cta_url=None):
@@ -2504,6 +2730,66 @@ def portal_mail_preview():
         }
         mail = generer_lead_mail(sample_lead, klient_info, 1, mail_cfg)
         return jsonify({'emne': mail.get('emne', ''), 'tekst': mail.get('tekst', '')})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+
+def _portal_ejer(klient_id):
+    """True hvis den kaldende token ejer klient_id (eller er admin)."""
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    return not (info.get('role') == 'client' and str(info.get('klient_id')) != str(klient_id))
+
+
+@app.route('/portal/inbound-adresse/<klient_id>', methods=['GET'])
+@require_token
+def portal_inbound_adresse(klient_id):
+    """Klientportal: den unikke adresse kundens info@ skal videresendes til."""
+    if not _portal_ejer(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
+    return jsonify({'adresse': inbound_adresse(klient_id), 'domain': INBOUND_DOMAIN})
+
+
+@app.route('/portal/indbakke/<klient_id>', methods=['GET'])
+@require_token
+def portal_indbakke(klient_id):
+    """Klientportal: alle indkomne mails, kategoriseret. Hot + nyeste foerst."""
+    if not _portal_ejer(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not db:
+        return jsonify({'mails': []})
+    try:
+        r = (db.table('indbakke_mails')
+               .select('id,fra_email,fra_navn,emne,besked,kategori,hot,kraever_svar,lead_id,status,modtaget')
+               .eq('klient_id', str(klient_id))
+               .neq('status', 'arkiveret')
+               .order('hot', desc=True)
+               .order('modtaget', desc=True)
+               .limit(200)
+               .execute())
+        return jsonify({'mails': r.data or []})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e), 'mails': []}), 500
+
+
+@app.route('/portal/indbakke/<mail_id>/status', methods=['POST'])
+@require_token
+def portal_indbakke_status(mail_id):
+    """Klientportal: markér en indbakke-mail som laest/arkiveret."""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    ny_status = (request.json or {}).get('status', 'laest')
+    if ny_status not in ('ny', 'laest', 'arkiveret'):
+        return jsonify({'error': 'Ugyldig status'}), 400
+    try:
+        r = db.table('indbakke_mails').select('klient_id').eq('id', mail_id).single().execute()
+        if not r.data:
+            return jsonify({'error': 'Ikke fundet'}), 404
+        if not _portal_ejer(r.data.get('klient_id')):
+            return jsonify({'error': 'Ingen adgang'}), 403
+        db.table('indbakke_mails').update({'status': ny_status}).eq('id', mail_id).execute()
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': _log_fejl(e)}), 500
 

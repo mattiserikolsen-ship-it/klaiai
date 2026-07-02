@@ -606,6 +606,10 @@
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span> Leads
       <span id="leadBadge" class="hidden" style="margin-left:auto;background:#c0392b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
+    <div class="nav-item" data-view="indbakke" onclick="showView('indbakke')">
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span> Indbakke <span style="background:var(--green,#4a6741);color:#fff;font-size:.55rem;font-weight:700;padding:.05rem .3rem;border-radius:4px;margin-left:.35rem;letter-spacing:.3px">NY</span>
+      <span id="indbakkeBadge" class="hidden" style="margin-left:auto;background:#c0392b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
+    </div>
     <div class="nav-item" data-view="bookinger" onclick="showView('bookinger')">
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Bookinger
     </div>
@@ -700,6 +704,9 @@
     </button>
     <button onclick="showView('bookinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ▦ <span>Bookinger</span>
+    </button>
+    <button onclick="showView('indbakke');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      📥 <span>Indbakke</span>
     </button>
     <button onclick="showView('mails');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ✉ <span>Mine mails</span>
@@ -1391,6 +1398,38 @@
       </div>
     </div>
 
+    <!-- INDBAKKE -->
+    <div id="view-indbakke" class="hidden">
+      <!-- Forbind-din-mail wizard: vises indtil kunden har set adressen -->
+      <div id="indbakkeSetup" class="card" style="background:linear-gradient(135deg,#4a6741,#3d5636);color:#fff;border:none">
+        <div style="display:flex;align-items:flex-start;gap:.9rem">
+          <div style="font-size:1.6rem;line-height:1">📥</div>
+          <div style="flex:1">
+            <div class="card-title" style="color:#fff;margin-bottom:.3rem">Saml ALLE dine henvendelser ét sted</div>
+            <div style="font-size:.85rem;line-height:1.5;color:rgba(255,255,255,.85);margin-bottom:1rem">Videresend din <b>info-mail</b> til Nordolsen, så sorterer systemet automatisk hver eneste mail — leads, bookinger, fakturaer, spam — og svarer nye kunder for dig. Du beholder din egen mail; vi tapper bare strømmen.</div>
+            <div style="background:rgba(255,255,255,.12);border-radius:11px;padding:.9rem 1rem;margin-bottom:.9rem">
+              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;opacity:.8;margin-bottom:.35rem">Din unikke Nordolsen-adresse</div>
+              <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+                <code id="inboundAdr" style="font-size:.95rem;font-weight:700;background:rgba(0,0,0,.25);padding:.4rem .7rem;border-radius:8px">henter…</code>
+                <button onclick="kopierInboundAdr()" id="btnKopiAdr" style="background:#fff;color:#3d5636;border:none;border-radius:8px;padding:.4rem .9rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">Kopiér</button>
+              </div>
+            </div>
+            <div style="font-size:.82rem;font-weight:600;margin-bottom:.5rem">Sæt videresendelse op — vælg din udbyder:</div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.75rem">
+              <button class="udbyder-btn" onclick="visUdbyder('onecom',this)" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:.4rem .8rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">one.com</button>
+              <button class="udbyder-btn" onclick="visUdbyder('simply',this)" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:.4rem .8rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Simply.com</button>
+              <button class="udbyder-btn" onclick="visUdbyder('gmail',this)" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:.4rem .8rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Gmail</button>
+              <button class="udbyder-btn" onclick="visUdbyder('outlook',this)" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:.4rem .8rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Outlook</button>
+              <button class="udbyder-btn" onclick="visUdbyder('andet',this)" style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:.4rem .8rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit">Anden</button>
+            </div>
+            <div id="udbyderGuide" style="background:rgba(255,255,255,.1);border-radius:10px;padding:.85rem 1rem;font-size:.82rem;line-height:1.55;display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="indbakkeListe"><div class="loading" style="padding:1.5rem">Henter indbakke…</div></div>
+    </div>
+
     <!-- MINE MAILS -->
     <div id="view-mails" class="hidden">
       <div class="card" style="background:linear-gradient(135deg,#4a6741,#3d5636);color:#fff;border:none">
@@ -1773,6 +1812,7 @@ const titles = {
   overblik:      ['Overblik',       'Din Nordolsen portal'],
   forretning:    ['Forretning',     'Hele din forretning samlet ét sted'],
   leads:         ['Leads',          'Kunder der har henvendt sig'],
+  indbakke:      ['Indbakke',       'Alle mails til din info-adresse — sorteret automatisk'],
   bookinger:     ['Bookinger',      'Bekræftede bookinger'],
   tilbud:        ['Tilbud',         'Tilbud du har sendt til kunder'],
   pipeline:      ['Pipeline',       'Status på alle dine tilbud'],
@@ -1813,7 +1853,7 @@ function showView(v) {
   ['overblik','leads','tilbud','pipeline'].forEach(id => {
     document.getElementById('mobNav-'+id)?.classList.toggle('active', id === v);
   });
-  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang','mails'];
+  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang','mails','indbakke'];
   document.getElementById('mobNav-mere')?.classList.toggle('active', mereViews.includes(v));
   closeMobileNav();
   if (v === 'overblik') loadOverblik();
@@ -1825,6 +1865,7 @@ function showView(v) {
   if (v === 'abonnement') loadAbonnement();
   if (v === 'indstillinger') loadIndstillinger();
   if (v === 'mails') loadMails();
+  if (v === 'indbakke') loadIndbakke();
   if (v === 'kom-i-gang') { genererWidgetKode(); visPlatform('html', document.querySelector('.plat-btn.active') || document.querySelector('.plat-btn')); }
 }
 
@@ -4066,6 +4107,119 @@ async function visMailEksempel(type) {
   }
   btn.disabled = false;
   btn.textContent = orig;
+}
+
+// ── INDBAKKE (email-ingestion) ────────────────────────
+const KAT_META = {
+  nyt_lead:           { label: 'Nyt lead',          bg:'#dcfce7', farve:'#166534', ikon:'🟢' },
+  booking:            { label: 'Booking',           bg:'#dbeafe', farve:'#1e40af', ikon:'📅' },
+  eksisterende_kunde: { label: 'Eksisterende kunde',bg:'#fef9c3', farve:'#854d0e', ikon:'👤' },
+  faktura:            { label: 'Faktura / økonomi', bg:'#f3e8ff', farve:'#6b21a8', ikon:'💰' },
+  erhverv:            { label: 'Erhverv',           bg:'#e5e7eb', farve:'#374151', ikon:'🤝' },
+  spam:               { label: 'Spam',              bg:'#fee2e2', farve:'#991b1b', ikon:'🗑️' },
+  til_gennemsyn:      { label: 'Til gennemsyn',     bg:'#fff7ed', farve:'#9a3412', ikon:'✉️' },
+};
+let _inboundAdr = '';
+
+async function loadIndbakke() {
+  // Hent adressen én gang
+  if (!_inboundAdr) {
+    try {
+      const r = await fetch(`${API}/portal/inbound-adresse/${CLIENT_ID}`, {
+        headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+      });
+      if (r.ok) {
+        const d = await r.json();
+        _inboundAdr = d.adresse || '';
+        const el = document.getElementById('inboundAdr');
+        if (el) el.textContent = _inboundAdr || 'ikke tilgængelig';
+      }
+    } catch(e) { console.error(e); }
+  }
+  // Hent mails
+  const liste = document.getElementById('indbakkeListe');
+  try {
+    const r = await fetch(`${API}/portal/indbakke/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    const d = await r.json();
+    renderIndbakke(d.mails || []);
+  } catch(e) {
+    liste.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:2rem">Kunne ikke hente indbakke lige nu.</div>';
+  }
+}
+
+function renderIndbakke(mails) {
+  const liste = document.getElementById('indbakkeListe');
+  // Badge: antal ulæste
+  const nye = mails.filter(m => m.status === 'ny').length;
+  const badge = document.getElementById('indbakkeBadge');
+  if (badge) { if (nye > 0) { badge.textContent = nye; badge.classList.remove('hidden'); } else badge.classList.add('hidden'); }
+
+  if (!mails.length) {
+    liste.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:2rem">Ingen mails endnu. Når du har sat videresendelse op, lander dine henvendelser her — automatisk sorteret.</div>';
+    return;
+  }
+  liste.innerHTML = mails.map(m => {
+    const meta = KAT_META[m.kategori] || KAT_META.til_gennemsyn;
+    const tid = m.modtaget ? new Date(m.modtaget).toLocaleString('da-DK', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    const uddrag = (m.besked || '').replace(/\s+/g,' ').trim().slice(0, 140);
+    const svaret = m.lead_id ? `<span style="font-size:.7rem;color:#166534;font-weight:600;background:#dcfce7;padding:.12rem .5rem;border-radius:5px">🤖 Systemet har svaret</span>` : '';
+    const ulaest = m.status === 'ny';
+    return `
+    <div class="card" style="padding:1rem 1.15rem;margin-bottom:.6rem;border-left:4px solid ${meta.farve};${ulaest?'':'opacity:.72'}">
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem">
+        <span style="font-size:.7rem;font-weight:700;background:${meta.bg};color:${meta.farve};padding:.15rem .55rem;border-radius:6px">${meta.ikon} ${meta.label}</span>
+        ${m.hot ? '<span style="font-size:.7rem;font-weight:700;background:#fee2e2;color:#991b1b;padding:.15rem .55rem;border-radius:6px">🔥 Hot</span>' : ''}
+        ${m.kraever_svar && !m.lead_id ? '<span style="font-size:.7rem;font-weight:600;background:#fef3c7;color:#92400e;padding:.15rem .55rem;border-radius:6px">✉️ Kræver svar</span>' : ''}
+        ${svaret}
+        <span style="margin-left:auto;font-size:.72rem;color:var(--muted)">${tid}</span>
+      </div>
+      <div style="font-weight:700;font-size:.92rem;margin-bottom:.15rem">${(m.fra_navn || m.fra_email || 'Ukendt')}${m.fra_email ? ` <span style="font-weight:400;color:var(--muted);font-size:.8rem">&lt;${m.fra_email}&gt;</span>` : ''}</div>
+      <div style="font-size:.88rem;color:#333;margin-bottom:.25rem">${m.emne || '(uden emne)'}</div>
+      <div style="font-size:.82rem;color:var(--muted);line-height:1.45">${uddrag}${uddrag.length >= 140 ? '…' : ''}</div>
+      <div style="margin-top:.6rem;display:flex;gap:.5rem">
+        ${ulaest ? `<button onclick="indbakkeStatus('${m.id}','laest',this)" style="background:var(--bg);border:1px solid var(--border);color:var(--dark);border-radius:8px;padding:.35rem .8rem;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit">Markér læst</button>` : ''}
+        <button onclick="indbakkeStatus('${m.id}','arkiveret',this)" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:.35rem .8rem;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit">Arkivér</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function indbakkeStatus(id, status, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await fetch(`${API}/portal/indbakke/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ status })
+    });
+    loadIndbakke();
+  } catch(e) { if (btn) { btn.disabled = false; btn.textContent = status === 'laest' ? 'Markér læst' : 'Arkivér'; } }
+}
+
+function kopierInboundAdr() {
+  if (!_inboundAdr) return;
+  navigator.clipboard?.writeText(_inboundAdr);
+  const b = document.getElementById('btnKopiAdr');
+  const o = b.textContent; b.textContent = 'Kopieret ✓';
+  setTimeout(() => b.textContent = o, 1800);
+}
+
+function visUdbyder(u, btn) {
+  document.querySelectorAll('.udbyder-btn').forEach(x => x.style.background = 'rgba(255,255,255,.14)');
+  if (btn) btn.style.background = 'rgba(255,255,255,.3)';
+  const adr = _inboundAdr || 'din-adresse@leads.klaai.dk';
+  const guides = {
+    onecom:  `<b>one.com:</b><br>1. Log ind på one.com → <b>E-mail &amp; Office</b><br>2. Klik på din info-konto → <b>Videresendelse</b> / <b>Forwarding</b><br>3. Tilføj <code>${adr}</code> og gem.<br>4. Vælg gerne "behold en kopi" så du stadig har mailen selv.`,
+    simply:  `<b>Simply.com:</b><br>1. Log ind → <b>E-mail</b> → vælg din info-konto<br>2. Find <b>Videresendelse</b><br>3. Indtast <code>${adr}</code> og gem.<br>4. Sæt "behold kopi i indbakke" til.`,
+    gmail:   `<b>Gmail / Google Workspace:</b><br>1. Gmail → ⚙️ <b>Se alle indstillinger</b> → <b>Videresendelse og POP/IMAP</b><br>2. <b>Tilføj en videresendelsesadresse</b> → indtast <code>${adr}</code><br>3. Google sender en bekræftelse — den ser du her i indbakken om lidt.<br>4. Vælg "behold Gmails kopi i indbakken".`,
+    outlook: `<b>Outlook / Microsoft 365:</b><br>1. Outlook → <b>Indstillinger</b> → <b>Mail</b> → <b>Videresendelse</b><br>2. Slå <b>Aktivér videresendelse</b> til → indtast <code>${adr}</code><br>3. Kryds "behold en kopi" af, og gem.`,
+    andet:   `<b>Anden udbyder:</b><br>Find "Videresendelse" / "Forwarding" i din mail-udbyders indstillinger for info-kontoen, og videresend til:<br><code>${adr}</code><br>Behold gerne en kopi i din egen indbakke. Er du i tvivl, så skriv til os — vi hjælper med opsætningen.`,
+  };
+  const el = document.getElementById('udbyderGuide');
+  el.innerHTML = guides[u] || guides.andet;
+  el.style.display = 'block';
 }
 
 // Init
