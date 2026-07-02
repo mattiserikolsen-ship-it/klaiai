@@ -5560,6 +5560,26 @@ def kør_tilbud_udløb():
         print(f"Tilbud udløb fejl: {e}")
 
 
+# ── Keep-alive: undgaa cold-starts ──────────────────────────────
+# Render spinner web-servicen ned efter ~15 min uden indgaaende trafik. En
+# koldstart giver 30-60s ventetid for foerste besoegende — en troværdigheds-
+# draeber. Vi pinger vores egen offentlige URL hvert 10. min, saa idle-timeren
+# aldrig naar 15 min og serveren altid er varm. Koerer kun i produktion
+# (RENDER_EXTERNAL_URL saettes automatisk af Render), ikke lokalt.
+KEEP_ALIVE_URL = os.environ.get('RENDER_EXTERNAL_URL')
+
+def kør_keep_alive():
+    if not KEEP_ALIVE_URL:
+        return
+    try:
+        http_requests.get(f"{KEEP_ALIVE_URL}/health", timeout=20)
+    except Exception as e:
+        print(f"Keep-alive ping fejl: {e}")
+
+if KEEP_ALIVE_URL:
+    scheduler.add_job(kør_keep_alive, 'interval', minutes=10, id='keep_alive')
+    print(f"🔥 Keep-alive aktiv mod {KEEP_ALIVE_URL}/health (hvert 10. min)")
+
 scheduler.add_job(kør_månedlig_rapport, 'cron', day=1, hour=8, minute=0, id='månedlig_rapport')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=9, minute=30, id='ubesvarede_leads')
 scheduler.add_job(kør_ubesvarede_leads_reminder, 'cron', hour=17, minute=0, id='ubesvarede_leads_aften')
