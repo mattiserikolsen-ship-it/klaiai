@@ -4180,6 +4180,18 @@ def prospekt_slet(pid):
     prospekter.pop(pid, None)
     return jsonify({'success': True})
 
+@app.route('/portal', methods=['GET'])
+def klient_portal_query():
+    """Portal via query-parametre: /portal?id=<klient_id>&token=<token>
+    Bruges bl.a. af admin-impersonation. client.html laeser selv id + token fra URL'en."""
+    from flask import make_response
+    app_dir = os.path.join(os.path.dirname(__file__), '..', 'app')
+    with open(os.path.join(app_dir, 'client.html'), 'r', encoding='utf-8') as f:
+        html = f.read()
+    response = make_response(html)
+    response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return response
+
 @app.route('/portal/<klient_id>', methods=['GET'])
 def klient_portal(klient_id):
     from flask import send_from_directory, make_response
