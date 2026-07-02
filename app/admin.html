@@ -371,6 +371,36 @@
       .stats-row { grid-template-columns: repeat(2, 1fr); }
       .product-status-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
+    /* ── TOAST + MODAL (erstatter native alert/prompt/confirm) ── */
+    #toastHost { position: fixed; top: 1rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: .6rem; pointer-events: none; max-width: 360px; }
+    .toast { pointer-events: auto; display: flex; align-items: flex-start; gap: .6rem; background: var(--card,#fff); border: 1px solid var(--border,#e5e3de); border-left: 3px solid var(--muted,#9a9590); border-radius: 12px; padding: .8rem 1rem; box-shadow: 0 12px 32px -12px rgba(10,25,80,.25); font-size: .85rem; line-height: 1.45; color: var(--text,var(--dark,#1a1918)); white-space: pre-line; animation: toastIn .4s var(--ease,cubic-bezier(.16,1,.3,1)) both; }
+    .toast.leaving { animation: toastOut .3s var(--ease,ease) both; }
+    .toast-ico { flex-shrink: 0; width: 18px; height: 18px; margin-top: 1px; }
+    .toast-msg { flex: 1; }
+    .toast-close { flex-shrink: 0; cursor: pointer; color: var(--muted,#9a9590); background: none; border: none; font-size: 1.05rem; line-height: 1; padding: 0; }
+    .toast.success { border-left-color: var(--green,#16a34a); }
+    .toast.error   { border-left-color: var(--red,#dc2626); }
+    .toast.info    { border-left-color: var(--accent2, var(--accent,#1e4fcf)); }
+    @keyframes toastIn  { from { opacity:0; transform: translateX(20px) scale(.98); } to { opacity:1; transform:none; } }
+    @keyframes toastOut { to { opacity:0; transform: translateX(20px) scale(.98); } }
+
+    .modal-scrim { position: fixed; inset: 0; background: rgba(10,20,40,.45); backdrop-filter: blur(3px); z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; transition: opacity .2s; }
+    .modal-scrim.show { opacity: 1; }
+    .modal-box { background: var(--card,#fff); border-radius: 16px; padding: 1.5rem; width: 100%; max-width: 400px; box-shadow: 0 24px 60px -20px rgba(10,20,40,.4); transform: translateY(10px) scale(.98); transition: transform .25s var(--ease,ease); }
+    .modal-scrim.show .modal-box { transform: none; }
+    .modal-title { font-size: 1rem; font-weight: 700; color: var(--text,var(--dark,#1a1918)); margin-bottom: .4rem; }
+    .modal-text { font-size: .85rem; color: var(--muted,#6b7a99); line-height: 1.5; white-space: pre-line; margin-bottom: 1.1rem; }
+    .modal-input { width: 100%; padding: .65rem .85rem; border: 1px solid var(--border,#e5e3de); border-radius: 9px; font-family: inherit; font-size: .9rem; color: var(--text,var(--dark)); margin-bottom: 1.1rem; background: var(--bg,#f7f8fc); }
+    .modal-input:focus { outline: none; border-color: var(--accent2, var(--green,#4a6741)); }
+    .modal-actions { display: flex; gap: .6rem; justify-content: flex-end; }
+    .modal-btn { padding: .6rem 1.1rem; border-radius: 9px; font-family: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+    .modal-btn.cancel { background: transparent; border-color: var(--border,#e5e3de); color: var(--muted,#6b7a99); }
+    .modal-btn.cancel:hover { color: var(--text,var(--dark)); }
+    .modal-btn.confirm { background: var(--accent, var(--green,#1a1918)); color: #fff; }
+    .modal-btn.confirm:hover { opacity: .9; }
+    .modal-btn.danger { background: var(--red,#dc2626); color: #fff; }
+    .modal-btn.danger:hover { opacity: .9; }
   </style>
 </head>
 <body>
@@ -3872,8 +3902,8 @@ function addProduct(key) {
   }
 }
 
-function removeProduct(key) {
-  if (!confirm(`Fjern ${PRODUCTS[key].name} fra ${currentClient.name}?`)) return;
+async function removeProduct(key) {
+  if (!await confirmModal(`Fjern ${PRODUCTS[key].name} fra ${currentClient.name}?`, {okLabel:'Fjern', danger:true})) return;
   currentClient.products = (currentClient.products||[]).filter(p => p !== key);
   saveClients();
   syncKlientToDB(currentClient);
@@ -3910,8 +3940,8 @@ function cycleTask(id) {
   renderTasks();
 }
 
-function addTask() {
-  const title = prompt('Opgavetitel:');
+async function addTask() {
+  const title = await promptModal('Opgavetitel:', '', {title:'Ny opgave'});
   if (!title) return;
   if (!currentClient.tasks) currentClient.tasks = [];
   currentClient.tasks.push({ id: Date.now().toString(), title, desc: '', status: 'pending' });
@@ -4322,7 +4352,7 @@ async function gemMailFlow() {
 async function stopMailFlow() {
   const klientId = document.getElementById('mailClientSel').value;
   if (!klientId) return;
-  if (!confirm('Stop det automatiske mail flow for denne klient?')) return;
+  if (!await confirmModal('Stop det automatiske mail flow for denne klient?', {okLabel:'Stop flow', danger:true})) return;
   try {
     await fetch(`${AGENT_URL}/mail-flow/${klientId}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('klaiai_token') } });
     document.getElementById('mailFlowStatus').innerHTML = `<span style="color:var(--muted)">Flow stoppet.</span>`;
@@ -4778,9 +4808,9 @@ function clearTestChat() {
 }
 
 // ── SLET KLIENT ──────────────────────────────────────
-function deleteClient() {
+async function deleteClient() {
   if (!currentClient) return;
-  if (!confirm(`Er du sikker på at du vil slette ${currentClient.name}?\n\nDette kan ikke fortrydes.`)) return;
+  if (!await confirmModal(`Er du sikker på at du vil slette ${currentClient.name}?\n\nDette kan ikke fortrydes.`, {okLabel:'Slet klient', danger:true})) return;
   clients = clients.filter(c => c.id !== currentClient.id);
   saveClients();
   currentClient = null;
@@ -5285,9 +5315,9 @@ async function soegAdminMaterialer() {
   }
 }
 
-function tilføjAdminMateriale(i, encoded) {
+async function tilføjAdminMateriale(i, encoded) {
   const r = JSON.parse(decodeURIComponent(encoded));
-  const antal = parseFloat(prompt(`Antal (${r.enhed||'stk'}) for "${r.produkt}"?`, '1') || '1');
+  const antal = parseFloat(await promptModal(`Antal (${r.enhed||'stk'}) for "${r.produkt}"?`, '1', {title:'Antal'}) || '1');
   if (isNaN(antal) || antal <= 0) return;
   adminValgteMat.push({ ...r, antal });
   renderAdminValgteMaterialer();
@@ -5594,7 +5624,7 @@ async function hentPriskatalog() {
 }
 
 async function sletPrispost(id) {
-  if (!confirm('Slet denne ydelse fra priskataloget?')) return;
+  if (!await confirmModal('Slet denne ydelse fra priskataloget?', {okLabel:'Slet', danger:true})) return;
   try {
     await apiFetch(`${AGENT_URL}/priskatalog/${id}`, { method: 'DELETE' });
     hentPriskatalog();
@@ -6403,7 +6433,7 @@ async function loadIndsigter() {
 }
 
 async function sendRapport(klientId, email) {
-  const mailinput = prompt('Send rapport til email:', email);
+  const mailinput = await promptModal('Send rapport til email:', email, {title:'Send rapport'});
   if (!mailinput) return;
   try {
     const res = await fetch(`${AGENT_URL}/send-rapport/${klientId}`, {
@@ -6885,6 +6915,78 @@ function renderProspekter() {
 }
 
 
+</script>
+
+<script>
+// ── TOAST + MODAL — erstatter native alert/prompt/confirm ──
+(function(){
+  let host = document.getElementById('toastHost');
+  if (!host) { host = document.createElement('div'); host.id = 'toastHost'; document.body.appendChild(host); }
+  const ICONS = {
+    success: '<svg class="toast-ico" viewBox="0 0 20 20" fill="none" stroke="#16a34a" stroke-width="2"><path d="M4 10l4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    error:   '<svg class="toast-ico" viewBox="0 0 20 20" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="10" cy="10" r="7.2"/><path d="M10 6v5" stroke-linecap="round"/><circle cx="10" cy="14" r=".6" fill="#dc2626" stroke="none"/></svg>',
+    info:    '<svg class="toast-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="10" r="7.2"/><path d="M10 9v5" stroke-linecap="round"/><circle cx="10" cy="6" r=".6" fill="currentColor" stroke="none"/></svg>'
+  };
+  function classify(m){
+    const s = String(m);
+    if (/✅|sendt|gemt|kopieret|synkroniseret|oprettet|opdateret/i.test(s) && !/fejl|kunne ikke/i.test(s)) return 'success';
+    if (/fejl|⚠️|❌|kunne ikke|netv[æa]rksfejl|mangler|udfyld|v[æa]lg|p[åa]kr[æa]vet|ingen |maksimalt|underst[øo]tter ikke/i.test(s)) return 'error';
+    return 'info';
+  }
+  window.toast = function(message, type){
+    const t = type || classify(message);
+    const el = document.createElement('div');
+    el.className = 'toast ' + t;
+    el.innerHTML = (ICONS[t]||ICONS.info) + '<div class="toast-msg"></div><button class="toast-close" aria-label="Luk">&times;</button>';
+    el.querySelector('.toast-msg').textContent = String(message).replace(/^[✅⚠️❌]\s*/,'');
+    host.appendChild(el);
+    const kill = () => { el.classList.add('leaving'); setTimeout(()=>el.remove(), 300); };
+    el.querySelector('.toast-close').onclick = kill;
+    setTimeout(kill, t === 'error' ? 6000 : 4000);
+  };
+  // Overtag native alert — nul aendringer i kaldesteder
+  window.alert = (m) => window.toast(m);
+
+  function buildModal(o){
+    return new Promise(resolve => {
+      const scrim = document.createElement('div');
+      scrim.className = 'modal-scrim';
+      scrim.innerHTML = '<div class="modal-box" role="dialog" aria-modal="true">'
+        + '<div class="modal-title"></div><div class="modal-text"></div>'
+        + (o.input ? '<input class="modal-input" type="text"/>' : '')
+        + '<div class="modal-actions"><button class="modal-btn cancel"></button>'
+        + '<button class="modal-btn ' + (o.danger ? 'danger' : 'confirm') + '"></button></div></div>';
+      const titleEl = scrim.querySelector('.modal-title');
+      if (o.title) titleEl.textContent = o.title; else titleEl.remove();
+      scrim.querySelector('.modal-text').textContent = o.text || '';
+      const inp = scrim.querySelector('.modal-input');
+      if (inp) inp.value = o.defaultVal || '';
+      const cancelBtn = scrim.querySelector('.cancel');
+      const okBtn = scrim.querySelector('.modal-btn.confirm, .modal-btn.danger');
+      cancelBtn.textContent = o.cancelLabel || 'Annuller';
+      okBtn.textContent = o.okLabel || 'OK';
+      document.body.appendChild(scrim);
+      requestAnimationFrame(() => scrim.classList.add('show'));
+      function onKey(e){
+        if (e.key === 'Escape') close(o.input ? null : false);
+        else if (e.key === 'Enter') { e.preventDefault(); close(o.input ? inp.value : true); }
+      }
+      function close(val){
+        document.removeEventListener('keydown', onKey);
+        scrim.classList.remove('show');
+        setTimeout(() => scrim.remove(), 200);
+        resolve(val);
+      }
+      document.addEventListener('keydown', onKey);
+      cancelBtn.onclick = () => close(o.input ? null : false);
+      okBtn.onclick = () => close(o.input ? inp.value : true);
+      scrim.addEventListener('click', e => { if (e.target === scrim) close(o.input ? null : false); });
+      setTimeout(() => { if (inp) { inp.focus(); inp.select(); } else okBtn.focus(); }, 60);
+    });
+  }
+  window.confirmModal = (message, opts) => buildModal(Object.assign({ title: 'Bekræft', text: message, okLabel: 'Bekræft' }, opts || {}));
+  window.promptModal  = (label, defaultVal, opts) => buildModal(Object.assign({ text: label, input: true, defaultVal: defaultVal || '', okLabel: 'OK' }, opts || {}));
+})();
 </script>
 
 </body>
