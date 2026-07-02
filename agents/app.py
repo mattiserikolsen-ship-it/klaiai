@@ -60,6 +60,10 @@ def _gem_token(token, info):
                 'token': token,
                 'role': info.get('role', ''),
                 'klient_id': info.get('klient_id'),
+                # Under-bruger-felter (None for ejer-/Nordolsen-admin-login)
+                'bruger_id': info.get('bruger_id'),
+                'bruger_rolle': info.get('bruger_rolle'),
+                'adgang': info.get('adgang'),
                 'created_at': _time.time(),
                 'expires_at': _time.time() + TOKEN_EXPIRY
             }).execute()
@@ -91,6 +95,9 @@ def _token_ok(token, role=None):
                 active_tokens[token] = {
                     'role': sess.get('role', ''),
                     'klient_id': sess.get('klient_id'),
+                    'bruger_id': sess.get('bruger_id'),
+                    'bruger_rolle': sess.get('bruger_rolle'),
+                    'adgang': sess.get('adgang'),
                     'created_at': sess.get('created_at', _time.time())
                 }
                 if role and sess.get('role') != role:
@@ -111,6 +118,77 @@ def _ryd_tokens():
             db.table('admin_sessions').delete().lt('expires_at', nu).execute()
         except:
             pass
+
+def _slet_brugers_sessions(bruger_id):
+    """Log en under-bruger ud overalt ved at fjerne alle deres tokens.
+
+    Bruges naar chefen aendrer en brugers rolle/adgang, deaktiverer eller
+    sletter dem — saa aendringen faar oejeblikkelig effekt (brugeren tvinges
+    til at logge ind igen med den nye adgang, i stedet for at vente paa
+    token-udloeb)."""
+    if not bruger_id:
+        return
+    for t, info in list(active_tokens.items()):
+        if str(info.get('bruger_id')) == str(bruger_id):
+            active_tokens.pop(t, None)
+    if db:
+        try:
+            db.table('admin_sessions').delete().eq('bruger_id', str(bruger_id)).execute()
+        except:
+            pass
+
+# ── PORTAL-SEKTIONER + ROLLE-ADGANG ────────────────────
+# Sektioner en medarbejder kan tildeles adgang til (chefen saetter flueben).
+# 'overblik' er altid tilladt og er derfor ikke en valgbar checkbox.
+PORTAL_SEKTIONER = [
+    'forretning', 'leads', 'indbakke', 'bookinger', 'tilbud',
+    'mails', 'pipeline', 'gaps', 'agenter', 'rapport'
+]
+# Sektioner der ALTID kun er for ejer/admin — kan ikke uddelegeres til en
+# medarbejder (foelsomme: fakturering, indstillinger, brugerstyring, opsaetning).
+ADMIN_SEKTIONER = ['abonnement', 'indstillinger', 'kom-i-gang', 'brugere']
+
+def _sti_sektion(path):
+    """Mapper en request-sti til den portal-sektion den tilhoerer.
+
+    Kun de sensitive/sektions-specifikke ruter mappes. Uafhaengige eller
+    offentlige ruter (chat, widget, lead-intake-webhook, login, health ...)
+    returnerer None => tillades altid. Tenant-isolationen (_ingen_adgang)
+    beskytter stadig paa tvaers af virksomheder uanset denne mapping."""
+    p = (path or '').lower()
+    # Kun-ejer/admin foerst (haard laas)
+    if p.startswith('/portal/brugere'):
+        return 'brugere'
+    if p.startswith('/stripe/'):
+        return 'abonnement'
+    if p.startswith('/chatbot-config') or p.startswith('/econ/connect') or p.startswith('/econ/disconnect'):
+        return 'indstillinger'
+    # Medarbejder-tildelbare sektioner
+    if p.startswith('/portal/indbakke') or p.startswith('/portal/inbound-adresse'):
+        return 'indbakke'
+    if p.startswith('/portal/mail-config') or p.startswith('/portal/mail-preview'):
+        return 'mails'
+    if p.startswith('/portal/crm') or p.startswith('/crm/') or p.startswith('/markeds-analyse'):
+        return 'pipeline'
+    if (p.startswith('/rapport/') or p.startswith('/preview-rapport') or p.startswith('/send-rapport')
+            or p.startswith('/insights') or p.startswith('/apply-insight')):
+        return 'rapport'
+    if p.startswith('/gaps/') or p.startswith('/udfyld-gap') or p.startswith('/luk-gap'):
+        return 'gaps'
+    if (p.startswith('/portal/tilbud') or p.startswith('/tilbud/') or p.startswith('/priskatalog')
+            or p.startswith('/tale/') or p.startswith('/materialer/') or p.startswith('/econ/sync-tilbud')):
+        return 'tilbud'
+    if p.startswith('/bookinger/') or p.startswith('/portal/bookinger'):
+        return 'bookinger'
+    if (p.startswith('/leads/') or p.startswith('/lead-mails/') or p.startswith('/godkend-mails')
+            or p.startswith('/afvis-mails')):
+        return 'leads'
+    if p.startswith('/research-branche'):
+        return 'forretning'
+    if p.startswith('/agent-log'):
+        return 'agenter'
+    return None
+
 demo_sessions = {}   # demo_id -> {'klient_config': {...}, 'url': '...', 'created_at': ...}
 prospekter    = {}   # prospekt_id -> {'url', 'navn', 'beskrivelse', 'har_chatbot', 'email_udkast', 'status'}
 
@@ -167,6 +245,46 @@ def bloker_admin_fra_net():
                 '<p>Tilgå admin-panelet via din lokale Mac i stedet.</p>',
                 403, {'Content-Type': 'text/html'}
             )
+
+@app.before_request
+def haandhaev_sektions_adgang():
+    """Server-side håndhævelse af rolle/sektions-adgang for under-brugere.
+
+    UI'et skjuler menupunkter en medarbejder ikke må se — men skjul er ikke
+    sikkerhed. Denne hook blokerer selve API-kaldet, så en medarbejder ikke
+    bare kan gå udenom UI'et og ramme et endpoint direkte.
+
+    Logik:
+      - Ingen/ugyldigt token         => spring over (endpointets egen decorator afviser).
+      - Nordolsen-admin (role=admin) => fuld adgang.
+      - Ejer-login (intet bruger_id) => fuld adgang.
+      - Under-bruger med rolle ejer/admin => fuld adgang.
+      - Medarbejder => kun sektioner i deres 'adgang'. Admin-only-sektioner
+        (fakturering, indstillinger, opsætning, brugerstyring) er altid spærret.
+    Uafhængige/offentlige ruter mappes ikke til en sektion => tillades.
+    """
+    if request.method == 'OPTIONS':
+        return
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    if not token or not _token_ok(token):
+        return  # lad endpointets egen @require_token/@require_admin afgøre
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'admin':
+        return  # Nordolsen-superadmin
+    if not info.get('bruger_id'):
+        return  # virksomhedens ejer (klienter-login)
+    if info.get('bruger_rolle') in ('ejer', 'admin'):
+        return  # udnævnt admin i virksomheden
+    # Herfra: medarbejder med begrænset adgang.
+    sektion = _sti_sektion(request.path)
+    if sektion is None:
+        return  # ikke en sektions-gated rute
+    if sektion in ADMIN_SEKTIONER:
+        return jsonify({'error': 'Kun administratorer har adgang til dette'}), 403
+    adgang = info.get('adgang') or []
+    if sektion not in adgang:
+        return jsonify({'error': 'Du har ikke adgang til denne sektion'}), 403
 
 def require_auth(f):
     @functools.wraps(f)
@@ -2795,6 +2913,220 @@ def portal_indbakke_status(mail_id):
 
 
 # ══════════════════════════════════════════════════════════════
+#  BRUGERSTYRING — flere brugere pr. virksomhed med roller/adgang
+#  Ejer (klienter-login) og admin-under-brugere kan oprette/styre brugere.
+#  Medarbejdere ser kun de sektioner chefen har givet dem (haandhaeves
+#  server-side i haandhaev_sektions_adgang() ovenfor).
+# ══════════════════════════════════════════════════════════════
+
+def _token_info():
+    """Token-info for det aktuelle request (rolle, klient_id, bruger_id ...)."""
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    return active_tokens.get(token, {})
+
+def _er_virksomheds_admin(klient_id):
+    """True hvis den kaldende bruger må administrere brugere for klient_id:
+    Nordolsen-admin, virksomhedens ejer, eller en admin-under-bruger."""
+    info = _token_info()
+    if info.get('role') == 'admin':
+        return True  # Nordolsen-superadmin
+    if str(info.get('klient_id')) != str(klient_id):
+        return False
+    if not info.get('bruger_id'):
+        return True  # ejer-login (klienter)
+    return info.get('bruger_rolle') in ('ejer', 'admin')
+
+def _aktuel_email():
+    """Bedste bud på den kaldende brugers email (til oprettet_af-audit)."""
+    info = _token_info()
+    if info.get('role') == 'admin':
+        return os.environ.get('ADMIN_EMAIL', '')
+    try:
+        if info.get('bruger_id'):
+            r = db.table('portal_brugere').select('email').eq('id', info['bruger_id']).single().execute()
+            return (r.data or {}).get('email', '')
+        r = db.table('klienter').select('email').eq('id', info.get('klient_id')).single().execute()
+        return (r.data or {}).get('email', '')
+    except:
+        return ''
+
+@app.route('/portal/mig', methods=['GET'])
+@require_token
+def portal_mig():
+    """Frontend spørger 'hvem er jeg' for at kunne skjule sektioner uden adgang.
+    adgang='alle' = fuld adgang (ejer/admin); ellers en liste af sektions-nøgler."""
+    info = _token_info()
+    if info.get('role') == 'admin':
+        return jsonify({'rolle': 'ejer', 'adgang': 'alle', 'navn': 'Nordolsen', 'email': '', 'klient_id': info.get('klient_id')})
+    bruger_id = info.get('bruger_id')
+    if not bruger_id:
+        navn, email = '', ''
+        try:
+            r = db.table('klienter').select('navn, email').eq('id', info.get('klient_id')).single().execute()
+            if r.data:
+                navn, email = r.data.get('navn', ''), r.data.get('email', '')
+        except:
+            pass
+        return jsonify({'rolle': 'ejer', 'adgang': 'alle', 'navn': navn, 'email': email, 'klient_id': info.get('klient_id')})
+    # Under-bruger — hent live så nyeste rolle/adgang bruges
+    try:
+        r = db.table('portal_brugere').select('navn, email, rolle, adgang, aktiv').eq('id', bruger_id).single().execute()
+        b = r.data or {}
+        rolle = b.get('rolle', 'medarbejder')
+        adgang = 'alle' if rolle in ('ejer', 'admin') else (b.get('adgang') or [])
+        return jsonify({'rolle': rolle, 'adgang': adgang, 'navn': b.get('navn', ''), 'email': b.get('email', ''), 'klient_id': info.get('klient_id')})
+    except:
+        return jsonify({'rolle': 'medarbejder', 'adgang': info.get('adgang') or [], 'navn': '', 'email': '', 'klient_id': info.get('klient_id')})
+
+@app.route('/portal/brugere/<klient_id>', methods=['GET'])
+@require_token
+def portal_brugere_liste(klient_id):
+    """Alle brugere i virksomheden: ejeren (klienter-login) + under-brugere."""
+    if not _er_virksomheds_admin(klient_id):
+        return jsonify({'error': 'Kun administratorer har adgang'}), 403
+    brugere = []
+    try:
+        r = db.table('klienter').select('navn, email').eq('id', klient_id).single().execute()
+        if r.data:
+            brugere.append({'id': 'ejer', 'navn': r.data.get('navn') or 'Ejer', 'email': r.data.get('email', ''),
+                            'rolle': 'ejer', 'adgang': 'alle', 'aktiv': True, 'kan_redigeres': False})
+    except:
+        pass
+    try:
+        r = (db.table('portal_brugere')
+               .select('id, navn, email, rolle, adgang, aktiv, oprettet')
+               .eq('klient_id', str(klient_id)).order('oprettet').execute())
+        for b in (r.data or []):
+            brugere.append({'id': b['id'], 'navn': b.get('navn', ''), 'email': b.get('email', ''),
+                            'rolle': b.get('rolle', 'medarbejder'), 'adgang': b.get('adgang') or [],
+                            'aktiv': b.get('aktiv', True), 'kan_redigeres': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e), 'brugere': brugere}), 500
+    return jsonify({'brugere': brugere, 'sektioner': PORTAL_SEKTIONER})
+
+@app.route('/portal/brugere', methods=['POST'])
+@require_token
+def portal_brugere_opret():
+    """Opret en ny under-bruger. Kun ejer/admin."""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    data = request.json or {}
+    klient_id = str(data.get('klient_id') or '')
+    if not _er_virksomheds_admin(klient_id):
+        return jsonify({'error': 'Kun administratorer har adgang'}), 403
+    navn = (data.get('navn') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = data.get('password') or ''
+    rolle = data.get('rolle', 'medarbejder')
+    if rolle not in ('admin', 'medarbejder'):
+        rolle = 'medarbejder'
+    adgang = [s for s in (data.get('adgang') or []) if s in PORTAL_SEKTIONER] if rolle == 'medarbejder' else []
+    if not email or '@' not in email:
+        return jsonify({'error': 'Ugyldig email'}), 400
+    if len(password) < 6:
+        return jsonify({'error': 'Adgangskoden skal være mindst 6 tegn'}), 400
+    # Email må ikke kollidere med en ejer-login eller en anden under-bruger.
+    try:
+        if db.table('klienter').select('id').eq('email', email).execute().data:
+            return jsonify({'error': 'Emailen er allerede i brug'}), 409
+        if db.table('portal_brugere').select('id').eq('email', email).execute().data:
+            return jsonify({'error': 'Emailen er allerede i brug'}), 409
+    except:
+        pass
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    try:
+        db.table('portal_brugere').insert({
+            'klient_id': klient_id, 'navn': navn, 'email': email, 'password': pw_hash,
+            'rolle': rolle, 'adgang': adgang, 'aktiv': True, 'oprettet_af': _aktuel_email()
+        }).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+def _hent_bruger_ejet(bruger_id):
+    """Hent en under-bruger og verificér at kalderen må administrere den.
+    Returnerer (bruger_row, None) ved ok, ellers (None, (json, status))."""
+    if not db:
+        return None, (jsonify({'error': 'Ingen database'}), 500)
+    try:
+        r = db.table('portal_brugere').select('id, klient_id, email, rolle, adgang, aktiv').eq('id', bruger_id).single().execute()
+    except:
+        return None, (jsonify({'error': 'Ikke fundet'}), 404)
+    if not r.data:
+        return None, (jsonify({'error': 'Ikke fundet'}), 404)
+    if not _er_virksomheds_admin(r.data.get('klient_id')):
+        return None, (jsonify({'error': 'Kun administratorer har adgang'}), 403)
+    return r.data, None
+
+@app.route('/portal/brugere/<bruger_id>', methods=['PATCH'])
+@require_token
+def portal_brugere_opdater(bruger_id):
+    """Redigér navn/rolle/adgang/aktiv for en under-bruger. Kun ejer/admin.
+    Aktive sessioner for brugeren fjernes, så ændringen får øjeblikkelig effekt."""
+    bruger, fejl = _hent_bruger_ejet(bruger_id)
+    if fejl:
+        return fejl
+    data = request.json or {}
+    opdat = {}
+    if 'navn' in data:
+        opdat['navn'] = (data.get('navn') or '').strip()
+    if 'rolle' in data:
+        rolle = data.get('rolle')
+        if rolle in ('admin', 'medarbejder'):
+            opdat['rolle'] = rolle
+            if rolle == 'admin':
+                opdat['adgang'] = []  # admin har fuld adgang, adgangsliste er irrelevant
+    if 'adgang' in data:
+        # Kun relevant for medarbejdere; filtrér til gyldige sektioner.
+        maal_rolle = opdat.get('rolle', bruger.get('rolle'))
+        if maal_rolle == 'medarbejder':
+            opdat['adgang'] = [s for s in (data.get('adgang') or []) if s in PORTAL_SEKTIONER]
+    if 'aktiv' in data:
+        opdat['aktiv'] = bool(data.get('aktiv'))
+    if not opdat:
+        return jsonify({'success': True})
+    try:
+        db.table('portal_brugere').update(opdat).eq('id', bruger_id).execute()
+        _slet_brugers_sessions(bruger_id)  # tving genlogin med ny adgang
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+@app.route('/portal/brugere/<bruger_id>/kode', methods=['POST'])
+@require_token
+def portal_brugere_nulstil_kode(bruger_id):
+    """Sæt en ny adgangskode for en under-bruger. Kun ejer/admin."""
+    bruger, fejl = _hent_bruger_ejet(bruger_id)
+    if fejl:
+        return fejl
+    password = (request.json or {}).get('password') or ''
+    if len(password) < 6:
+        return jsonify({'error': 'Adgangskoden skal være mindst 6 tegn'}), 400
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    try:
+        db.table('portal_brugere').update({'password': pw_hash}).eq('id', bruger_id).execute()
+        _slet_brugers_sessions(bruger_id)  # log ud af gamle sessioner
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+@app.route('/portal/brugere/<bruger_id>', methods=['DELETE'])
+@require_token
+def portal_brugere_slet(bruger_id):
+    """Slet en under-bruger. Kun ejer/admin."""
+    bruger, fejl = _hent_bruger_ejet(bruger_id)
+    if fejl:
+        return fejl
+    try:
+        db.table('portal_brugere').delete().eq('id', bruger_id).execute()
+        _slet_brugers_sessions(bruger_id)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════
 #  STRIPE ENDPOINTS
 # ══════════════════════════════════════════════════════════════
 
@@ -3849,6 +4181,40 @@ def login():
                     token = secrets.token_hex(32)
                     _gem_token(token, {'role': 'client', 'klient_id': klient['id'], 'created_at': _time.time()})
                     return jsonify({'token': token, 'role': 'client', 'klient_id': klient['id']})
+        except:
+            pass
+
+        # Under-bruger login — medarbejdere/admins oprettet af virksomhedens ejer.
+        # Samme portal som ejeren (role='client'), men token bærer rolle + adgang.
+        try:
+            bres = db.table('portal_brugere').select(
+                'id, klient_id, navn, email, password, rolle, adgang, aktiv'
+            ).eq('email', email).single().execute()
+            if bres.data:
+                bruger = bres.data
+                if not bruger.get('aktiv', True):
+                    return jsonify({'error': 'Din adgang er deaktiveret. Kontakt din chef.'}), 403
+                # Er virksomheden selv aktiv?
+                if not er_klient_aktiv(bruger['klient_id']):
+                    return jsonify({'error': 'Adgang er deaktiveret. Kontakt Nordolsen.'}), 403
+                bruger_pw = bruger.get('password', '')
+                b_ok = False
+                if bruger_pw and (bruger_pw.startswith('$2b$') or bruger_pw.startswith('$2a$')):
+                    try:
+                        b_ok = bcrypt.checkpw(password.encode(), bruger_pw.encode())
+                    except:
+                        b_ok = False
+                if b_ok:
+                    token = secrets.token_hex(32)
+                    _gem_token(token, {
+                        'role': 'client',
+                        'klient_id': bruger['klient_id'],
+                        'bruger_id': bruger['id'],
+                        'bruger_rolle': bruger.get('rolle', 'medarbejder'),
+                        'adgang': bruger.get('adgang') or [],
+                        'created_at': _time.time()
+                    })
+                    return jsonify({'token': token, 'role': 'client', 'klient_id': bruger['klient_id']})
         except:
             pass
 

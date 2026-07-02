@@ -640,6 +640,9 @@
     <div class="nav-item" data-view="indstillinger" onclick="showView('indstillinger')">
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Indstillinger
     </div>
+    <div class="nav-item" data-view="brugere" onclick="showView('brugere')">
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Brugere
+    </div>
     <div class="nav-item" data-view="kom-i-gang" onclick="showView('kom-i-gang')">
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Kom i gang
       <span id="opgaveBadge" class="hidden" style="margin-left:auto;background:#7c3aed;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
@@ -664,17 +667,17 @@
       <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
       <span class="mob-nav-label">Hjem</span>
     </button>
-    <button class="mob-nav-item" id="mobNav-leads" onclick="showView('leads')">
+    <button class="mob-nav-item" id="mobNav-leads" data-sektion="leads" onclick="showView('leads')">
       <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
       <span class="mob-nav-label">Leads</span>
       <span class="mob-nav-badge hidden" id="mobLeadBadge"></span>
     </button>
-    <button class="mob-nav-item" id="mobNav-tilbud" onclick="showView('tilbud')">
+    <button class="mob-nav-item" id="mobNav-tilbud" data-sektion="tilbud" onclick="showView('tilbud')">
       <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
       <span class="mob-nav-label">Tilbud</span>
       <span class="mob-nav-badge hidden" id="mobTilbudBadge"></span>
     </button>
-    <button class="mob-nav-item" id="mobNav-pipeline" onclick="showView('pipeline')">
+    <button class="mob-nav-item" id="mobNav-pipeline" data-sektion="pipeline" onclick="showView('pipeline')">
       <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="15" y="3" width="6" height="12" rx="1"/></svg></span>
       <span class="mob-nav-label">Pipeline</span>
     </button>
@@ -690,26 +693,29 @@
 <div id="mobMereDrawer" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);border-radius:20px 20px 0 0;z-index:61;padding:1rem .75rem calc(1.5rem + env(safe-area-inset-bottom,0px))">
   <div style="width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto .75rem"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
-    <button onclick="showView('gaps');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="gaps" onclick="showView('gaps');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       💬 <span>Spørgsmål</span>
     </button>
-    <button onclick="showView('agenter');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="agenter" onclick="showView('agenter');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ◈ <span>Agenter</span>
     </button>
-    <button onclick="showView('rapport');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="rapport" onclick="showView('rapport');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ◫ <span>Rapport</span>
     </button>
-    <button onclick="showView('indstillinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="indstillinger" onclick="showView('indstillinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ⚙ <span>Indstillinger</span>
     </button>
-    <button onclick="showView('bookinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="bookinger" onclick="showView('bookinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ▦ <span>Bookinger</span>
     </button>
-    <button onclick="showView('indbakke');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="indbakke" onclick="showView('indbakke');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       📥 <span>Indbakke</span>
     </button>
-    <button onclick="showView('mails');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+    <button data-sektion="mails" onclick="showView('mails');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ✉ <span>Mine mails</span>
+    </button>
+    <button data-sektion="brugere" onclick="showView('brugere');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      👥 <span>Brugere</span>
     </button>
     <button onclick="logud()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.04);border:none;border-radius:10px;padding:.85rem 1rem;color:rgba(255,255,255,.5);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ↩ <span>Log ud</span>
@@ -1724,6 +1730,72 @@
 
     </div>
 
+    <!-- ══════════ BRUGERE / TEAM ══════════ -->
+    <div id="view-brugere" class="hidden">
+
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+          <div>
+            <div class="card-title" style="margin:0">Dit team</div>
+            <div style="font-size:.82rem;color:var(--mid);margin-top:.35rem;max-width:640px;line-height:1.5">
+              Giv dine medarbejdere deres egen login. <strong>Administratorer</strong> ser alt og kan selv oprette brugere. <strong>Medarbejdere</strong> ser kun de sektioner du vælger. Følsomme ting — fakturering, indstillinger og brugerstyring — er altid forbeholdt administratorer.
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="visOpretBruger()" style="white-space:nowrap">+ Ny bruger</button>
+        </div>
+      </div>
+
+      <!-- Opret/rediger-formular -->
+      <div id="brugerForm" class="card" style="display:none;margin-bottom:1.25rem;border-color:var(--green)">
+        <div class="card-title" id="brugerFormTitel">Ny bruger</div>
+        <input type="hidden" id="bfEditId" value="">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <label style="font-size:.76rem;font-weight:600;color:var(--mid);display:block;margin-bottom:.35rem">Navn</label>
+            <input id="bfNavn" type="text" placeholder="Fx Anders Nielsen" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:.85rem;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:.76rem;font-weight:600;color:var(--mid);display:block;margin-bottom:.35rem">Email (login)</label>
+            <input id="bfEmail" type="email" placeholder="anders@firma.dk" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:.85rem;box-sizing:border-box">
+          </div>
+        </div>
+        <div id="bfKodeRk" style="margin-bottom:1rem">
+          <label style="font-size:.76rem;font-weight:600;color:var(--mid);display:block;margin-bottom:.35rem" id="bfKodeLabel">Midlertidig adgangskode</label>
+          <input id="bfKode" type="text" placeholder="Mindst 6 tegn — giv den til medarbejderen" style="width:100%;padding:.6rem .8rem;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:.85rem;box-sizing:border-box">
+        </div>
+
+        <label style="font-size:.76rem;font-weight:600;color:var(--mid);display:block;margin-bottom:.5rem">Rolle</label>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
+          <label class="rolle-valg" style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:11px;padding:.8rem 1rem;cursor:pointer;display:flex;gap:.6rem;align-items:flex-start">
+            <input type="radio" name="bfRolle" value="admin" onchange="opdaterRolleValg()" style="margin-top:.2rem">
+            <span><span style="font-weight:700;font-size:.85rem;color:var(--dark)">Administrator</span><br><span style="font-size:.75rem;color:var(--mid)">Fuld adgang + kan styre brugere</span></span>
+          </label>
+          <label class="rolle-valg" style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:11px;padding:.8rem 1rem;cursor:pointer;display:flex;gap:.6rem;align-items:flex-start">
+            <input type="radio" name="bfRolle" value="medarbejder" checked onchange="opdaterRolleValg()" style="margin-top:.2rem">
+            <span><span style="font-weight:700;font-size:.85rem;color:var(--dark)">Medarbejder</span><br><span style="font-size:.75rem;color:var(--mid)">Ser kun de valgte sektioner</span></span>
+          </label>
+        </div>
+
+        <div id="bfSektionerBlok" style="margin-bottom:1.25rem">
+          <label style="font-size:.76rem;font-weight:600;color:var(--mid);display:block;margin-bottom:.5rem">Adgang til sektioner</label>
+          <div id="bfSektioner" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem"></div>
+        </div>
+
+        <div style="display:flex;gap:.6rem">
+          <button class="btn btn-primary btn-sm" onclick="gemBruger()" id="bfGemBtn">Opret bruger</button>
+          <button class="btn btn-sm" onclick="skjulBrugerForm()" style="background:var(--bg);border:1px solid var(--border);color:var(--mid)">Annullér</button>
+        </div>
+        <div id="bfFejl" style="margin-top:.75rem;font-size:.8rem;color:#c0392b;display:none"></div>
+      </div>
+
+      <!-- Bruger-liste -->
+      <div class="card">
+        <div class="card-title">Brugere</div>
+        <div id="brugerListe"><div style="font-size:.82rem;color:var(--mid)">Indlæser...</div></div>
+      </div>
+
+    </div>
+
   </div>
 </div>
 
@@ -1806,8 +1878,205 @@ function closeMobileNav() {
   document.getElementById('mobileOverlay').classList.remove('active');
 }
 
+// ── ADGANG / ROLLER ────────────────────────────────────
+// Default 'ejer'/'alle' = fuld adgang indtil /portal/mig svarer. Ejere (langt
+// de fleste logins) ser derfor alt uden flimmer; medarbejdere strammes ind når
+// svaret lander. Server-siden håndhæver den ægte adgang uanset dette.
+let MIN_ROLLE = 'ejer';        // 'ejer' | 'admin' | 'medarbejder'
+let MIN_ADGANG = 'alle';       // 'alle' eller array af sektions-nøgler
+const ADMIN_ONLY_SEKTIONER = ['abonnement','indstillinger','kom-i-gang','brugere'];
+
+function maaSe(sektion) {
+  if (MIN_ROLLE === 'ejer' || MIN_ROLLE === 'admin' || MIN_ADGANG === 'alle') return true;
+  if (sektion === 'overblik') return true;
+  if (ADMIN_ONLY_SEKTIONER.includes(sektion)) return false;
+  return Array.isArray(MIN_ADGANG) && MIN_ADGANG.includes(sektion);
+}
+
+function anvendAdgang() {
+  document.querySelectorAll('.sidebar-nav .nav-item[data-view]').forEach(el => {
+    el.style.display = maaSe(el.getAttribute('data-view')) ? '' : 'none';
+  });
+  document.querySelectorAll('[data-sektion]').forEach(el => {
+    el.style.display = maaSe(el.getAttribute('data-sektion')) ? '' : 'none';
+  });
+}
+
+async function hentMinAdgang() {
+  try {
+    const r = await fetch(`${API}/portal/mig`, { headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' } });
+    if (r.ok) {
+      const d = await r.json();
+      MIN_ROLLE = d.rolle || 'medarbejder';
+      MIN_ADGANG = d.adgang;
+    }
+  } catch (e) {}
+  anvendAdgang();
+  // Står brugeren på en sektion de ikke må se, så send dem til overblik.
+  const aktiv = document.querySelector('.sidebar-nav .nav-item.active');
+  if (aktiv && !maaSe(aktiv.getAttribute('data-view'))) showView('overblik');
+}
+
+// ── BRUGERE / TEAM ─────────────────────────────────────
+const SEKTION_LABELS = {
+  forretning:'Forretning', leads:'Leads', indbakke:'Indbakke', bookinger:'Bookinger',
+  tilbud:'Tilbud', mails:'Mine mails', pipeline:'Pipeline', gaps:'Spørgsmål',
+  agenter:'Agenter', rapport:'Rapport'
+};
+let _bfSektioner = ['forretning','leads','indbakke','bookinger','tilbud','mails','pipeline','gaps','agenter','rapport'];
+let _brugereCache = [];
+const _bAuth = () => ({ 'Content-Type':'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' });
+const _bBtn = 'font-size:.72rem;font-weight:600;padding:.32rem .7rem;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--mid);cursor:pointer;font-family:inherit';
+
+async function loadBrugere() {
+  const box = document.getElementById('brugerListe');
+  try {
+    const r = await fetch(`${API}/portal/brugere/${CLIENT_ID}`, { headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' } });
+    if (!r.ok) { box.innerHTML = '<div style="font-size:.82rem;color:#c0392b">Du har ikke adgang til brugerstyring.</div>'; return; }
+    const d = await r.json();
+    if (Array.isArray(d.sektioner) && d.sektioner.length) _bfSektioner = d.sektioner;
+    renderBrugere(d.brugere || []);
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:.82rem;color:#c0392b">Kunne ikke hente brugere.</div>';
+  }
+}
+
+function _rolleBadge(rolle) {
+  const map = { ejer:['Ejer','#166534','#dcfce7'], admin:['Administrator','#1e40af','#dbeafe'], medarbejder:['Medarbejder','#854d0e','#fef9c3'] };
+  const m = map[rolle] || map.medarbejder;
+  return `<span style="font-size:.64rem;font-weight:700;padding:.12rem .5rem;border-radius:5px;background:${m[2]};color:${m[1]}">${m[0]}</span>`;
+}
+
+function renderBrugere(brugere) {
+  _brugereCache = brugere;
+  const box = document.getElementById('brugerListe');
+  if (!brugere.length) { box.innerHTML = '<div style="font-size:.82rem;color:var(--mid)">Ingen brugere endnu.</div>'; return; }
+  box.innerHTML = brugere.map(b => {
+    const inaktiv = b.aktiv === false;
+    let adgangTekst;
+    if (b.rolle === 'ejer' || b.rolle === 'admin') adgangTekst = 'Fuld adgang';
+    else {
+      const navne = (b.adgang || []).map(s => SEKTION_LABELS[s] || s);
+      adgangTekst = navne.length ? navne.join(', ') : 'Ingen sektioner valgt endnu';
+    }
+    let handlinger = '<span style="font-size:.72rem;color:var(--mid)">Kan ikke ændres</span>';
+    if (b.kan_redigeres) {
+      handlinger = `
+        <button style="${_bBtn}" onclick="redigerBruger('${b.id}')">Redigér</button>
+        <button style="${_bBtn}" onclick="nulstilKode('${b.id}')">Ny kode</button>
+        <button style="${_bBtn}" onclick="toggleAktiv('${b.id}', ${inaktiv})">${inaktiv ? 'Aktivér' : 'Deaktivér'}</button>
+        <button style="${_bBtn};color:#c0392b;border-color:#f0c9c4" onclick="sletBruger('${b.id}', '${(b.navn || b.email).replace(/'/g,'')}')">Slet</button>`;
+    }
+    return `<div style="display:flex;justify-content:space-between;gap:1rem;padding:.9rem 0;border-bottom:1px solid var(--border);${inaktiv ? 'opacity:.55' : ''}">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:.88rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">${b.navn || '(uden navn)'} ${_rolleBadge(b.rolle)} ${inaktiv ? '<span style=\'font-size:.64rem;color:#c0392b;font-weight:700\'>Deaktiveret</span>' : ''}</div>
+        <div style="font-size:.78rem;color:var(--mid);margin-top:.15rem">${b.email}</div>
+        <div style="font-size:.74rem;color:var(--mid);margin-top:.2rem">${adgangTekst}</div>
+      </div>
+      <div style="display:flex;gap:.4rem;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">${handlinger}</div>
+    </div>`;
+  }).join('');
+}
+
+function _byggBfSektioner(valgte) {
+  document.getElementById('bfSektioner').innerHTML = _bfSektioner.map(s => `
+    <label style="display:flex;align-items:center;gap:.45rem;font-size:.78rem;color:var(--dark);border:1px solid var(--border);border-radius:8px;padding:.45rem .65rem;cursor:pointer">
+      <input type="checkbox" value="${s}" ${valgte.includes(s) ? 'checked' : ''}> ${SEKTION_LABELS[s] || s}
+    </label>`).join('');
+}
+
+function opdaterRolleValg() {
+  const rolle = (document.querySelector('input[name=bfRolle]:checked') || {}).value;
+  document.getElementById('bfSektionerBlok').style.display = rolle === 'medarbejder' ? '' : 'none';
+  document.querySelectorAll('.rolle-valg').forEach(l => {
+    const valgt = l.querySelector('input').checked;
+    l.style.borderColor = valgt ? 'var(--green)' : 'var(--border)';
+    l.style.background = valgt ? 'var(--green-bg)' : '';
+  });
+}
+
+function visOpretBruger() {
+  document.getElementById('bfEditId').value = '';
+  document.getElementById('brugerFormTitel').textContent = 'Ny bruger';
+  document.getElementById('bfGemBtn').textContent = 'Opret bruger';
+  document.getElementById('bfNavn').value = '';
+  const em = document.getElementById('bfEmail'); em.value = ''; em.disabled = false;
+  document.getElementById('bfKode').value = '';
+  document.getElementById('bfKodeLabel').textContent = 'Midlertidig adgangskode';
+  document.getElementById('bfKodeRk').style.display = '';
+  document.querySelector('input[name=bfRolle][value=medarbejder]').checked = true;
+  _byggBfSektioner(['leads','indbakke','bookinger']);
+  opdaterRolleValg();
+  document.getElementById('bfFejl').style.display = 'none';
+  const f = document.getElementById('brugerForm'); f.style.display = ''; f.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function skjulBrugerForm() { document.getElementById('brugerForm').style.display = 'none'; }
+
+function redigerBruger(id) {
+  const b = _brugereCache.find(x => String(x.id) === String(id));
+  if (!b) return;
+  document.getElementById('bfEditId').value = b.id;
+  document.getElementById('brugerFormTitel').textContent = 'Redigér bruger';
+  document.getElementById('bfGemBtn').textContent = 'Gem ændringer';
+  document.getElementById('bfNavn').value = b.navn || '';
+  const em = document.getElementById('bfEmail'); em.value = b.email || ''; em.disabled = true;
+  document.getElementById('bfKodeRk').style.display = 'none'; // kode ændres via "Ny kode"
+  document.querySelector(`input[name=bfRolle][value=${b.rolle === 'admin' ? 'admin' : 'medarbejder'}]`).checked = true;
+  _byggBfSektioner(Array.isArray(b.adgang) ? b.adgang : []);
+  opdaterRolleValg();
+  document.getElementById('bfFejl').style.display = 'none';
+  const f = document.getElementById('brugerForm'); f.style.display = ''; f.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+async function gemBruger() {
+  const id = document.getElementById('bfEditId').value;
+  const navn = document.getElementById('bfNavn').value.trim();
+  const email = document.getElementById('bfEmail').value.trim();
+  const kode = document.getElementById('bfKode').value;
+  const rolle = (document.querySelector('input[name=bfRolle]:checked') || {}).value || 'medarbejder';
+  const adgang = rolle === 'medarbejder'
+    ? [...document.querySelectorAll('#bfSektioner input:checked')].map(c => c.value) : [];
+  const fejl = document.getElementById('bfFejl');
+  fejl.style.display = 'none';
+  try {
+    let r;
+    if (id) {
+      r = await fetch(`${API}/portal/brugere/${id}`, { method:'PATCH', headers:_bAuth(), body: JSON.stringify({ navn, rolle, adgang }) });
+    } else {
+      if (!email || !email.includes('@')) { fejl.textContent = 'Skriv en gyldig email.'; fejl.style.display = ''; return; }
+      if (kode.length < 6) { fejl.textContent = 'Adgangskoden skal være mindst 6 tegn.'; fejl.style.display = ''; return; }
+      r = await fetch(`${API}/portal/brugere`, { method:'POST', headers:_bAuth(), body: JSON.stringify({ klient_id: CLIENT_ID, navn, email, password: kode, rolle, adgang }) });
+    }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { fejl.textContent = d.error || 'Noget gik galt.'; fejl.style.display = ''; return; }
+    skjulBrugerForm();
+    loadBrugere();
+  } catch (e) { fejl.textContent = 'Forbindelsesfejl — prøv igen.'; fejl.style.display = ''; }
+}
+
+async function nulstilKode(id) {
+  const kode = prompt('Ny adgangskode (mindst 6 tegn):');
+  if (kode === null) return;
+  if (kode.length < 6) { alert('Adgangskoden skal være mindst 6 tegn.'); return; }
+  const r = await fetch(`${API}/portal/brugere/${id}/kode`, { method:'POST', headers:_bAuth(), body: JSON.stringify({ password: kode }) });
+  if (r.ok) alert('Ny kode gemt. Giv den til brugeren — de skal logge ind igen.');
+  else alert('Kunne ikke ændre koden.');
+}
+
+async function toggleAktiv(id, aktiver) {
+  const r = await fetch(`${API}/portal/brugere/${id}`, { method:'PATCH', headers:_bAuth(), body: JSON.stringify({ aktiv: aktiver }) });
+  if (r.ok) loadBrugere(); else alert('Kunne ikke opdatere brugeren.');
+}
+
+async function sletBruger(id, navn) {
+  if (!confirm(`Slet ${navn}? Brugeren mister adgang med det samme.`)) return;
+  const r = await fetch(`${API}/portal/brugere/${id}`, { method:'DELETE', headers:{ 'Authorization': localStorage.getItem('klaiai_token') || '' } });
+  if (r.ok) loadBrugere(); else alert('Kunne ikke slette brugeren.');
+}
+
 // ── VIEWS ──────────────────────────────────────────────
-const views = ['overblik','forretning','leads','bookinger','tilbud','pipeline','gaps','agenter','rapport','abonnement','indstillinger','kom-i-gang'];
+const views = ['overblik','forretning','leads','bookinger','tilbud','pipeline','gaps','agenter','rapport','abonnement','indstillinger','kom-i-gang','brugere'];
 const titles = {
   overblik:      ['Overblik',       'Din Nordolsen portal'],
   forretning:    ['Forretning',     'Hele din forretning samlet ét sted'],
@@ -1822,6 +2091,7 @@ const titles = {
   abonnement:    ['Abonnement',     'Din plan og fakturering'],
   indstillinger: ['Indstillinger',  'Tilpas din chatbot'],
   mails:         ['Mine mails',     'Skræddersy mails til leads og tilbud'],
+  brugere:       ['Brugere',        'Styr hvem i firmaet har adgang til hvad'],
   'kom-i-gang':  ['Kom i gang',     'Installer chatbot og fuldfør opsætning']
 };
 
@@ -1834,6 +2104,8 @@ function toggleMobMereMenu() {
 }
 
 function showView(v) {
+  // Adgangs-guard: en medarbejder må ikke navigere til en sektion uden adgang.
+  if (!maaSe(v)) v = 'overblik';
   views.forEach(id => {
     document.getElementById('view-'+id)?.classList.add('hidden');
     document.querySelector(`[data-view="${id}"]`)?.classList.remove('active');
@@ -1853,7 +2125,7 @@ function showView(v) {
   ['overblik','leads','tilbud','pipeline'].forEach(id => {
     document.getElementById('mobNav-'+id)?.classList.toggle('active', id === v);
   });
-  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang','mails','indbakke'];
+  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang','mails','indbakke','brugere'];
   document.getElementById('mobNav-mere')?.classList.toggle('active', mereViews.includes(v));
   closeMobileNav();
   if (v === 'overblik') loadOverblik();
@@ -1866,6 +2138,7 @@ function showView(v) {
   if (v === 'indstillinger') loadIndstillinger();
   if (v === 'mails') loadMails();
   if (v === 'indbakke') loadIndbakke();
+  if (v === 'brugere') loadBrugere();
   if (v === 'kom-i-gang') { genererWidgetKode(); visPlatform('html', document.querySelector('.plat-btn.active') || document.querySelector('.plat-btn')); }
 }
 
@@ -4237,6 +4510,7 @@ if (CLIENT_ID) {
     }).catch(() => {});
 }
 showView('overblik');
+hentMinAdgang();
 
 // ── VIEWS UPDATE ──────────────────────────────────────
 const _origShowView = showView;
