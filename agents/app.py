@@ -795,9 +795,10 @@ def _generer_lead_mails(klient_id, lead, dedup_id):
             'kontakt': klient.get('info', {}).get('kontakt', '')
         }
 
+        mail_cfg = hent_mail_config(klient_id)
         mails = []
         for nr in [1, 2, 3]:
-            mail = generer_lead_mail(lead, klient_info, nr)
+            mail = generer_lead_mail(lead, klient_info, nr, mail_cfg)
             mail['sendt'] = False
             mails.append(mail)
 
@@ -862,17 +863,52 @@ def _generer_lead_mails(klient_id, lead, dedup_id):
               noegle='lead_mailgen', klient_id=klient_id)
 
 
-def generer_lead_mail(lead, klient, mail_nr):
+def hent_mail_config(klient_id):
+    """Henter klientens mail-skabelon/stemme-felter. Tomme vaerdier = systemets
+    standard bruges, saa mails altid virker uden opsaetning (selvkoerende)."""
+    felter = ('mail_stemme', 'mail_signatur', 'lead_mail_fokus', 'tilbud_mail_tekst', 'tilbud_mail_emne')
+    tom = {f: '' for f in felter}
+    if not db or not klient_id:
+        return tom
+    try:
+        r = db.table('chatbot_config').select(','.join(felter)).eq('klient_id', klient_id).limit(1).execute()
+        if r.data:
+            return {f: (r.data[0].get(f) or '') for f in felter}
+    except Exception as e:
+        print(f"hent_mail_config fejl: {e}")
+    return tom
+
+
+def render_tilbud_mailtekst(tekst, kunde_navn, fra_navn):
+    """Erstatter pladsholdere i kundens egen tilbuds-mailtekst."""
+    return (tekst or '').replace('{kunde_navn}', kunde_navn or 'der').replace('{firma}', fra_navn or '')
+
+
+def generer_lead_mail(lead, klient, mail_nr, mail_cfg=None):
+    mail_cfg = mail_cfg or {}
+    stemme   = (mail_cfg.get('mail_stemme') or '').strip()
+    signatur = (mail_cfg.get('mail_signatur') or '').strip()
+    fokus    = (mail_cfg.get('lead_mail_fokus') or '').strip()
+
     instruktion = {
         1: 'Dette er den første kontakt. Vær varm og imødekommende. Tak for henvendelsen og beskriv kort hvad virksomheden tilbyder. Afslut med at de er velkomne til at skrive på virksomhedens email eller besøge hjemmesiden hvis de har spørgsmål.',
         2: 'Opfølgning dag 3. Spørg venligt om de har haft mulighed for at kigge nærmere. Fremhæv én konkret fordel ved produktet/ydelsen. Afslut med at de kan skrive eller gå ind på hjemmesiden.',
         3: 'Sidste opfølgning. Gør det personligt og varmt. Afslut positivt — sig at de altid er velkomne til at skrive eller besøge hjemmesiden hvis de på et tidspunkt får lyst.'
     }.get(mail_nr, '')
 
+    # Kundens egen brand-stemme styrer AI'en. Tom = systemets neutrale standard.
+    stemme_blok = (f"Skriv i DENNE virksomheds stemme og tone — følg den nøje:\n{stemme}"
+                   if stemme else "Tone: professionel men venlig.")
+    fokus_blok = f"\nLæg særlig vægt på: {fokus}" if fokus else ""
+    signatur_krav = (f"- Afslut mailen med præcis denne underskrift:\n{signatur}"
+                     if signatur else "- Afslut naturligt med virksomhedens navn")
+
     response = ai.messages.create(
         model='claude-sonnet-4-6',
         max_tokens=600,
-        messages=[{'role': 'user', 'content': f"""Du er en professionel dansk salgsekspert. Skriv opfølgningsmail #{mail_nr} til dette lead.
+        messages=[{'role': 'user', 'content': f"""Du skriver opfølgningsmail #{mail_nr} på vegne af en dansk virksomhed.
+
+{stemme_blok}
 
 Lead-navn: {lead.get('navn','der')}
 Henvendelse: {lead.get('besked','Generel forespørgsel')}
@@ -881,15 +917,15 @@ Ydelser: {klient.get('ydelser','')}
 Kontakt email: {klient.get('kontakt','')}
 Hjemmeside: {klient.get('hjemmeside','')}
 
-Instrukser: {instruktion}
+Instrukser: {instruktion}{fokus_blok}
 
 Krav til mailen:
 - Personlig tiltale med leaddets fornavn
-- Professionel men venlig tone
 - ALDRIG opfordr til at booke møde, ringe eller tage en snak — kun til at skrive på email eller besøge hjemmesiden
 - 3-5 linjer brødtekst
 - Ingen emojis
 - Dansk
+{signatur_krav}
 
 Returner KUN dette format:
 EMNE: <emnelinjen>
@@ -2377,6 +2413,97 @@ def gem_chatbot_config():
         }
         res = db.table('chatbot_config').upsert(cfg, on_conflict='klient_id').execute()
         return jsonify({'success': True, 'config': res.data[0] if res.data else {}})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+
+# ── MAIL-SKABELONER (kundens egen stemme) ─────────────────────
+
+@app.route('/portal/mail-config/<klient_id>', methods=['GET'])
+@require_token
+def portal_hent_mail_config(klient_id):
+    """Klientportal: hent kundens mail-skabelon/stemme-felter."""
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    return jsonify(hent_mail_config(klient_id))
+
+
+@app.route('/portal/mail-config', methods=['POST'])
+@require_token
+def portal_gem_mail_config():
+    """Klientportal: gem mail-skabeloner. Partial upsert — roerer ikke chatbot-felterne."""
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    data = request.json or {}
+    klient_id = data.get('klient_id')
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not klient_id:
+        return jsonify({'error': 'klient_id mangler'}), 400
+    try:
+        cfg = {
+            'klient_id': klient_id,
+            'mail_stemme':       (data.get('mail_stemme') or '').strip() or None,
+            'mail_signatur':     (data.get('mail_signatur') or '').strip() or None,
+            'lead_mail_fokus':   (data.get('lead_mail_fokus') or '').strip() or None,
+            'tilbud_mail_tekst': (data.get('tilbud_mail_tekst') or '').strip() or None,
+            'tilbud_mail_emne':  (data.get('tilbud_mail_emne') or '').strip() or None,
+            'opdateret': 'now()'
+        }
+        db.table('chatbot_config').upsert(cfg, on_conflict='klient_id').execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
+
+@app.route('/portal/mail-preview', methods=['POST'])
+@require_token
+def portal_mail_preview():
+    """Live forhaandsvisning af en mail i kundens egen stemme — bruger ogsaa
+    ugemte felter fra formularen, saa kunden ser effekten med det samme."""
+    data = request.json or {}
+    klient_id = data.get('klient_id')
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') == 'client' and info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ingen adgang'}), 403
+    mtype = (data.get('type') or 'lead').strip()
+    mail_cfg = {
+        'mail_stemme':       data.get('mail_stemme', ''),
+        'mail_signatur':     data.get('mail_signatur', ''),
+        'lead_mail_fokus':   data.get('lead_mail_fokus', ''),
+        'tilbud_mail_tekst': data.get('tilbud_mail_tekst', ''),
+        'tilbud_mail_emne':  data.get('tilbud_mail_emne', ''),
+    }
+    try:
+        klient = get_klient(klient_id) if klient_id else {}
+        fra_navn = klient.get('navn', 'din virksomhed')
+        if mtype == 'tilbud':
+            std = f'Hej Anders,\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF.'
+            tekst = render_tilbud_mailtekst(mail_cfg['tilbud_mail_tekst'], 'Anders', fra_navn) or std
+            emne_raw = (mail_cfg['tilbud_mail_emne'] or '').strip()
+            emne = emne_raw.replace('{titel}', 'Tagrens 120 m2').replace('{firma}', fra_navn) if emne_raw else 'Tilbud: Tagrens 120 m2'
+            return jsonify({'emne': emne, 'tekst': tekst})
+        # Lead-mail: generér mail #1 live i kundens stemme med et eksempel-lead.
+        sample_lead = {
+            'navn': 'Anders Nielsen',
+            'besked': 'Hej, jeg vil gerne høre mere om jeres priser og muligheder.',
+            'email': 'anders@eksempel.dk'
+        }
+        klient_info = {
+            'navn': fra_navn,
+            'ydelser': klient.get('info', {}).get('ydelser', ''),
+            'kontakt': klient.get('info', {}).get('kontakt', '')
+        }
+        mail = generer_lead_mail(sample_lead, klient_info, 1, mail_cfg)
+        return jsonify({'emne': mail.get('emne', ''), 'tekst': mail.get('tekst', '')})
     except Exception as e:
         return jsonify({'error': _log_fejl(e)}), 500
 
@@ -7177,10 +7304,17 @@ def send_tilbud(tilbud_id):
         sikkert_filnavn = ''.join(c for c in titel if c.isalnum() or c in ' -_')[:40].strip() or 'tilbud'
         pdf_filnavn = f'{sikkert_filnavn}.pdf'
 
+        # Kundens egen tilbuds-mailtekst/emne hvis sat, ellers systemets standard.
+        _mcfg = hent_mail_config(klient_id)
+        _emne_raw = (_mcfg.get('tilbud_mail_emne') or '').strip()
+        _emne = _emne_raw.replace('{titel}', titel).replace('{firma}', fra_navn) if _emne_raw else f'Tilbud: {titel}'
+        _std_tekst = f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF — du kan godkende det via knappen i mailen.'
+        _tekst = render_tilbud_mailtekst(_mcfg.get('tilbud_mail_tekst'), kunde_navn, fra_navn) or _std_tekst
+
         send_mail(
             kunde_email,
-            f'Tilbud: {titel}',
-            f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF — du kan godkende det via knappen i mailen.',
+            _emne,
+            _tekst,
             fra_navn=fra_navn,
             html_content=html_til_kunde,
             pdf_vedhæft=pdf_bytes,
@@ -7262,11 +7396,18 @@ def portal_send_tilbud(tilbud_id):
         pdf_bytes = generer_tilbud_pdf(html_til_kunde)
         sikkert_filnavn = ''.join(c for c in titel if c.isalnum() or c in ' -_')[:40].strip() or 'tilbud'
 
-        emne = email_emne_override or f'Tilbud: {titel}'
+        # Emne: manuel override (fra send-dialogen) vinder; ellers kundens
+        # gemte standard-emne; ellers systemets fallback.
+        _mcfg = hent_mail_config(klient_id)
+        _emne_raw = (_mcfg.get('tilbud_mail_emne') or '').strip()
+        _emne_std = _emne_raw.replace('{titel}', titel).replace('{firma}', fra_navn) if _emne_raw else f'Tilbud: {titel}'
+        emne = email_emne_override or _emne_std
+        _std_tekst = f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF.'
+        _tekst = render_tilbud_mailtekst(_mcfg.get('tilbud_mail_tekst'), kunde_navn, fra_navn) or _std_tekst
 
         send_mail(
             kunde_email, emne,
-            f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF.',
+            _tekst,
             fra_navn=fra_navn,
             html_content=html_til_kunde,
             pdf_vedhæft=pdf_bytes,

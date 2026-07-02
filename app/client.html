@@ -613,6 +613,9 @@
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span> Tilbud
       <span id="tilbudBadge" class="hidden" style="margin-left:auto;background:#16a34a;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
+    <div class="nav-item" data-view="mails" onclick="showView('mails')">
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span> Mine mails
+    </div>
     <div class="nav-item" data-view="pipeline" onclick="showView('pipeline')">
       <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="15" y="3" width="6" height="12" rx="1"/></svg></span> Pipeline
       <span id="pipelineBadge" class="hidden" style="margin-left:auto;background:#f59e0b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
@@ -697,6 +700,9 @@
     </button>
     <button onclick="showView('bookinger');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ▦ <span>Bookinger</span>
+    </button>
+    <button onclick="showView('mails');toggleMobMereMenu()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.07);border:none;border-radius:10px;padding:.85rem 1rem;color:#fff;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
+      ✉ <span>Mine mails</span>
     </button>
     <button onclick="logud()" style="display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.04);border:none;border-radius:10px;padding:.85rem 1rem;color:rgba(255,255,255,.5);font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;text-align:left">
       ↩ <span>Log ud</span>
@@ -1385,6 +1391,78 @@
       </div>
     </div>
 
+    <!-- MINE MAILS -->
+    <div id="view-mails" class="hidden">
+      <div class="card" style="background:linear-gradient(135deg,#4a6741,#3d5636);color:#fff;border:none">
+        <div style="display:flex;align-items:flex-start;gap:.9rem">
+          <div style="font-size:1.6rem;line-height:1">✍️</div>
+          <div>
+            <div class="card-title" style="color:#fff;margin-bottom:.3rem">Dine mails skriver sig selv — i din stemme</div>
+            <div style="font-size:.85rem;line-height:1.5;color:rgba(255,255,255,.85)">Systemet svarer leads og sender tilbud automatisk, døgnet rundt. Her fortæller du bare <b>hvordan det skal lyde</b> — så rammer hver eneste mail din tone. Lad felterne stå tomme, og systemet bruger en gennemtestet standard.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Din stemme <span style="font-weight:400;color:var(--muted);font-size:.8rem">— bruges i ALT systemet sender</span></div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Tone og stil</label>
+          <textarea id="mail_stemme" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:90px;resize:vertical" placeholder="Beskriv hvordan I gerne vil lyde. Fx: Uformel og jordnær, vi dutter kunderne og bruger et smil. Undgå smarte salgsord — vær ærlige og konkrete."></textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">Skriv det som du ville forklare en ny medarbejder. Systemet skriver hver mail i præcis den tone.</div>
+        </div>
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Underskrift</label>
+          <textarea id="mail_signatur" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:70px;resize:vertical" placeholder="Fx:&#10;Venlig hilsen&#10;Mette fra Nordolsen VVS&#10;+45 12 34 56 78"></textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">Sættes nederst i mails. Tom = systemet afslutter pænt med jeres firmanavn.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📨 Mails til leads <span style="font-weight:400;color:var(--muted);font-size:.8rem">— opfølgning når nogen skriver via chatbotten</span></div>
+        <div style="font-size:.8rem;color:var(--muted);line-height:1.5;margin-bottom:1rem;background:var(--bg);padding:.7rem .9rem;border-radius:9px;border:1px solid var(--border)">Når en potentiel kunde skriver til chatbotten, følger systemet automatisk op på mail. Her kan du give det ekstra fokus.</div>
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Ekstra fokus i lead-mails</label>
+          <textarea id="lead_mail_fokus" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:80px;resize:vertical" placeholder="Fx: Nævn altid vores gratis besigtigelse. Skub venligt mod en booking i kalenderen. Fremhæv at vi kan rykke ud akut."></textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">Hvad skal opfølgningen helst opnå? Systemet fletter det ind naturligt.</div>
+        </div>
+        <div style="margin-top:1rem;text-align:right">
+          <button onclick="visMailEksempel('lead')" id="btnPreviewLead" style="background:var(--bg);border:1px solid var(--border);color:var(--dark);border-radius:9px;padding:.55rem 1.1rem;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit">👁 Vis eksempel på lead-mail</button>
+        </div>
+        <div id="previewLead" class="hidden" style="margin-top:1rem;border:1px solid var(--border);border-radius:11px;overflow:hidden">
+          <div style="background:var(--bg);padding:.6rem .9rem;border-bottom:1px solid var(--border);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">Sådan ser en lead-mail ud</div>
+          <div style="padding:.9rem 1rem"><div id="previewLeadEmne" style="font-weight:700;font-size:.9rem;margin-bottom:.5rem"></div><div id="previewLeadTekst" style="font-size:.88rem;line-height:1.6;white-space:pre-wrap;color:#333"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📄 Mails til tilbud <span style="font-weight:400;color:var(--muted);font-size:.8rem">— følgeteksten når du sender et tilbud</span></div>
+        <div style="margin-bottom:1rem">
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Emnelinje</label>
+          <input id="tilbud_mail_emne" type="text" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit" placeholder="Fx: Dit tilbud fra {firma}"/>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">Brug <code>{firma}</code> og <code>{titel}</code> — de udfyldes automatisk. Tom = "Tilbud: [titel]".</div>
+        </div>
+        <div>
+          <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px">Følgetekst i mailen</label>
+          <textarea id="tilbud_mail_tekst" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;min-height:100px;resize:vertical" placeholder="Fx:&#10;Hej {kunde_navn},&#10;&#10;Tak for din interesse! Her er dit tilbud — du kan godkende det direkte med knappen i mailen. Ring endelig hvis du har spørgsmål."></textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">Brug <code>{kunde_navn}</code> og <code>{firma}</code>. Selve tilbuddet vedhæftes automatisk som PDF. Tom = systemets standardtekst.</div>
+        </div>
+        <div style="margin-top:1rem;text-align:right">
+          <button onclick="visMailEksempel('tilbud')" id="btnPreviewTilbud" style="background:var(--bg);border:1px solid var(--border);color:var(--dark);border-radius:9px;padding:.55rem 1.1rem;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit">👁 Vis eksempel på tilbuds-mail</button>
+        </div>
+        <div id="previewTilbud" class="hidden" style="margin-top:1rem;border:1px solid var(--border);border-radius:11px;overflow:hidden">
+          <div style="background:var(--bg);padding:.6rem .9rem;border-bottom:1px solid var(--border);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-weight:700">Sådan ser en tilbuds-mail ud</div>
+          <div style="padding:.9rem 1rem"><div id="previewTilbudEmne" style="font-weight:700;font-size:.9rem;margin-bottom:.5rem"></div><div id="previewTilbudTekst" style="font-size:.88rem;line-height:1.6;white-space:pre-wrap;color:#333"></div></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;align-items:center;margin-top:.25rem">
+        <button onclick="gemMails()" id="btnGemMails" style="background:#1a1918;color:#fff;border:none;border-radius:10px;padding:.75rem 1.75rem;font-size:.9rem;font-weight:700;cursor:pointer">
+          Gem mine mails
+        </button>
+        <span id="mailsStatus" style="font-size:.85rem;color:var(--muted)"></span>
+      </div>
+    </div>
+
     <!-- INDSTILLINGER -->
     <div id="view-indstillinger" class="hidden">
       <div class="card">
@@ -1703,6 +1781,7 @@ const titles = {
   rapport:       ['Rapport',        'Statistik og grafisk overblik'],
   abonnement:    ['Abonnement',     'Din plan og fakturering'],
   indstillinger: ['Indstillinger',  'Tilpas din chatbot'],
+  mails:         ['Mine mails',     'Skræddersy mails til leads og tilbud'],
   'kom-i-gang':  ['Kom i gang',     'Installer chatbot og fuldfør opsætning']
 };
 
@@ -1734,7 +1813,7 @@ function showView(v) {
   ['overblik','leads','tilbud','pipeline'].forEach(id => {
     document.getElementById('mobNav-'+id)?.classList.toggle('active', id === v);
   });
-  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang'];
+  const mereViews = ['gaps','agenter','rapport','abonnement','indstillinger','bookinger','kom-i-gang','mails'];
   document.getElementById('mobNav-mere')?.classList.toggle('active', mereViews.includes(v));
   closeMobileNav();
   if (v === 'overblik') loadOverblik();
@@ -1745,6 +1824,7 @@ function showView(v) {
   if (v === 'tilbud') loadTilbud();
   if (v === 'abonnement') loadAbonnement();
   if (v === 'indstillinger') loadIndstillinger();
+  if (v === 'mails') loadMails();
   if (v === 'kom-i-gang') { genererWidgetKode(); visPlatform('html', document.querySelector('.plat-btn.active') || document.querySelector('.plat-btn')); }
 }
 
@@ -3905,6 +3985,87 @@ async function gemIndstillinger() {
   btn.disabled = false;
   btn.textContent = 'Gem ændringer';
   setTimeout(() => status.textContent = '', 4000);
+}
+
+// ── MINE MAILS ────────────────────────────────────────
+const MAIL_FELTER = ['mail_stemme','mail_signatur','lead_mail_fokus','tilbud_mail_tekst','tilbud_mail_emne'];
+let _mailsHentet = false;
+
+async function loadMails() {
+  if (_mailsHentet) return;
+  try {
+    const res = await fetch(`${API}/portal/mail-config/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    if (res.ok) {
+      const cfg = await res.json();
+      MAIL_FELTER.forEach(f => { const el = document.getElementById(f); if (el) el.value = cfg[f] || ''; });
+      _mailsHentet = true;
+    }
+  } catch(e) { console.error(e); }
+}
+
+function _mailPayload() {
+  const p = { klient_id: CLIENT_ID };
+  MAIL_FELTER.forEach(f => { p[f] = document.getElementById(f)?.value || ''; });
+  return p;
+}
+
+async function gemMails() {
+  const btn = document.getElementById('btnGemMails');
+  const status = document.getElementById('mailsStatus');
+  btn.disabled = true;
+  btn.textContent = 'Gemmer...';
+  status.textContent = '';
+  try {
+    const res = await fetch(`${API}/portal/mail-config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify(_mailPayload())
+    });
+    const data = await res.json();
+    if (res.ok) { status.textContent = '✓ Gemt!'; status.style.color = '#16a34a'; }
+    else { status.textContent = data.error || 'Fejl ved gem'; status.style.color = '#c0392b'; }
+  } catch(e) {
+    status.textContent = 'Netværksfejl — prøv igen'; status.style.color = '#c0392b';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Gem mine mails';
+  setTimeout(() => status.textContent = '', 4000);
+}
+
+async function visMailEksempel(type) {
+  const btnId = type === 'lead' ? 'btnPreviewLead' : 'btnPreviewTilbud';
+  const boxId = type === 'lead' ? 'previewLead' : 'previewTilbud';
+  const emneId = type === 'lead' ? 'previewLeadEmne' : 'previewTilbudEmne';
+  const tekstId = type === 'lead' ? 'previewLeadTekst' : 'previewTilbudTekst';
+  const btn = document.getElementById(btnId);
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = type === 'lead' ? 'Skriver eksempel...' : 'Henter eksempel...';
+  try {
+    const res = await fetch(`${API}/portal/mail-preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ ..._mailPayload(), type })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById(emneId).textContent = data.emne ? 'Emne: ' + data.emne : '';
+      document.getElementById(tekstId).textContent = data.tekst || '';
+      document.getElementById(boxId).classList.remove('hidden');
+    } else {
+      document.getElementById(tekstId).textContent = data.error || 'Kunne ikke lave eksempel — prøv igen.';
+      document.getElementById(emneId).textContent = '';
+      document.getElementById(boxId).classList.remove('hidden');
+    }
+  } catch(e) {
+    document.getElementById(tekstId).textContent = 'Netværksfejl — prøv igen.';
+    document.getElementById(emneId).textContent = '';
+    document.getElementById(boxId).classList.remove('hidden');
+  }
+  btn.disabled = false;
+  btn.textContent = orig;
 }
 
 // Init
