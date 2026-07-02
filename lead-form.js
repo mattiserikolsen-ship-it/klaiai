@@ -159,6 +159,77 @@
   // Indsæt formularen hvor scriptet er
   script.parentNode.insertBefore(wrap, script.nextSibling);
 
+  // ── ZERO-LEAD-LOSS FANGST ────────────────────────────
+  // En henvendelse maa ALDRIG gaa tabt — heller ikke hvis serveren er nede
+  // (fx cold-start). Strategi: send med retry; lykkes det ikke, gem leadet
+  // lokalt og gensend automatisk. Den besoegende faar altid "tak".
+  const QUEUE_KEY = 'nordolsen_lead_queue';
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+    : 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      }));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function readQueue() {
+    try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function writeQueue(q) {
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch (e) {}
+  }
+  function queueLead(payload) {
+    const q = readQueue();
+    q.push(payload);
+    writeQueue(q);
+  }
+
+  // Ét forsøg. Returnerer true ved succes (inkl. dedup-duplikat), false ellers.
+  async function postLead(payload) {
+    try {
+      const res = await fetch(`${API_URL}/lead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return res.ok; // 2xx = gemt (dedup giver ogsaa 200). 4xx/5xx = prøv igen senere.
+    } catch (e) {
+      return false; // netværksfejl / server nede
+    }
+  }
+
+  // Send med et par hurtige forsøg (haandterer cold-start der loeser sig paa faa sek).
+  async function sendMedRetry(payload, forsoeg = 3) {
+    const ventetider = [1000, 3000, 6000];
+    for (let i = 0; i < forsoeg; i++) {
+      if (await postLead(payload)) return true;
+      if (i < forsoeg - 1) await sleep(ventetider[i] || 6000);
+    }
+    return false;
+  }
+
+  // Toem koeen — kaldes ved load, naar nettet kommer tilbage, og periodisk.
+  let flushKoerer = false;
+  async function flushQueue() {
+    if (flushKoerer) return;
+    flushKoerer = true;
+    try {
+      let q = readQueue();
+      if (!q.length) return;
+      const tilbage = [];
+      for (const payload of q) {
+        const ok = await postLead(payload); // dedup_id gør gensend sikkert
+        if (!ok) tilbage.push(payload);
+      }
+      writeQueue(tilbage);
+    } finally {
+      flushKoerer = false;
+    }
+  }
+
+  // Gensend evt. tidligere koede leads ved opstart og naar forbindelsen vender tilbage.
+  flushQueue();
+  window.addEventListener('online', flushQueue);
+  setInterval(flushQueue, 60000);
+
   // ── SUBMIT ───────────────────────────────────────────
   document.getElementById('klai_submit').addEventListener('click', async () => {
     const navn = document.getElementById('klai_navn').value.trim();
@@ -178,32 +249,27 @@
     btn.textContent = 'Sender...';
     document.getElementById('klai_error').style.display = 'none';
 
-    try {
-      const res = await fetch(`${API_URL}/lead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client: CLIENT_ID,
-          send: true,
-          lead: { navn, email, telefon, virksomhed, besked }
-        })
-      });
+    // dedup_id gør leadet idempotent: retry og gensend fra koeen laver aldrig dubletter.
+    const payload = {
+      client: CLIENT_ID,
+      send: true,
+      lead: { navn, email, telefon, virksomhed, besked, dedup_id: uuid() }
+    };
 
-      if (res.ok) {
-        wrap.querySelector('.klaiai-form-row') && (wrap.innerHTML = `
-          <div class="klaiai-form-title">${TITLE}</div>
-          <div class="klaiai-success" style="display:block; margin-top:0">
-            Tak, ${navn}! Vi har modtaget din henvendelse og vender tilbage hurtigst muligt.
-          </div>
-          <div class="klaiai-powered">Drevet af <strong>Nordolsen</strong></div>
-        `);
-      } else {
-        throw new Error('Server fejl');
-      }
-    } catch (e) {
-      btn.disabled = false;
-      btn.textContent = BTN_TEXT;
-      document.getElementById('klai_error').style.display = 'block';
+    const sendt = await sendMedRetry(payload);
+    if (!sendt) {
+      // Serveren kunne ikke naas nu — gem leadet lokalt og gensend automatisk senere.
+      // Den besoegende skal IKKE mærke det; deres henvendelse er sikret.
+      queueLead(payload);
     }
+
+    // Vis altid kvittering — leadet er enten gemt paa serveren eller sikret i koeen.
+    wrap.innerHTML = `
+      <div class="klaiai-form-title">${TITLE}</div>
+      <div class="klaiai-success" style="display:block; margin-top:0">
+        Tak, ${navn}! Vi har modtaget din henvendelse og vender tilbage hurtigst muligt.
+      </div>
+      <div class="klaiai-powered">Drevet af <strong>Nordolsen</strong></div>
+    `;
   });
 })();

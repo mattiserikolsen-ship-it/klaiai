@@ -729,7 +729,19 @@ def modtag_lead():
     if not lead.get('email') and not lead.get('navn'):
         return jsonify({'error': 'Lead mangler email eller navn'}), 400
 
-    # Gem lead i Supabase
+    # Idempotens: widget'en gensender leads (retry + lokal ko naar backend er nede).
+    # dedup_id sikrer at samme henvendelse aldrig bliver til to leads / to mail-flows.
+    dedup_id = lead.get('dedup_id')
+    if db and dedup_id:
+        try:
+            allerede = db.table('leads').select('id').eq('klient_id', klient_id).eq('dedup_id', dedup_id).limit(1).execute()
+            if allerede.data:
+                return jsonify({'success': True, 'duplikat': True, 'lead': lead.get('navn')})
+        except Exception as e:
+            print(f"Lead dedup-tjek fejl: {e}")
+
+    # Gem lead i Supabase — dette er den kritiske fangst. Fejler den, skal
+    # widget'en vide det (503) saa den gemmer lokalt og gensender. ALDRIG sluge fejlen.
     if db:
         try:
             db.table('leads').insert({
@@ -739,12 +751,18 @@ def modtag_lead():
                 'telefon': lead.get('telefon', ''),
                 'virksomhed': lead.get('virksomhed', ''),
                 'besked': lead.get('besked', ''),
-                'status': 'ny'
+                'status': 'ny',
+                'dedup_id': dedup_id
             }).execute()
+        except Exception as e:
+            print(f"Lead DB insert fejl: {e}")
+            return jsonify({'error': 'Kunne ikke gemme lead lige nu', 'retry': True}), 503
+        # Sekundaere handlinger maa ikke vaelte fangsten — leadet er allerede gemt.
+        try:
             opsaml_kontakt(klient_id, lead.get('email', ''), lead.get('navn', ''), lead.get('telefon', ''))
             log_aktivitet(klient_id, 'lead', f"Nyt lead via formular — {lead.get('navn','') or 'ukendt'}", lead.get('email', ''), modul='leads')
         except Exception as e:
-            print(f"Lead DB fejl: {e}")
+            print(f"Lead opsaml/log fejl: {e}")
 
     # Hent klientinfo fra Supabase eller JSON
     klient = get_klient(klient_id)
@@ -772,8 +790,10 @@ def modtag_lead():
             if cfg.data:
                 auto_godkend = cfg.data[0].get('auto_godkend_mails', False)
                 mail_image_url = cfg.data[0].get('mail_image_url') or None
-            # Hent lead id
-            lead_res = db.table('leads').select('id').eq('klient_id', klient_id).eq('navn', lead.get('navn','')).order('oprettet', desc=True).limit(1).execute()
+            # Hent lead id — praecist via dedup_id naar muligt, ellers fald tilbage til navn
+            lead_q = db.table('leads').select('id').eq('klient_id', klient_id)
+            lead_q = lead_q.eq('dedup_id', dedup_id) if dedup_id else lead_q.eq('navn', lead.get('navn',''))
+            lead_res = lead_q.order('oprettet', desc=True).limit(1).execute()
             if lead_res.data:
                 lead_db_id = str(lead_res.data[0]['id'])
         except:
