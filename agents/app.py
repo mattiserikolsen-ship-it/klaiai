@@ -119,9 +119,12 @@ app = Flask(__name__, static_folder='../app', static_url_path='/app')
 # ── CORS ───────────────────────────────────────────────
 # Offentlige widget-endpoints indlejres på vilkaarlige kundesider => alle origins.
 # Alt andet (admin, portal, login) => kun vores egne domaener.
+# "null" er med, fordi admin-panelet aabnes lokalt som fil (file://), der sender
+# Origin: null. Adgang er alligevel beskyttet af Bearer-token (ikke cookies),
+# saa CORS er ikke sikkerhedsgraensen her — tokenet er.
 _app_origins = [o.strip() for o in os.environ.get(
     'APP_ORIGINS',
-    'https://klaiai.onrender.com,https://klaai.dk,https://www.klaai.dk'
+    'https://klaiai.onrender.com,https://klaai.dk,https://www.klaai.dk,null'
 ).split(',') if o.strip()]
 CORS(app, resources={
     r"/chat": {"origins": "*"},
