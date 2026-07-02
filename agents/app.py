@@ -756,6 +756,9 @@ def modtag_lead():
             }).execute()
         except Exception as e:
             print(f"Lead DB insert fejl: {e}")
+            alarm('Lead kunne ikke gemmes',
+                  f"Et lead fra '{lead.get('navn','ukendt')}' ({lead.get('email','')}) kunne ikke gemmes i databasen. Widget gensender, men tjek Supabase straks. Fejl: {e}",
+                  noegle='lead_insert', klient_id=klient_id)
             return jsonify({'error': 'Kunne ikke gemme lead lige nu', 'retry': True}), 503
         # Sekundaere handlinger maa ikke vaelte fangsten — leadet er allerede gemt.
         try:
@@ -854,6 +857,9 @@ def _generer_lead_mails(klient_id, lead, dedup_id):
                 except: pass
     except Exception as e:
         print(f"Lead mail-generering fejl (lead er gemt): {e}")
+        alarm('Lead-mails kunne ikke genereres',
+              f"Leadet er gemt, men opfoelgningsmailene fejlede (Claude/SendGrid?). Lead: {lead.get('navn','')} ({lead.get('email','')}). Fejl: {e}",
+              noegle='lead_mailgen', klient_id=klient_id)
 
 
 def generer_lead_mail(lead, klient, mail_nr):
@@ -998,6 +1004,52 @@ def send_mail(til, emne, tekst, fra_navn, html_content=None, pdf_vedhæft=None, 
         if hasattr(e, 'body'):
             print(f"SendGrid body: {e.body}")
         return False
+
+
+# ── OBSERVABILITY: alarm ved kritiske fejl ──────────────────────
+# Et enkeltsystem taaler ikke tavs nedetid — vi skal vide besked FOER kunden
+# klager. alarm() sender en mail til driftsansvarlig (ADMIN_EMAIL) naar noget
+# kritisk fejler (fx et lead der ikke kan gemmes). Throttlet pr. noegle saa en
+# vedvarende fejl ikke spammer indbakken, og aldrig kastende — en alarm der
+# fejler maa aldrig vaelte den handling den overvaager.
+_alarm_sidst = {}
+ALARM_COOLDOWN = 1800  # 30 min pr. noegle
+
+def alarm(emne, detaljer='', noegle=None, klient_id=''):
+    """Send driftsalarm til ADMIN_EMAIL. Throttlet, fejlsikker, ikke-blokerende."""
+    try:
+        print(f"🚨 ALARM: {emne} — {detaljer}")
+        noegle = noegle or emne
+        nu = _time.time()
+        sidst = _alarm_sidst.get(noegle, 0)
+        undertrykt = nu - sidst < ALARM_COOLDOWN
+        _alarm_sidst[noegle] = nu
+
+        # Persistér altid til historik (også når mailen throttles).
+        if db:
+            try:
+                db.table('agent_log').insert({
+                    'agent': 'alarm',
+                    'klient_id': klient_id or 'system',
+                    'reference_id': None,
+                    'besked': f"{emne} :: {detaljer}"[:800]
+                }).execute()
+            except Exception as e:
+                print(f"Alarm-log fejl: {e}")
+
+        if undertrykt:
+            return  # samme fejl er allerede meldt inden for cooldown
+        if not (SENDGRID_API_KEY and ADMIN_EMAIL and '@' in ADMIN_EMAIL):
+            return
+        tekst = (
+            f"Driftsalarm fra Nordolsen\n\n{emne}\n\n{detaljer}\n\n"
+            f"Klient: {klient_id or '-'}\n"
+            f"Tidspunkt (UTC): {datetime.utcnow().isoformat(timespec='seconds')}\n\n"
+            f"Yderligere alarmer med samme aarsag undertrykkes i {ALARM_COOLDOWN//60} min."
+        )
+        send_mail(ADMIN_EMAIL, f"[ALARM] {emne}", tekst, 'Nordolsen Drift')
+    except Exception as e:
+        print(f"Alarm-udsendelse fejl: {e}")
 
 
 def send_sms(til_nummer, besked):
@@ -5027,6 +5079,9 @@ def kør_mail_flow_agent():
         print(f"📧 Mail flow agent færdig: {nu.strftime('%H:%M')}")
     except Exception as e:
         print(f"Mail flow agent fejl: {e}")
+        alarm('Mail-flow agent fejlede',
+              f"Den automatiske mail-flow agent (koerer hver time) fejlede. Planlagte opfoelgningsmails er muligvis ikke sendt. Fejl: {e}",
+              noegle='mail_flow_agent')
 
 
 # ── MAIL FLOW ENDPOINTS ────────────────────────────────
@@ -5572,9 +5627,17 @@ def kør_keep_alive():
     if not KEEP_ALIVE_URL:
         return
     try:
-        http_requests.get(f"{KEEP_ALIVE_URL}/health", timeout=20)
+        r = http_requests.get(f"{KEEP_ALIVE_URL}/health", timeout=20)
+        if r.status_code != 200:
+            alarm('Health-check gav uventet svar',
+                  f"/health returnerede {r.status_code}. Serveren svarer men er muligvis usund.",
+                  noegle='health_status')
     except Exception as e:
+        # Kan ikke naa egen /health — netvaerk eller server i knibe. Canary.
         print(f"Keep-alive ping fejl: {e}")
+        alarm('Kan ikke naa egen /health',
+              f"Keep-alive kunne ikke ramme {KEEP_ALIVE_URL}/health. Muligt netvaerks- eller serverproblem. Fejl: {e}",
+              noegle='health_unreachable')
 
 if KEEP_ALIVE_URL:
     scheduler.add_job(kør_keep_alive, 'interval', minutes=10, id='keep_alive')
