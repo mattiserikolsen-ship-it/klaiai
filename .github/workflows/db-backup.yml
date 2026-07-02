@@ -1,0 +1,64 @@
+name: Daglig database-backup
+
+# Off-site backup af Supabase-databasen. Nordolsen koerer paa Supabase Free,
+# hvor der IKKE er brugbar gendannelse — denne workflow er vores sikkerhedssele.
+# Den tager et krypteret dump hver nat og gemmer det som artifact (off-site paa
+# GitHub, adskilt fra Supabase). Dumpet er GPG-krypteret, saa kundedata (leads,
+# emails, telefonnumre) aldrig ligger i klartekst uden for databasen.
+#
+# KRAEVER to repository-secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL   Session pooler-connection string fra Supabase
+#                     (Dashboard -> Project Settings -> Database -> Connection
+#                      string -> "Session pooler", port 5432). Indeholder password.
+#   BACKUP_PASSPHRASE Selvvalgt, staerk kodeord til at kryptere/dekryptere dumpet.
+#                     Opbevar det et SIKKERT sted (password manager) — uden det
+#                     kan backuppen ALDRIG dekrypteres.
+
+on:
+  schedule:
+    - cron: '30 2 * * *'   # hver nat kl. 02:30 UTC
+  workflow_dispatch:        # tillad manuel koersel (til foerste test)
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Installer PostgreSQL 17 client
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Tag krypteret dump
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ] || [ -z "${BACKUP_PASSPHRASE:-}" ]; then
+            echo "::error::SUPABASE_DB_URL og/eller BACKUP_PASSPHRASE mangler som repository-secret."
+            exit 1
+          fi
+          STAMP="$(date -u +%Y-%m-%d_%H%M)"
+          FILE="nordolsen-db-${STAMP}.dump.gpg"
+          # -Fc = custom format (kan gendannes selektivt med pg_restore).
+          # Krypteres straks med AES256 saa PII aldrig rammer disken i klartekst.
+          pg_dump "$SUPABASE_DB_URL" -Fc --no-owner --no-privileges \
+            | gpg --batch --yes --symmetric --cipher-algo AES256 \
+                  --passphrase "$BACKUP_PASSPHRASE" -o "$FILE"
+          SIZE=$(du -h "$FILE" | cut -f1)
+          echo "Backup taget: $FILE ($SIZE)"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+
+      - name: Gem backup off-site (artifact, 90 dages retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 90
+          if-no-files-found: error
