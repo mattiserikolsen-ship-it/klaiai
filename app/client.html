@@ -54,7 +54,8 @@
     }
     .nav-item:hover { color: #fff; background: rgba(255,255,255,0.07); }
     .nav-item.active { color: #fff; background: rgba(255,255,255,0.11); font-weight: 600; }
-    .nav-item .ni { font-size: .95rem; width: 18px; text-align: center; opacity: .7; }
+    .nav-item .ni { width: 20px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: .7; }
+    .nav-item .ni svg { width: 17px; height: 17px; }
     .nav-item.active .ni { opacity: 1; }
     .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.07); }
     .powered { font-size: .65rem; color: rgba(255,255,255,.25); }
@@ -366,7 +367,8 @@
       border: none; background: none; font-family: inherit; transition: color .15s; position: relative;
     }
     .mob-nav-item.active { color: #fff; }
-    .mob-nav-icon { font-size: 1.15rem; line-height: 1; }
+    .mob-nav-icon { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+    .mob-nav-icon svg { width: 21px; height: 21px; }
     .mob-nav-label { font-size: .55rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-top: .2rem; }
     .mob-nav-badge {
       position: absolute; top: .35rem; right: calc(50% - 14px);
@@ -573,44 +575,44 @@
   </div>
   <div class="sidebar-nav">
     <div class="nav-item active" data-view="overblik" onclick="showView('overblik')">
-      <span class="ni">⊡</span> Overblik
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Overblik
     </div>
     <div class="nav-item" data-view="forretning" onclick="showView('forretning')">
-      <span class="ni">◆</span> Forretning
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span> Forretning
     </div>
     <div class="nav-item" data-view="leads" onclick="showView('leads')">
-      <span class="ni">◎</span> Leads
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span> Leads
       <span id="leadBadge" class="hidden" style="margin-left:auto;background:#c0392b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
     <div class="nav-item" data-view="bookinger" onclick="showView('bookinger')">
-      <span class="ni">▦</span> Bookinger
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Bookinger
     </div>
     <div class="nav-item" data-view="tilbud" onclick="showView('tilbud')">
-      <span class="ni">📄</span> Tilbud
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span> Tilbud
       <span id="tilbudBadge" class="hidden" style="margin-left:auto;background:#16a34a;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
     <div class="nav-item" data-view="pipeline" onclick="showView('pipeline')">
-      <span class="ni">◧</span> Pipeline
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="15" y="3" width="6" height="12" rx="1"/></svg></span> Pipeline
       <span id="pipelineBadge" class="hidden" style="margin-left:auto;background:#f59e0b;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
     <div class="nav-item" data-view="gaps" onclick="showView('gaps')">
-      <span class="ni">💬</span> Spørgsmål
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span> Spørgsmål
       <span id="gapsBadge" class="hidden" style="margin-left:auto;background:#ef4444;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
     <div class="nav-item" data-view="agenter" onclick="showView('agenter')">
-      <span class="ni">◈</span> Mine agenter
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span> Mine agenter
     </div>
     <div class="nav-item" data-view="rapport" onclick="showView('rapport')">
-      <span class="ni">◫</span> Rapport
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span> Rapport
     </div>
     <div class="nav-item" data-view="abonnement" onclick="showView('abonnement')">
-      <span class="ni">◉</span> Abonnement
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Abonnement
     </div>
     <div class="nav-item" data-view="indstillinger" onclick="showView('indstillinger')">
-      <span class="ni">⚙</span> Indstillinger
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Indstillinger
     </div>
     <div class="nav-item" data-view="kom-i-gang" onclick="showView('kom-i-gang')">
-      <span class="ni">🚀</span> Kom i gang
+      <span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Kom i gang
       <span id="opgaveBadge" class="hidden" style="margin-left:auto;background:#7c3aed;color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;min-width:18px;text-align:center"></span>
     </div>
   </div>
@@ -626,25 +628,25 @@
 <div class="mobile-bottom-nav">
   <div class="mobile-bottom-nav-inner">
     <button class="mob-nav-item active" id="mobNav-overblik" onclick="showView('overblik')">
-      <span class="mob-nav-icon">⊡</span>
+      <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
       <span class="mob-nav-label">Hjem</span>
     </button>
     <button class="mob-nav-item" id="mobNav-leads" onclick="showView('leads')">
-      <span class="mob-nav-icon">◎</span>
+      <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
       <span class="mob-nav-label">Leads</span>
       <span class="mob-nav-badge hidden" id="mobLeadBadge"></span>
     </button>
     <button class="mob-nav-item" id="mobNav-tilbud" onclick="showView('tilbud')">
-      <span class="mob-nav-icon">📄</span>
+      <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></span>
       <span class="mob-nav-label">Tilbud</span>
       <span class="mob-nav-badge hidden" id="mobTilbudBadge"></span>
     </button>
     <button class="mob-nav-item" id="mobNav-pipeline" onclick="showView('pipeline')">
-      <span class="mob-nav-icon">◧</span>
+      <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="18" rx="1"/><rect x="15" y="3" width="6" height="12" rx="1"/></svg></span>
       <span class="mob-nav-label">Pipeline</span>
     </button>
     <button class="mob-nav-item" id="mobNav-mere" onclick="toggleMobMereMenu()">
-      <span class="mob-nav-icon">⋯</span>
+      <span class="mob-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
       <span class="mob-nav-label">Mere</span>
     </button>
   </div>
