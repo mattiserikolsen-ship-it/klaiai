@@ -1443,7 +1443,7 @@ def get_insights(klient_id):
     leads, bookinger = [], []
     if db:
         try:
-            leads = db.table('leads').select('kilde,oprettet,besked').eq('klient_id', klient_id).execute().data or []
+            leads = db.table('leads').select('oprettet,besked').eq('klient_id', klient_id).execute().data or []
             bookinger = db.table('bookinger').select('ydelse,oprettet').eq('klient_id', klient_id).execute().data or []
         except:
             pass
@@ -1613,7 +1613,7 @@ def get_rapport(klient_id):
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
     try:
-        leads_res = db.table('leads').select('kilde,oprettet').eq('klient_id', klient_id).execute()
+        leads_res = db.table('leads').select('oprettet').eq('klient_id', klient_id).execute()
         leads = leads_res.data or []
         book_res = db.table('bookinger').select('dato,oprettet').eq('klient_id', klient_id).eq('status', 'bekræftet').execute()
         bookinger = book_res.data or []
@@ -6606,12 +6606,12 @@ def portal_overblik(klient_id):
         roi_faktor = round(roi_måned / abo_pris, 1) if abo_pris > 0 else 0
 
         # Leads
-        leads_res = db.table('leads').select('id,navn,telefon,email,besked,status,oprettet,kilde').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
+        leads_res = db.table('leads').select('id,navn,telefon,email,besked,status,oprettet').eq('klient_id', klient_id).order('oprettet', desc=True).limit(50).execute()
         leads_alle = leads_res.data or []
         leads_måned = [l for l in leads_alle if l.get('oprettet', '') >= maaned_start]
 
         # Bookinger
-        book_res = db.table('bookinger').select('id,navn,oprettet,dato,tid,ydelse,portal_status').eq('klient_id', klient_id).order('dato', desc=False).limit(100).execute()
+        book_res = db.table('bookinger').select('id,kunde_navn,oprettet,dato,tid,ydelse,portal_status').eq('klient_id', klient_id).order('dato', desc=False).limit(100).execute()
         book_alle = book_res.data or []
         book_måned = [b for b in book_alle if b.get('oprettet', '') >= maaned_start]
         # Næste kommende booking
@@ -6638,7 +6638,7 @@ def portal_overblik(klient_id):
                 'ikon': '▦',
                 'farve': '#7c3aed',
                 'bg': '#f5f3ff',
-                'titel': f"Ny booking: {b.get('navn','—')}",
+                'titel': f"Ny booking: {b.get('kunde_navn','—')}",
                 'sub': f"Dato: {b.get('dato','—')}",
                 'tid': b.get('oprettet', '')
             })
@@ -7522,7 +7522,7 @@ def portal_kunde_historik(klient_id, kunde_email_encoded):
     try:
         leads_res = db.table('leads').select('*').eq('klient_id', klient_id).eq('email', kunde_email).order('oprettet', desc=True).execute()
         tilbud_res = db.table('tilbud').select('id,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato').eq('klient_id', klient_id).eq('kunde_email', kunde_email).order('oprettet', desc=True).execute()
-        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).eq('email', kunde_email).order('oprettet', desc=True).execute()
+        book_res = db.table('bookinger').select('*').eq('klient_id', klient_id).eq('kunde_email', kunde_email).order('oprettet', desc=True).execute()
 
         leads = leads_res.data or []
         tilbud = tilbud_res.data or []
