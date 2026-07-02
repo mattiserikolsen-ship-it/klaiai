@@ -13,6 +13,7 @@ import anthropic
 import json
 import os
 import secrets
+import html
 import bcrypt
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -114,7 +115,26 @@ demo_sessions = {}   # demo_id -> {'klient_config': {...}, 'url': '...', 'create
 prospekter    = {}   # prospekt_id -> {'url', 'navn', 'beskrivelse', 'har_chatbot', 'email_udkast', 'status'}
 
 app = Flask(__name__, static_folder='../app', static_url_path='/app')
-CORS(app)
+
+# ── CORS ───────────────────────────────────────────────
+# Offentlige widget-endpoints indlejres på vilkaarlige kundesider => alle origins.
+# Alt andet (admin, portal, login) => kun vores egne domaener.
+_app_origins = [o.strip() for o in os.environ.get(
+    'APP_ORIGINS',
+    'https://klaiai.onrender.com,https://klaai.dk,https://www.klaai.dk'
+).split(',') if o.strip()]
+CORS(app, resources={
+    r"/chat": {"origins": "*"},
+    r"/lead": {"origins": "*"},
+    r"/widget/*": {"origins": "*"},
+    r"/booking": {"origins": "*"},
+    r"/booking-config/*": {"origins": "*"},
+    r"/booking-optaget/*": {"origins": "*"},
+    r"/chatbot.js": {"origins": "*"},
+    r"/lead-form.js": {"origins": "*"},
+    r"/booking-widget.js": {"origins": "*"},
+    r"/*": {"origins": _app_origins},
+})
 
 # ── RATE LIMITING ──────────────────────────────────────
 limiter = Limiter(
@@ -124,7 +144,9 @@ limiter = Limiter(
     storage_uri='memory://'
 )
 
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'klaiai2024')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')  # INGEN fallback — skal sættes i miljøet
+if not ADMIN_PASSWORD:
+    print("ADVARSEL: ADMIN_PASSWORD er ikke sat — admin-adgang er blokeret indtil den sættes.")
 # Sæt ADMIN_LOCAL_ONLY=true på Render for at blokere admin-adgang fra internettet
 ADMIN_LOCAL_ONLY = os.environ.get('ADMIN_LOCAL_ONLY', 'false').lower() == 'true'
 
@@ -147,7 +169,7 @@ def require_auth(f):
     @functools.wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
-        if not auth or auth.password != ADMIN_PASSWORD:
+        if not ADMIN_PASSWORD or not auth or auth.password != ADMIN_PASSWORD:
             return Response(
                 'Adgang kræver login.',
                 401,
@@ -177,6 +199,25 @@ def require_token(f):
             return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
         return f(*args, **kwargs)
     return decorated
+
+def _ingen_adgang(klient_id):
+    """Returnerer True hvis den aktuelle bruger IKKE må tilgå denne klients data.
+
+    Admin må tilgå alt. En klient må kun tilgå sit eget klient_id.
+    Brug efter @require_token (som har valideret token og fyldt active_tokens-cachen).
+    """
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    return info.get('role') == 'client' and str(info.get('klient_id')) != str(klient_id)
+
+def _log_fejl(e, besked='Der opstod en teknisk fejl'):
+    """Logger den raa fejl server-side og returnerer en generisk besked til klienten.
+
+    Undgaar at laekke interne detaljer (stacktrace, tabelnavne, noegler) i API-svar.
+    """
+    print(f"FEJL: {e}")
+    return besked
 
 ai = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
@@ -475,6 +516,9 @@ https://klaiai.onrender.com/app/admin.html"""
     if SENDGRID_API_KEY and lead_email and '@' in lead_email:
         try:
             fornavn = lead_navn.split()[0] if lead_navn and lead_navn != 'Ukendt' else 'der'
+            fornavn_h     = html.escape(fornavn)
+            klient_navn_h = html.escape(klient_navn)
+            lead_besked_h = html.escape(lead_besked)
             emne_lead = f"Tak for din henvendelse til {klient_navn} 👋"
             html_lead = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"/></head>
@@ -482,18 +526,18 @@ https://klaiai.onrender.com/app/admin.html"""
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px">
   <tr><td style="background:#0a2463;border-radius:14px 14px 0 0;padding:24px 32px">
-    <div style="color:#fff;font-size:20px;font-weight:800">{klient_navn}</div>
+    <div style="color:#fff;font-size:20px;font-weight:800">{klient_navn_h}</div>
   </td></tr>
   <tr><td style="background:#fff;padding:28px 32px;border-left:1px solid #e5e3de;border-right:1px solid #e5e3de">
-    <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:12px">Hej {fornavn}! 👋</div>
+    <div style="font-size:18px;font-weight:700;color:#1a1918;margin-bottom:12px">Hej {fornavn_h}! 👋</div>
     <div style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px">
       Tak for din henvendelse. Vi har modtaget din besked og vender tilbage til dig hurtigst muligt.
     </div>
     <div style="background:#f0f4ff;border-left:3px solid #0a2463;border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:#0a2463;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Din besked</div>
-      <div style="font-size:13px;color:#333;line-height:1.6">{lead_besked or '(Ingen besked)'}</div>
+      <div style="font-size:13px;color:#333;line-height:1.6">{lead_besked_h or '(Ingen besked)'}</div>
     </div>
-    <div style="font-size:13px;color:#888">Med venlig hilsen,<br><strong>{klient_navn}</strong></div>
+    <div style="font-size:13px;color:#888">Med venlig hilsen,<br><strong>{klient_navn_h}</strong></div>
   </td></tr>
   <tr><td style="background:#f8f7f4;padding:16px 32px;border:1px solid #e5e3de;border-radius:0 0 14px 14px;text-align:center">
     <div style="font-size:11px;color:#bbb">Drevet af Nordolsen</div>
@@ -631,7 +675,7 @@ def chat():
             'lead_gemt': lead_gemt
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/widget/<klient_id>', methods=['GET'])
@@ -954,7 +998,7 @@ def get_booking_link(klient_id):
         booking_url = res.data.get('booking_url', '') if res.data else ''
         return jsonify({'booking_url': booking_url or ''})
     except Exception as e:
-        return jsonify({'booking_url': '', 'error': str(e)}), 200
+        return jsonify({'booking_url': '', 'error': _log_fejl(e)}), 200
 
 
 @app.route('/booking-config/<klient_id>', methods=['GET'])
@@ -1004,7 +1048,7 @@ def gem_booking_config():
         res = db.table('booking_config').upsert(cfg, on_conflict='klient_id').execute()
         return jsonify({'success': True, 'config': res.data[0] if res.data else {}})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/booking-optaget/<klient_id>/<dato>', methods=['GET'])
@@ -1017,7 +1061,7 @@ def get_optaget(klient_id, dato):
         tider = [r['tid'] for r in (res.data or [])]
         return jsonify({'optaget': tider})
     except Exception as e:
-        return jsonify({'optaget': [], 'error': str(e)})
+        return jsonify({'optaget': [], 'error': _log_fejl(e)})
 
 
 @app.route('/booking', methods=['POST'])
@@ -1108,27 +1152,35 @@ Med venlig hilsen
 # ── KLIENT PORTAL ENDPOINTS ────────────────────────────
 
 @app.route('/leads/<klient_id>', methods=['GET'])
+@require_token
 def get_leads(klient_id):
     """Henter leads for en klient"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'leads': []})
     try:
         res = db.table('leads').select('*').eq('klient_id', klient_id).order('created_at', desc=True).execute()
         return jsonify({'leads': res.data or []})
     except Exception as e:
-        return jsonify({'leads': [], 'error': str(e)})
+        print(f"get_leads fejl: {e}")
+        return jsonify({'leads': [], 'error': 'Kunne ikke hente leads'})
 
 
 @app.route('/bookinger/<klient_id>', methods=['GET'])
+@require_token
 def get_bookinger(klient_id):
     """Henter bookinger for en klient"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'bookinger': []})
     try:
         res = db.table('bookinger').select('*').eq('klient_id', klient_id).order('dato', desc=False).execute()
         return jsonify({'bookinger': res.data or []})
     except Exception as e:
-        return jsonify({'bookinger': [], 'error': str(e)})
+        print(f"get_bookinger fejl: {e}")
+        return jsonify({'bookinger': [], 'error': 'Kunne ikke hente bookinger'})
 
 
 @app.route('/portal/bookinger', methods=['POST'])
@@ -1160,7 +1212,7 @@ def portal_opret_booking():
         res = db.table('bookinger').insert(row).execute()
         return jsonify({'ok': True, 'booking': res.data[0] if res.data else {}})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/bookinger/<booking_id>/status', methods=['PATCH'])
@@ -1184,7 +1236,7 @@ def portal_opdater_booking_status(booking_id):
         db.table('bookinger').update({'portal_status': ny_status}).eq('id', booking_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 # ── LEAD MAILS PREVIEW & GODKENDELSE ──────────────────
@@ -1204,7 +1256,7 @@ def get_lead_mails(klient_id):
         result = [{'lead_id': lid, 'mails': sorted(ms, key=lambda x: x['mail_nr'])} for lid, ms in grupper.items()]
         return jsonify({'grupper': result})
     except Exception as e:
-        return jsonify({'grupper': [], 'error': str(e)})
+        return jsonify({'grupper': [], 'error': _log_fejl(e)})
 
 
 @app.route('/godkend-mails', methods=['POST'])
@@ -1289,7 +1341,7 @@ def afvis_mails(lead_id):
         db.table('lead_mails').update({'status': 'afvist'}).eq('lead_id', lead_id).eq('status', 'afventer').execute()
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 # ── CHATBOT GAPS ───────────────────────────────────────
@@ -1303,7 +1355,7 @@ def get_gaps(klient_id):
         res = db.table('chatbot_gaps').select('*').eq('klient_id', klient_id).eq('status', 'åben').order('oprettet', desc=True).limit(20).execute()
         return jsonify({'gaps': res.data or []})
     except Exception as e:
-        return jsonify({'gaps': [], 'error': str(e)})
+        return jsonify({'gaps': [], 'error': _log_fejl(e)})
 
 
 @app.route('/udfyld-gap/<klient_id>', methods=['POST'])
@@ -1358,7 +1410,7 @@ Returner KUN dette JSON-format:
 
         return jsonify({'success': True, **result})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/luk-gap/<gap_id>', methods=['POST'])
@@ -1370,7 +1422,7 @@ def luk_gap(gap_id):
         db.table('chatbot_gaps').update({'status': 'ignoreret'}).eq('id', gap_id).execute()
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 # ── AI INSIGHTS & BRANCHE-RESEARCH ────────────────────
@@ -1453,7 +1505,7 @@ Regler:
         result = json.loads(raw.strip())
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/apply-insight/<klient_id>', methods=['POST'])
@@ -1488,7 +1540,7 @@ def apply_insight(klient_id):
             db.table('chatbot_config').insert({'klient_id': klient_id, db_felt: vaerdi}).execute()
         return jsonify({'success': True, 'felt': felt, 'vaerdi': vaerdi})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/research-branche/<klient_id>', methods=['POST'])
@@ -1539,7 +1591,7 @@ Skriv præcist og faktabaseret. Dette bruges til at træne en AI-chatbot til at 
 
         return jsonify({'success': True, 'research': research_tekst, 'tegn': len(research_tekst)})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 # ── RAPPORT ENDPOINTS ──────────────────────────────────
@@ -1601,7 +1653,7 @@ def get_rapport(klient_id):
             'maaneder': {'labels': mdr_labels, 'leads': leads_mdr, 'bookinger': book_mdr},
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 def _hent_rapport_data(klient_id):
@@ -1885,7 +1937,7 @@ def send_rapport(klient_id):
         res = sg.send(message)
         return jsonify({'success': res.status_code in [200, 202], 'status': res.status_code, 'sendt_til': mail_til})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': _log_fejl(e)}), 500
 
 
 # ── GENERAL ────────────────────────────────────────────
@@ -1994,7 +2046,7 @@ def stats():
             'feed': feed,
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/health', methods=['GET'])
@@ -2017,7 +2069,7 @@ def hent_klienter():
         res = db.table('klienter').select('*').order('navn').execute()
         return jsonify(res.data or [])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/klient-aktiv', methods=['POST'])
 @require_admin
@@ -2032,7 +2084,7 @@ def opdater_klient_aktiv():
         db.table('klienter').update({'aktiv': aktiv}).eq('id', klient_id).execute()
         return jsonify({'success': True, 'aktiv': aktiv})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/klient/<klient_id>', methods=['PATCH'])
 @require_admin
@@ -2050,7 +2102,7 @@ def opdater_klient_felt(klient_id):
         db.table('klienter').update(opdater).eq('id', klient_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/klient', methods=['POST'])
@@ -2082,7 +2134,7 @@ def opret_klient():
         res = db.table('klienter').upsert(klient_data).execute()
         return jsonify({'success': True, 'klient': res.data[0] if res.data else {}})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/send-velkomst/<klient_id>', methods=['POST'])
@@ -2097,7 +2149,7 @@ def send_velkomst(klient_id):
             return jsonify({'error': 'Klient ikke fundet'}), 404
         k = res.data
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
     navn     = k.get('navn', 'kunde')
     email    = k.get('email', '')
@@ -2190,7 +2242,7 @@ def send_velkomst(klient_id):
         send_mail(email, f'Din Nordolsen-portal er klar, {fornavn}! 🎉', html, 'Nordolsen')
         return jsonify({'success': True, 'sendt_til': email})
     except Exception as e:
-        return jsonify({'error': f'Email fejlede: {str(e)}'}), 500
+        return jsonify({'error': _log_fejl(e, 'Email kunne ikke sendes')}), 500
 
 
 @app.route('/chatbot-config', methods=['POST'])
@@ -2232,7 +2284,7 @@ def gem_chatbot_config():
         res = db.table('chatbot_config').upsert(cfg, on_conflict='klient_id').execute()
         return jsonify({'success': True, 'config': res.data[0] if res.data else {}})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 # ══════════════════════════════════════════════════════════════
@@ -2288,7 +2340,7 @@ def stripe_checkout():
         session = stripe.checkout.Session.create(**session_params)
         return jsonify({'url': session.url, 'session_id': session.id})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/stripe/webhook', methods=['POST'])
@@ -2301,7 +2353,7 @@ def stripe_webhook():
     except stripe.error.SignatureVerificationError:
         return jsonify({'error': 'Ugyldig signatur'}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': _log_fejl(e)}), 400
 
     etype = event['type']
     obj = event['data']['object']
@@ -2394,7 +2446,7 @@ def stripe_portal():
         )
         return jsonify({'url': portal.url})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/stripe/status/<klient_id>', methods=['GET'])
@@ -2448,7 +2500,7 @@ def onboarding_opret():
                 'subscription_status': 'inactive'
             }).execute()
         except Exception as e:
-            return jsonify({'error': f'Kunne ikke oprette klient: {e}'}), 500
+            return jsonify({'error': _log_fejl(e, 'Kunne ikke oprette klient')}), 500
 
         try:
             # Byg ekstra_viden fra booking-info
@@ -2501,7 +2553,7 @@ def onboarding_opret():
             )
             return jsonify({'klient_id': klient_id, 'checkout_url': session.url})
         except Exception as e:
-            return jsonify({'klient_id': klient_id, 'checkout_url': None, 'stripe_fejl': str(e)})
+            return jsonify({'klient_id': klient_id, 'checkout_url': None, 'stripe_fejl': _log_fejl(e)})
 
     # Uden Stripe – aktiver direkte (test mode)
     if db:
@@ -2548,8 +2600,42 @@ HEADERS_LISTE = [
 ]
 
 
+def _sikker_ekstern_url(url):
+    """SSRF-værn: True kun hvis url er en offentlig http/https-adresse.
+
+    Afviser interne/loopback/link-local/metadata-adresser (fx 169.254.169.254,
+    localhost, 10.x, 192.168.x, 172.16-31.x) så scan-funktionerne ikke kan narres
+    til at hente interne tjenester eller cloud-metadata. Slår ALLE IP'er op for
+    værtsnavnet og afviser hvis blot én er intern.
+    """
+    import ipaddress as _ipaddr, socket as _socket
+    from urllib.parse import urlparse as _urlparse
+    try:
+        p = _urlparse(url)
+    except Exception:
+        return False
+    if p.scheme not in ('http', 'https') or not p.hostname:
+        return False
+    try:
+        infos = _socket.getaddrinfo(p.hostname, None)
+    except Exception:
+        return False
+    for info in infos:
+        ip_str = info[4][0]
+        try:
+            ip = _ipaddr.ip_address(ip_str)
+        except Exception:
+            return False
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return False
+    return True
+
+
 def hent_raa_soup(url, timeout=10):
     """Henter en side — prøver direkte, derefter Google Cache som fallback"""
+    if not _sikker_ekstern_url(url):
+        return None
     # Forsøg 1-4: direkte med forskellige user-agents
     for headers in HEADERS_LISTE:
         try:
@@ -2778,6 +2864,8 @@ def formater_produkter_til_tekst(alle_produkter):
 def udtræk_pdf_tekst(pdf_url, max_tegn=3000):
     """Downloader og udtrækker tekst fra en PDF-fil"""
     if not HAR_PDFPLUMBER:
+        return ''
+    if not _sikker_ekstern_url(pdf_url):
         return ''
     try:
         resp = http_requests.get(pdf_url, timeout=15, headers=HEADERS, stream=True)
@@ -3044,7 +3132,8 @@ Hjemmesidetekst:
         }
     except Exception as e:
         import traceback
-        scan_jobs[job_id] = {'status': 'error', 'error': str(e), 'trace': traceback.format_exc()[-500:]}
+        print(f"scan_job fejl: {traceback.format_exc()[-800:]}")
+        scan_jobs[job_id] = {'status': 'error', 'error': 'Skanningen fejlede'}
 
 
 @app.route('/scan-hjemmeside', methods=['POST'])
@@ -3173,7 +3262,8 @@ def test_mail():
         response = sg.send(message)
         return jsonify({'sendt': True, 'status': response.status_code, 'fra': SENDGRID_FROM, 'til': til})
     except Exception as e:
-        return jsonify({'sendt': False, 'fejl': str(e), 'body': str(getattr(e, 'body', ''))}), 500
+        print(f"test-mail fejl: {e} | body: {getattr(e, 'body', '')}")
+        return jsonify({'sendt': False, 'fejl': 'Test-mail kunne ikke sendes'}), 500
 
 @app.route('/chatbot.js', methods=['GET'])
 def serve_chatbot_js():
@@ -3213,10 +3303,10 @@ def login():
     password = data.get('password') or ''
 
     admin_email = os.environ.get('ADMIN_EMAIL', 'admin@klaiai.dk').lower()
-    admin_pw = os.environ.get('ADMIN_PASSWORD', 'klaiai2024')
+    admin_pw = ADMIN_PASSWORD  # INGEN fallback — tom => admin-login umuligt
 
-    # Admin login
-    if email == admin_email and password == admin_pw:
+    # Admin login (kun muligt hvis ADMIN_PASSWORD er sat i miljøet)
+    if admin_pw and email == admin_email and password == admin_pw:
         token = secrets.token_hex(32)
         _gem_token(token, {'role': 'admin', 'created_at': _time.time()})
         return jsonify({'token': token, 'role': 'admin'})
@@ -3335,7 +3425,7 @@ def econ_connect(klient_id):
         info = r.json()
         virksomhed = info.get('company', {}).get('name', '')
     except Exception as e:
-        return jsonify({'error': f'Kunne ikke forbinde: {e}'}), 502
+        return jsonify({'error': _log_fejl(e, 'Kunne ikke forbinde')}), 502
     from datetime import datetime as _dt
     supabase.table('klient_integrationer').upsert({
         'klient_id': str(klient_id),
@@ -3474,7 +3564,7 @@ def admin_impersonate(klient_id):
         url = f'/portal?id={klient_id}&token={token}'
         return jsonify({'ok': True, 'url': url, 'token': token, 'klient_id': klient_id})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/admin/health-scores', methods=['GET'])
@@ -3589,7 +3679,7 @@ def admin_health_scores():
         result.sort(key=lambda x: (sort_order.get(x['kategori'], 3), -(x['score'] * -1)))
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/admin/onboarding-status', methods=['GET'])
@@ -3661,7 +3751,7 @@ def admin_onboarding_status():
         result.sort(key=lambda x: (x['pct'], x['navn']))
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/econ/admin/oversigt', methods=['GET'])
@@ -3672,7 +3762,7 @@ def econ_admin_oversigt():
         res = supabase.table('klient_integrationer').select('*').execute()
         return jsonify(res.data or [])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/econ/vaerker', methods=['GET'])
 @require_token
@@ -3691,7 +3781,7 @@ def econ_hent_vaerker():
             'kundegrupper': cg.json().get('collection', []) if cg.status_code == 200 else []
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 502
+        return jsonify({'error': _log_fejl(e)}), 502
 
 def _ryd_gamle_sessions():
     """Fjern demo_sessions ældre end 2 timer, udløbne tokens og prospekter ældre end 7 dage"""
@@ -3727,15 +3817,18 @@ def demo_scan():
         return jsonify({'error': 'URL mangler'}), 400
     if not raw_url.startswith('http'):
         raw_url = 'https://' + raw_url
+    if not _sikker_ekstern_url(raw_url):
+        return jsonify({'error': 'Ugyldig eller ikke-tilladt URL'}), 400
 
     # Hent hjemmeside
     try:
-        resp = http_requests.get(raw_url, timeout=10, verify=False,
+        resp = http_requests.get(raw_url, timeout=10,
             headers={'User-Agent': 'Mozilla/5.0 (compatible; Nordolsen-Demo/1.0)'})
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, 'html.parser')
     except Exception as e:
-        return jsonify({'error': f'Kunne ikke hente siden: {str(e)}'}), 400
+        print(f"demo_scan hentefejl: {e}")
+        return jsonify({'error': 'Kunne ikke hente siden'}), 400
 
     # Tjek om de allerede har en chatbot
     html_lower = resp.text.lower()
@@ -3953,14 +4046,19 @@ def prospekt_scan(pid):
         return jsonify({'error': 'Prospekt ikke fundet'}), 404
 
     url = p['url']
+    if not _sikker_ekstern_url(url):
+        p['status'] = 'scan-fejl'
+        _gem_prospekt(p)
+        return jsonify({'error': 'Ugyldig eller ikke-tilladt URL'}), 400
     try:
-        resp = http_requests.get(url, timeout=10, verify=False,
+        resp = http_requests.get(url, timeout=10,
             headers={'User-Agent': 'Mozilla/5.0 (compatible; Nordolsen/1.0)'})
         soup = BeautifulSoup(resp.text, 'html.parser')
     except Exception as e:
+        print(f"prospekt_scan hentefejl: {e}")
         p['status'] = 'scan-fejl'
         _gem_prospekt(p)
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': 'Kunne ikke hente siden'}), 400
 
     html_lower = resp.text.lower()
     chatbot_vendors = ['intercom', 'zendesk', 'drift', 'hubspot', 'tidio',
@@ -4901,7 +4999,7 @@ def gem_mail_flow(klient_id):
         }).execute()
         return jsonify({'success': True, 'id': res.data[0]['id'] if res.data else None})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/mail-flow/<klient_id>', methods=['GET'])
 @require_auth
@@ -4925,7 +5023,7 @@ def slet_mail_flow(klient_id):
         db.table('mail_flows').delete().eq('klient_id', klient_id).execute()
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/klient-cockpit/<klient_id>', methods=['GET'])
@@ -5036,7 +5134,7 @@ def klient_cockpit(klient_id):
             'hentet': nu.isoformat()
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 def kør_ubesvarede_leads_reminder():
@@ -5463,7 +5561,7 @@ def kør_agent_manuelt(navn):
                 pass
         return jsonify({'ok': True, 'besked': besked})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/agent-log', methods=['GET'])
 @require_admin
@@ -5480,7 +5578,7 @@ def hent_agent_log():
         res = q.execute()
         return jsonify(res.data)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/crm/leads', methods=['GET'])
@@ -5511,7 +5609,7 @@ def crm_leads():
 
         return jsonify(leads)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/crm/lead/<lead_id>', methods=['PATCH'])
@@ -5532,7 +5630,7 @@ def crm_opdater_lead(lead_id):
         db.table('leads').update(update).eq('id', lead_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 # ══════════════════════════════════════════════════════════════
@@ -5825,7 +5923,7 @@ def hent_priskatalog(klient_id):
         res = db.table('priskatalog').select('*').eq('klient_id', klient_id).order('kategori').order('navn').execute()
         return jsonify(res.data or [])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/priskatalog/<klient_id>', methods=['POST'])
 @require_token
@@ -5853,7 +5951,7 @@ def gem_prispost(klient_id):
         db.table('priskatalog').insert(post).execute()
         return jsonify({'ok': True, 'id': post['id']})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/priskatalog/<klient_id>/<post_id>', methods=['PUT'])
 @require_token
@@ -5876,7 +5974,7 @@ def opdater_prispost(klient_id, post_id):
         }).eq('id', post_id).eq('klient_id', klient_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/priskatalog/<klient_id>/<post_id>', methods=['DELETE'])
 @require_token
@@ -5891,7 +5989,7 @@ def slet_prispost(klient_id, post_id):
         db.table('priskatalog').delete().eq('id', post_id).eq('klient_id', klient_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 # Behold admin-kompatibilitet for PATCH (bruges af admin.html)
 @app.route('/priskatalog/<post_id>', methods=['PATCH'])
@@ -5903,7 +6001,7 @@ def opdater_prispost_admin(post_id):
         db.table('priskatalog').update(data).eq('id', post_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 # Behold admin DELETE compat
 @app.route('/priskatalog/slet/<post_id>', methods=['DELETE'])
@@ -5914,7 +6012,7 @@ def slet_prispost_admin(post_id):
         db.table('priskatalog').delete().eq('id', post_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 @app.route('/markeds-analyse/<klient_id>', methods=['GET'])
 @require_token
@@ -5934,7 +6032,7 @@ def hent_markeds_analyse(klient_id):
             return jsonify({'analyse': row.get('analyse_tekst'), 'branche': row.get('branche'), 'opdateret': row.get('opdateret')})
         return jsonify({'analyse': None})
     except Exception as e:
-        return jsonify({'analyse': None, 'error': str(e)})
+        return jsonify({'analyse': None, 'error': _log_fejl(e)})
 
 
 @app.route('/markeds-analyse/<klient_id>', methods=['POST'])
@@ -5991,7 +6089,7 @@ Hold analysen under 300 ord og fokuser på handlingsrettede indsigter."""
             }).execute()
         return jsonify({'ok': True, 'analyse': analyse_tekst})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/priskatalog/upload-pdf', methods=['POST'])
@@ -6049,7 +6147,7 @@ Prisliste:
         return jsonify({'poster': poster, 'antal': len(poster)})
     except Exception as e:
         print(f"PDF upload fejl: {e}")
-        return jsonify({'error': f'Fejl ved behandling: {str(e)}'}), 500
+        return jsonify({'error': _log_fejl(e, 'Fejl ved behandling af fil')}), 500
 
 @app.route('/tale/pris', methods=['POST'])
 @require_token
@@ -6093,7 +6191,7 @@ Kun JSON, ingen forklaring."""
         return jsonify({'ok': True, 'data': parsed})
     except Exception as e:
         print(f"Tale pris fejl: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/tale/parse', methods=['POST'])
@@ -6137,7 +6235,7 @@ Kun JSON, ingen forklaring."""
         return jsonify({'ok': True, 'data': parsed, 'transskription': transskription})
     except Exception as e:
         print(f"Tale parse fejl: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/materialer/soeg', methods=['POST'])
@@ -6189,7 +6287,7 @@ Kun JSON array, ingen tekst før eller efter."""
         return jsonify({'resultater': resultater, 'soegning': soegning})
     except Exception as e:
         print(f"Materialer søg fejl: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/tilbud/generer', methods=['POST'])
@@ -6323,7 +6421,7 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
                 raw = raw[4:]
         tilbud_data = json.loads(raw)
     except Exception as e:
-        return jsonify({'error': f'AI-generering fejlede: {str(e)}'}), 500
+        return jsonify({'error': _log_fejl(e, 'AI-generering fejlede')}), 500
 
     # Konkurrentanalyse (hvis aktiveret)
     konkurrent_opsummering = ''
@@ -6449,7 +6547,7 @@ def hent_tilbud_liste(klient_id):
         res = db.table('tilbud').select('id,kunde_navn,kunde_email,kunde_adresse,kunde_postnummer,titel,total_pris,status,oprettet,godkendt_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify(res.data or [])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/overblik/<klient_id>', methods=['GET'])
@@ -6591,7 +6689,7 @@ def portal_overblik(klient_id):
             'naeste_booking': naeste_booking,
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/overblik-total/<klient_id>', methods=['GET'])
@@ -6662,7 +6760,7 @@ def portal_overblik_total(klient_id):
 
         return jsonify({'maaned': maaned, 'i_alt': i_alt, 'tidslinje': tidslinje})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/tilbud/<klient_id>', methods=['GET'])
@@ -6680,7 +6778,7 @@ def portal_tilbud_liste(klient_id):
         res = db.table('tilbud').select('id,kunde_navn,kunde_email,kunde_adresse,kunde_postnummer,titel,total_pris,status,oprettet,godkendt_dato,sendt_dato,åbnet_dato').eq('klient_id', klient_id).order('oprettet', desc=True).execute()
         return jsonify(res.data or [])
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/tilbud/<tilbud_id>', methods=['GET'])
@@ -6693,7 +6791,7 @@ def hent_tilbud(tilbud_id):
         res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
         return jsonify(res.data or {})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/tilbud/vis/<tilbud_id>', methods=['GET'])
@@ -6773,7 +6871,8 @@ def portal_vis_tilbud(tilbud_id):
 
         return Response(html, mimetype='text/html')
     except Exception as e:
-        return f'<html><body style="font-family:sans-serif;padding:2rem">Fejl: {str(e)}</body></html>', 500
+        print(f"tilbud-preview fejl: {e}")
+        return '<html><body style="font-family:sans-serif;padding:2rem">Der opstod en teknisk fejl.</body></html>', 500
 
 
 @app.route('/tilbud/<tilbud_id>', methods=['PATCH'])
@@ -6841,7 +6940,7 @@ def opdater_tilbud(tilbud_id):
 
         return jsonify({'ok': True, 'html': html, 'total': int(total_efter_rabat), 'linjer': linjer})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/tilbud/send/<tilbud_id>', methods=['POST'])
@@ -6935,7 +7034,7 @@ def send_tilbud(tilbud_id):
 
         return jsonify({'ok': True, 'sendt_til': kunde_email, 'pdf_vedhæftet': pdf_bytes is not None})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/tilbud/send/<tilbud_id>', methods=['POST'])
@@ -7037,7 +7136,7 @@ def portal_send_tilbud(tilbud_id):
 
         return jsonify({'ok': True, 'sendt_til': kunde_email})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/tilbud/followup-preview', methods=['POST'])
@@ -7090,7 +7189,7 @@ def portal_crm_upsert():
             supabase.table('crm_kontakter').update({'noter': noter}).eq('klient_id', klient_id).eq('email', email).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/crm/note', methods=['POST'])
@@ -7118,7 +7217,7 @@ def portal_crm_note():
         }, on_conflict='klient_id,email').execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/crm/status', methods=['PATCH'])
@@ -7139,13 +7238,15 @@ def portal_crm_status():
         }, on_conflict='klient_id,email').execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/crm/<klient_id>/<email>', methods=['GET'])
 @require_token
 def portal_crm_hent(klient_id, email):
     """Hent CRM kontaktdata for én email (status + noter)"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     email = email.strip().lower()
     try:
         res = supabase.table('crm_kontakter').select('*').eq('klient_id', klient_id).eq('email', email).maybe_single().execute()
@@ -7153,7 +7254,8 @@ def portal_crm_hent(klient_id, email):
             return jsonify({'ok': True, 'kontakt': None})
         return jsonify({'ok': True, 'kontakt': res.data})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"portal_crm_hent fejl: {e}")
+        return jsonify({'error': 'Kunne ikke hente kontakt'}), 500
 
 
 @app.route('/tilbud/godkend/<tilbud_id>/<token>', methods=['GET'])
@@ -7180,8 +7282,8 @@ def godkend_tilbud(tilbud_id, token):
         if t.get('status') == 'accepteret':
             godkendt_dato = t.get('godkendt_dato', '')[:19].replace('T', ' kl. ') if t.get('godkendt_dato') else '—'
             return _godkend_side('Allerede bekræftet',
-                f'Dit tilbud "{t.get("titel","")}" er allerede godkendt den {godkendt_dato}. '
-                f'Du har modtaget en bekræftelse på {t.get("kunde_email","din email")}.',
+                f'Dit tilbud "{html.escape(t.get("titel",""))}" er allerede godkendt den {godkendt_dato}. '
+                f'Du har modtaget en bekræftelse på {html.escape(t.get("kunde_email","din email"))}.',
                 fejl=False), 200
 
         from datetime import datetime
@@ -7197,6 +7299,10 @@ def godkend_tilbud(tilbud_id, token):
         kunde_navn  = t.get('kunde_navn', '')
         kunde_email = t.get('kunde_email', '')
         titel       = t.get('titel', 'Tilbud')
+        # HTML-escapede versioner til brug i mail/side (XSS-beskyttelse)
+        kunde_navn_h  = html.escape(kunde_navn)
+        kunde_email_h = html.escape(kunde_email)
+        titel_h       = html.escape(titel)
         total_pris  = int(t.get('total_pris', 0))
         log_aktivitet(t.get('klient_id',''), 'tilbud_godkendt', f"Tilbud godkendt — {titel}", kunde_email, beloeb=total_pris, reference_id=tilbud_id, modul='tilbud')
         ref_nr      = tilbud_id[:8].upper()
@@ -7214,6 +7320,9 @@ def godkend_tilbud(tilbud_id, token):
                 klient_telefon = k.data.get('telefon', '')
         except:
             pass
+        klient_navn_h    = html.escape(klient_navn)
+        klient_email_h   = html.escape(klient_email)
+        klient_telefon_h = html.escape(klient_telefon)
 
         # Send juridisk bekræftelsesmail til KUNDEN
         bekræftelse_html = f"""<!DOCTYPE html>
@@ -7229,7 +7338,7 @@ def godkend_tilbud(tilbud_id, token):
 
   <tr><td style="padding:32px 36px">
     <div style="font-size:15px;color:#374151;line-height:1.8;margin-bottom:24px">
-      Hej <strong>{kunde_navn}</strong>,<br><br>
+      Hej <strong>{kunde_navn_h}</strong>,<br><br>
       Dette er din officielle bekræftelse på at du har accepteret følgende tilbud:
     </div>
 
@@ -7239,7 +7348,7 @@ def godkend_tilbud(tilbud_id, token):
       </tr>
       <tr style="border-top:1px solid #d1fae5">
         <td style="padding:10px 16px;font-size:13px;color:#6b7280;width:40%">Tilbud</td>
-        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#111">{titel}</td>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#111">{titel_h}</td>
       </tr>
       <tr style="border-top:1px solid #f0f0f0">
         <td style="padding:10px 16px;font-size:13px;color:#6b7280">Beløb</td>
@@ -7255,7 +7364,7 @@ def godkend_tilbud(tilbud_id, token):
       </tr>
       <tr style="border-top:1px solid #f0f0f0">
         <td style="padding:10px 16px;font-size:13px;color:#6b7280">Din email</td>
-        <td style="padding:10px 16px;font-size:13px;color:#111">{kunde_email}</td>
+        <td style="padding:10px 16px;font-size:13px;color:#111">{kunde_email_h}</td>
       </tr>
     </table>
 
@@ -7266,9 +7375,9 @@ def godkend_tilbud(tilbud_id, token):
     </div>
 
     <div style="font-size:14px;color:#374151;line-height:1.8">
-      <strong>{klient_navn}</strong> vil kontakte dig hurtigst muligt for at aftale de næste skridt.
-      {'<br>Email: ' + klient_email if klient_email else ''}
-      {'<br>Telefon: ' + klient_telefon if klient_telefon else ''}
+      <strong>{klient_navn_h}</strong> vil kontakte dig hurtigst muligt for at aftale de næste skridt.
+      {'<br>Email: ' + klient_email_h if klient_email else ''}
+      {'<br>Telefon: ' + klient_telefon_h if klient_telefon else ''}
     </div>
   </td></tr>
 
@@ -7290,7 +7399,7 @@ def godkend_tilbud(tilbud_id, token):
                 notif_html = (
                     f'<div style="font-family:sans-serif;padding:20px">'
                     f'<h2 style="color:#15803d">&#9989; Tilbud accepteret!</h2>'
-                    f'<p><strong>{kunde_navn}</strong> har accepteret tilbuddet <strong>"{titel}"</strong>.</p>'
+                    f'<p><strong>{kunde_navn_h}</strong> har accepteret tilbuddet <strong>"{titel_h}"</strong>.</p>'
                     f'<table style="border-collapse:collapse;width:100%;max-width:400px">'
                     f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Beløb</td><td style="padding:8px;font-weight:700;border-bottom:1px solid #eee">{total_pris:,} kr.</td></tr>'
                     f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Tidspunkt</td><td style="padding:8px;border-bottom:1px solid #eee">{dato_str}</td></tr>'
@@ -7303,13 +7412,14 @@ def godkend_tilbud(tilbud_id, token):
 
         return _godkend_side(
             'Tilbud godkendt!',
-            f'Tak, {kunde_navn.split()[0] if kunde_navn else ""}! Vi har modtaget din accept og sender dig straks en bekræftelse på {kunde_email}. {klient_navn} kontakter dig snarest for at sætte projektet i gang.',
+            f'Tak, {html.escape(kunde_navn.split()[0]) if kunde_navn else ""}! Vi har modtaget din accept og sender dig straks en bekræftelse på {kunde_email_h}. {klient_navn_h} kontakter dig snarest for at sætte projektet i gang.',
             ref_nr=ref_nr,
             dato_str=dato_str,
             fejl=False
         ), 200
     except Exception as e:
-        return _godkend_side('Fejl', str(e), fejl=True), 500
+        print(f'godkend_tilbud fejl: {e}')
+        return _godkend_side('Fejl', 'Der opstod en teknisk fejl. Kontakt os direkte.', fejl=True), 500
 
 
 def _godkend_side(overskrift, besked, fejl=False, ref_nr='', dato_str=''):
@@ -7358,7 +7468,7 @@ def portal_opdater_tilbud_status(tilbud_id):
         db.table('tilbud').update({'status': ny_status}).eq('id', tilbud_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/tilbud/status/<tilbud_id>', methods=['PATCH'])
@@ -7375,7 +7485,7 @@ def opdater_tilbud_status(tilbud_id):
         db.table('tilbud').update({'status': ny_status}).eq('id', tilbud_id).execute()
         return jsonify({'ok': True})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 @app.route('/portal/kunde/<klient_id>/<kunde_email_encoded>', methods=['GET'])
@@ -7413,7 +7523,7 @@ def portal_kunde_historik(klient_id, kunde_email_encoded):
             'total_tilbud_accepteret': sum(t.get('total_pris', 0) or 0 for t in tilbud if t.get('status') == 'accepteret')
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': _log_fejl(e)}), 500
 
 
 if __name__ == '__main__':

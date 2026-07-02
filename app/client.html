@@ -1667,9 +1667,10 @@ function showView(v) {
 async function loadData() {
   if (!CLIENT_ID) return;
   try {
+    const _auth = { headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' } };
     const [leadsRes, bookRes, configRes] = await Promise.all([
-      fetch(`${API}/leads/${CLIENT_ID}`),
-      fetch(`${API}/bookinger/${CLIENT_ID}`),
+      fetch(`${API}/leads/${CLIENT_ID}`, _auth),
+      fetch(`${API}/bookinger/${CLIENT_ID}`, _auth),
       fetch(`${API}/widget/${CLIENT_ID}`)
     ]);
 
@@ -2418,9 +2419,10 @@ function renderAgenter() {
 async function loadLeadsOgBookinger() {
   // Genindlæs data direkte (bruges ved opdatering af enkelt view)
   try {
+    const _auth = { headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' } };
     const [lr, br] = await Promise.all([
-      fetch(`${API}/leads/${CLIENT_ID}`),
-      fetch(`${API}/bookinger/${CLIENT_ID}`)
+      fetch(`${API}/leads/${CLIENT_ID}`, _auth),
+      fetch(`${API}/bookinger/${CLIENT_ID}`, _auth)
     ]);
     if (lr.ok) data.leads = (await lr.json()).leads || [];
     if (br.ok) data.bookinger = (await br.json()).bookinger || [];
