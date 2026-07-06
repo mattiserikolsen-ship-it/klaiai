@@ -7596,6 +7596,47 @@ def portal_overblik(klient_id):
 
         events.sort(key=lambda e: e.get('tid', ''), reverse=True)
 
+        # ── Personlig besparelse: goer ROI konkret i TIMER + REDDEDE kunder ──
+        # Autonome opfoelgningsmails afsendt denne maaned (rent selvkoerende arbejde).
+        auto_mails_maaned = 0
+        try:
+            am = db.table('lead_mails').select('id', count='exact') \
+                .eq('klient_id', klient_id).eq('status', 'sendt') \
+                .gte('created_at', maaned_start).execute()
+            auto_mails_maaned = am.count or 0
+        except Exception:
+            auto_mails_maaned = 0
+
+        # Konservativt tidsestimat pr. handling systemet klarede for ejeren.
+        # Minutter — bevidst lavt sat, saa vi aldrig oversaelger besparelsen.
+        MIN_PR_LEAD, MIN_PR_MAIL, MIN_PR_BOOKING = 6, 10, 8
+        sparet_min = (len(leads_måned) * MIN_PR_LEAD
+                      + auto_mails_maaned * MIN_PR_MAIL
+                      + len(book_måned) * MIN_PR_BOOKING)
+        timer_sparet = round(sparet_min / 60, 1)
+
+        # "Reddede" kunder: leads der landede UDEN for normal aabningstid
+        # (hverdage 8-17, dansk tid). Uden systemet ville de sandsynligvis vaere
+        # gaaet kolde inden nogen svarede — nu fik de oejeblikkeligt svar.
+        try:
+            from zoneinfo import ZoneInfo
+            _dk = ZoneInfo('Europe/Copenhagen')
+        except Exception:
+            _dk = None
+        reddet_udenfor = 0
+        for l in leads_måned:
+            ts = l.get('oprettet') or ''
+            if not ts:
+                continue
+            try:
+                dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                if _dk:
+                    dt = dt.astimezone(_dk)
+                if dt.weekday() >= 5 or dt.hour < 8 or dt.hour >= 17:
+                    reddet_udenfor += 1
+            except Exception:
+                continue
+
         leads_recent = []
         for l in leads_alle[:6]:
             leads_recent.append({
@@ -7621,6 +7662,9 @@ def portal_overblik(klient_id):
                 'bookinger_i_alt': len(book_alle),
                 'tilbud_accepteret_maaned': len(accepterede_måned),
                 'tilbud_afventende': len(afventende),
+                'timer_sparet_maaned': timer_sparet,
+                'reddet_maaned': reddet_udenfor,
+                'auto_mails_maaned': auto_mails_maaned,
             },
             'aktivitet': events[:25],
             'naeste_booking': naeste_booking,

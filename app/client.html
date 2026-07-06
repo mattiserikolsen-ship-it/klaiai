@@ -144,6 +144,16 @@
     }
     .roi-badge-num { font-size: 2rem; font-weight: 900; color: #86efac; letter-spacing: -1px; }
     .roi-badge-label { font-size: .7rem; opacity: .7; margin-top: .2rem; }
+    .roi-personal {
+      display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.1rem;
+    }
+    .roi-personal-chip {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: rgba(74,103,65,.35); border: 1px solid rgba(74,103,65,.5);
+      color: #dcfce7; font-size: .78rem; font-weight: 600;
+      padding: .35rem .7rem; border-radius: 999px;
+    }
+    .roi-personal-chip b { color: #fff; font-weight: 800; }
     .roi-stats { display: flex; gap: 1.5rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,.1); flex-wrap: wrap; }
     .roi-stat { }
     .roi-stat-num { font-size: 1.25rem; font-weight: 800; }
@@ -754,6 +764,10 @@
             <div class="roi-badge-label">× mere end<br>abonnementet</div>
           </div>
         </div>
+
+        <!-- PERSONLIG BESPARELSE — timer sparet + kunder reddet -->
+        <div class="roi-personal" id="roiPersonal" style="display:none"></div>
+
         <div class="roi-stats">
           <div class="roi-stat">
             <div class="roi-stat-num" id="roiLeads">—</div>
@@ -2329,6 +2343,9 @@ async function loadOverblik() {
     countUp(document.getElementById('roiTilbudAccepteret'), roi.tilbud_accepteret_maaned || 0);
     countUp(document.getElementById('roiTilbudAfventer'), roi.tilbud_afventende || 0);
 
+    // Personlig besparelse — gør ROI konkret: timer sparet + kunder reddet.
+    visPersonligBesparelse(roi);
+
     // Lead indbakke
     renderLeadIndbakke(d.leads_recent || []);
 
@@ -2355,6 +2372,36 @@ async function loadOverblik() {
       'Sidst opdateret ' + nu.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' });
 
   } catch(e) { console.error('Overblik fejl:', e); }
+}
+
+// ── PERSONLIG BESPARELSE ─────────────────────────────
+// Gør ROI konkret og personlig: ikke bare "antal leads", men timer sparet på
+// arbejde + henvendelser systemet fangede uden for åbningstid. Rammer
+// strategiens "sælg outcomes"-kerne uden at oversælge (tallene er konservative).
+function visPersonligBesparelse(roi) {
+  const el = document.getElementById('roiPersonal');
+  if (!el) return;
+  const timer  = roi.timer_sparet_maaned || 0;
+  const reddet = roi.reddet_maaned || 0;
+  const chips = [];
+
+  if (timer > 0) {
+    let txt;
+    if (timer < 1) {
+      txt = 'under 1 time';
+    } else {
+      const n = Number.isInteger(timer) ? String(timer) : timer.toLocaleString('da-DK');
+      txt = `ca. ${n} ${timer === 1 ? 'time' : 'timer'}`;
+    }
+    chips.push(`<span class="roi-personal-chip">⏱ <b>${txt}</b> sparet på arbejde denne måned</span>`);
+  }
+  if (reddet > 0) {
+    chips.push(`<span class="roi-personal-chip">🌙 <b>${reddet} henvendelse${reddet > 1 ? 'r' : ''}</b> besvaret uden for åbningstid</span>`);
+  }
+
+  if (!chips.length) { el.style.display = 'none'; return; }
+  el.innerHTML = chips.join('');
+  el.style.display = 'flex';
 }
 
 // ── SIDEN SIDST ──────────────────────────────────────
