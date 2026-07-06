@@ -7629,6 +7629,104 @@ def portal_overblik(klient_id):
         return jsonify({'error': _log_fejl(e)}), 500
 
 
+@app.route('/portal/siden-sidst/<klient_id>', methods=['GET'])
+@require_token
+def portal_siden_sidst(klient_id):
+    """"Siden sidst"-resume: hvad systemet ordnede AUTONOMT mens brugeren var vaek.
+
+    Server-side baseline pr. PERSON (ikke pr. enhed) — saa chefen der tjekker paa
+    mobil om morgenen ser resumeet, selvom han normalt bruger desktop. Tallene er
+    PRAECISE (count='exact', ikke cappet), saa en travl nat ikke undertaelles.
+
+    Kaldes EN gang ved login/init (ikke i 30-sek-pollet), for baseline flyttes
+    frem ved hvert visning.
+    """
+    from datetime import datetime, timezone, timedelta
+    info = _token_info()
+    if info.get('role') == 'client' and str(info.get('klient_id')) != str(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
+    if not db:
+        return jsonify({'vis': False})
+
+    # Identitet foelger personen: under-bruger = bruger_id, ellers ejeren.
+    identitet = info.get('bruger_id') or f"ejer:{klient_id}"
+
+    try:
+        nu = datetime.now(timezone.utc)
+        # Hent tidligere baseline for denne person.
+        gammel = None
+        try:
+            r = db.table('portal_sidst_set').select('sidst_set').eq('identitet', identitet).single().execute()
+            if r.data and r.data.get('sidst_set'):
+                gammel = r.data['sidst_set']
+        except Exception:
+            gammel = None
+
+        def _skriv_baseline():
+            db.table('portal_sidst_set').upsert({
+                'identitet': identitet, 'klient_id': str(klient_id),
+                'sidst_set': nu.isoformat()
+            }, on_conflict='identitet').execute()
+
+        # Foerste besoeg: ingen baseline at sammenligne med — saet den bare.
+        if not gammel:
+            _skriv_baseline()
+            return jsonify({'vis': False})
+
+        # Parse baseline og maal hvor laenge de var vaek.
+        try:
+            gammel_dt = datetime.fromisoformat(gammel.replace('Z', '+00:00'))
+        except Exception:
+            _skriv_baseline()
+            return jsonify({'vis': False})
+
+        # For kort tid siden (aktiv session / hurtig genindlaesning): roer ikke
+        # baseline, saa en raekke refreshes ikke skubber vinduet frem.
+        if (nu - gammel_dt) < timedelta(hours=2):
+            return jsonify({'vis': False})
+
+        b = gammel_dt.isoformat()
+
+        def _count(bygger):
+            try:
+                return bygger().count or 0
+            except Exception:
+                return 0
+
+        # AUTONOMT arbejde foerst — det systemet klarede uden at ejeren roerte noget.
+        auto_mails = _count(lambda: db.table('lead_mails').select('id', count='exact')
+                            .eq('klient_id', klient_id).eq('status', 'sendt').gt('created_at', b).execute())
+        leads = _count(lambda: db.table('leads').select('id', count='exact')
+                       .eq('klient_id', klient_id).gt('oprettet', b).execute())
+        bookinger = _count(lambda: db.table('bookinger').select('id', count='exact')
+                           .eq('klient_id', klient_id).gt('oprettet', b).execute())
+        tilbud_sendt = _count(lambda: db.table('tilbud').select('id', count='exact')
+                              .eq('klient_id', klient_id).gt('sendt_dato', b).execute())
+        tilbud_accept = _count(lambda: db.table('tilbud').select('id', count='exact')
+                               .eq('klient_id', klient_id).eq('status', 'accepteret').gt('godkendt_dato', b).execute())
+
+        # Vinduet er passeret — flyt baseline frem uanset om der var noget at vise,
+        # saa vi ikke gentager samme periode ved naeste login.
+        _skriv_baseline()
+
+        if not (auto_mails or leads or bookinger or tilbud_sendt or tilbud_accept):
+            return jsonify({'vis': False})
+
+        return jsonify({
+            'vis': True,
+            'sidst': b,
+            'auto_mails': auto_mails,
+            'leads': leads,
+            'bookinger': bookinger,
+            'tilbud_sendt': tilbud_sendt,
+            'tilbud_accepteret': tilbud_accept,
+        })
+    except Exception as e:
+        # Aldrig laad et resume-fejl braekke overblikket.
+        print(f"siden-sidst fejl (ikke kritisk): {e}")
+        return jsonify({'vis': False})
+
+
 @app.route('/portal/overblik-total/<klient_id>', methods=['GET'])
 @require_token
 def portal_overblik_total(klient_id):

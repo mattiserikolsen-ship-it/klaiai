@@ -2335,9 +2335,6 @@ async function loadOverblik() {
     // Aktivitetsfeed
     renderAktivitetFeed(d.aktivitet || []);
 
-    // Siden sidst banner
-    visSidenSidst(d.aktivitet || []);
-
     // Næste aftale banner
     const naest = d.naeste_booking;
     const naestBanner = document.getElementById('naestAftaleBanner');
@@ -2361,62 +2358,54 @@ async function loadOverblik() {
 }
 
 // ── SIDEN SIDST ──────────────────────────────────────
-function visSidenSidst(aktivitet) {
-  const SIDST_KEY = `klaiai_sidst_besogt_${CLIENT_ID}`;
-  const nu = new Date();
-  const sidstStr = localStorage.getItem(SIDST_KEY);
-
-  // Gem nuværende besøg til næste gang
-  localStorage.setItem(SIDST_KEY, nu.toISOString());
-
+// Server-drevet resume af det AUTONOME arbejde systemet klarede mens brugeren
+// var væk. Baseline gemmes pr. PERSON på serveren (ikke i localStorage), så
+// chefen der tjekker på mobil om morgenen også ser det. Kaldes én gang ved
+// login — ikke i 30-sek-pollet, da baseline flyttes frem ved hver visning.
+async function hentSidenSidst() {
+  if (!CLIENT_ID) return;
   const card = document.getElementById('sidenSidstCard');
   if (!card) return;
+  try {
+    const res = await fetch(`${API}/portal/siden-sidst/${CLIENT_ID}`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    if (!res.ok) return;
+    const d = await res.json();
+    if (!d.vis) return;
 
-  // Første gang — ingen baseline at sammenligne med
-  if (!sidstStr) return;
+    // Fremhæv det autonome arbejde først — det systemet klarede for dig.
+    const items = [];
+    if (d.auto_mails)        items.push(`${d.auto_mails} henvendelse${d.auto_mails > 1 ? 'r' : ''} besvaret automatisk`);
+    if (d.leads)             items.push(`${d.leads} ny${d.leads > 1 ? 'e' : ''} lead${d.leads > 1 ? 's' : ''} fanget`);
+    if (d.tilbud_sendt)      items.push(`${d.tilbud_sendt} tilbud sendt`);
+    if (d.tilbud_accepteret) items.push(`${d.tilbud_accepteret} tilbud accepteret`);
+    if (d.bookinger)         items.push(`${d.bookinger} booking${d.bookinger > 1 ? 'er' : ''} oprettet`);
+    if (!items.length) return;
 
-  const sidstDt = new Date(sidstStr);
-  // Vis kun hvis der er gået mere end 2 timer
-  if ((nu - sidstDt) < 7200000) return;
+    const sidstDt = d.sidst ? new Date(d.sidst) : null;
+    const datoTekst = sidstDt
+      ? sidstDt.toLocaleDateString('da-DK', { weekday:'long', day:'numeric', month:'long' })
+      : '';
+    // Sælg selvkørende-følelsen når systemet faktisk svarede kunder autonomt;
+    // ellers en ærlig, neutral overskrift så vi aldrig oversælger.
+    const overskrift = d.auto_mails ? 'Mens du var væk, arbejdede dit system' : 'Siden dit sidste besøg';
 
-  const nyt = aktivitet.filter(a => a.tid && new Date(a.tid) > sidstDt);
-  if (nyt.length === 0) return;
-
-  const leads         = nyt.filter(a => a.type === 'lead').length;
-  const autoMails     = nyt.filter(a => a.type === 'auto_mail').length;
-  const tilbudAccept  = nyt.filter(a => a.type === 'tilbud_accepteret').length;
-  const tilbudSendt   = nyt.filter(a => a.type === 'tilbud_sendt').length;
-  const bookinger     = nyt.filter(a => a.type === 'booking').length;
-
-  // Fremhæv det AUTONOME arbejde først — det systemet klarede uden at du rørte noget.
-  const items = [];
-  if (autoMails)    items.push(`${autoMails} henvendelse${autoMails > 1 ? 'r' : ''} besvaret automatisk`);
-  if (leads)        items.push(`${leads} ny${leads > 1 ? 'e' : ''} lead${leads > 1 ? 's' : ''} fanget`);
-  if (tilbudSendt)  items.push(`${tilbudSendt} tilbud sendt`);
-  if (tilbudAccept) items.push(`${tilbudAccept} tilbud accepteret`);
-  if (bookinger)    items.push(`${bookinger} booking${bookinger > 1 ? 'er' : ''} oprettet`);
-
-  if (!items.length) return;
-
-  const datoTekst = sidstDt.toLocaleDateString('da-DK', { weekday:'long', day:'numeric', month:'long' });
-  // Overskriften sælger selvkørende-følelsen når systemet faktisk har arbejdet;
-  // ellers en neutral, ærlig overskrift så vi aldrig oversælger.
-  const overskrift = autoMails ? 'Mens du var væk, arbejdede dit system' : 'Siden dit sidste besøg';
-
-  card.style.display = 'block';
-  card.innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
-      <div style="display:flex;gap:.85rem;align-items:flex-start">
-        <div style="width:38px;height:38px;background:var(--accent);color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${autoMails ? '🤖' : '🔔'}</div>
-        <div>
-          <div style="font-weight:700;font-size:.88rem;margin-bottom:.4rem">${overskrift} — <span style="font-weight:400;color:var(--muted)">${datoTekst}</span></div>
-          <div style="display:flex;flex-wrap:wrap;gap:.45rem">
-            ${items.map(item => `<span style="background:var(--accent);color:#fff;font-size:.73rem;font-weight:700;padding:.22rem .65rem;border-radius:6px">${item}</span>`).join('')}
+    card.style.display = 'block';
+    card.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
+        <div style="display:flex;gap:.85rem;align-items:flex-start">
+          <div style="width:38px;height:38px;background:var(--green);color:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">${d.auto_mails ? '🤖' : '🔔'}</div>
+          <div>
+            <div style="font-weight:700;font-size:.88rem;margin-bottom:.4rem">${overskrift}${datoTekst ? ` — <span style="font-weight:400;color:var(--muted)">siden ${datoTekst}</span>` : ''}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:.45rem">
+              ${items.map(item => `<span style="background:var(--green);color:#fff;font-size:.73rem;font-weight:700;padding:.22rem .65rem;border-radius:6px">${item}</span>`).join('')}
+            </div>
           </div>
         </div>
-      </div>
-      <button onclick="document.getElementById('sidenSidstCard').style.display='none'" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.2rem;line-height:1;padding:.1rem .3rem;flex-shrink:0" title="Luk">×</button>
-    </div>`;
+        <button onclick="document.getElementById('sidenSidstCard').style.display='none'" style="background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:1.2rem;line-height:1;padding:.1rem .3rem;flex-shrink:0" title="Luk">×</button>
+      </div>`;
+  } catch(e) { /* aldrig lad resume-fejl bryde overblikket */ }
 }
 
 function relTid(isoStr) {
@@ -4499,6 +4488,7 @@ function visUdbyder(u, btn) {
 if (CLIENT_ID) {
   loadData().then(() => { loadKomIGang(); });
   loadOverblik();
+  hentSidenSidst();
   startAktivitetPolling();
   // Hent gaps badge straks
   fetch(`${API}/gaps/${CLIENT_ID}`)
