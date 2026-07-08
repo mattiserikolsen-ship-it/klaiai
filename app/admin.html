@@ -2997,7 +2997,8 @@ async function hentLeadMails() {
   out.innerHTML = '<div style="font-size:.82rem;color:var(--muted)">Henter...</div>';
 
   try {
-    const res = await fetch(`${AGENT_URL}/lead-mails/${currentClient.id}`);
+    const res = await apiFetch(`${AGENT_URL}/lead-mails/${currentClient.id}`);
+    if (!res) return;
     const data = await res.json();
     const grupper = data.grupper || [];
 
@@ -3089,11 +3090,12 @@ async function godkendMails(leadId, mailIds) {
   }));
 
   try {
-    const res = await fetch(`${AGENT_URL}/godkend-mails`, {
+    const res = await apiFetch(`${AGENT_URL}/godkend-mails`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lead_id: leadId, klient_id: currentClient.id, mails, auto_fremadrettet: autoFremadrettet })
     });
+    if (!res) return;
     const data = await res.json();
     if (data.success) {
       const gruppe = document.getElementById(`gruppe-${leadId}`);
@@ -3116,7 +3118,7 @@ async function godkendMails(leadId, mailIds) {
 
 async function afvisMails(leadId) {
   try {
-    await fetch(`${AGENT_URL}/afvis-mails/${leadId}`, { method: 'POST' });
+    await apiFetch(`${AGENT_URL}/afvis-mails/${leadId}`, { method: 'POST' });
     const gruppe = document.getElementById(`gruppe-${leadId}`);
     gruppe.style.transition = 'opacity .3s';
     gruppe.style.opacity = '0';
@@ -3288,7 +3290,8 @@ async function hentGaps() {
   const out = document.getElementById('gapsOutput');
   const badge = document.getElementById('gapsBadge');
   try {
-    const res = await fetch(`${AGENT_URL}/gaps/${currentClient.id}`);
+    const res = await apiFetch(`${AGENT_URL}/gaps/${currentClient.id}`);
+    if (!res) return;
     const data = await res.json();
     const gaps = data.gaps || [];
 
@@ -3326,11 +3329,12 @@ async function genererGapForslag(gapId, spoergsmaal) {
   const forslagEl = document.getElementById(`gap-forslag-${gapId}`);
 
   try {
-    const res = await fetch(`${AGENT_URL}/udfyld-gap/${currentClient.id}`, {
+    const res = await apiFetch(`${AGENT_URL}/udfyld-gap/${currentClient.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ gap_id: gapId, spoergsmaal })
     });
+    if (!res) return;
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
@@ -3362,11 +3366,12 @@ async function implementerGap(gapId, felt, forslag) {
   btn.disabled = true;
   btn.textContent = 'Implementerer...';
   try {
-    const res = await fetch(`${AGENT_URL}/apply-insight/${currentClient.id}`, {
+    const res = await apiFetch(`${AGENT_URL}/apply-insight/${currentClient.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ felt, forslag_vaerdi: forslag })
     });
+    if (!res) return;
     const data = await res.json();
     if (data.success) {
       const card = document.getElementById(`gap-${gapId}`);
@@ -3383,7 +3388,7 @@ async function implementerGap(gapId, felt, forslag) {
 
 async function ignoreGap(gapId) {
   try {
-    await fetch(`${AGENT_URL}/luk-gap/${gapId}`, { method: 'POST' });
+    await apiFetch(`${AGENT_URL}/luk-gap/${gapId}`, { method: 'POST' });
     const card = document.getElementById(`gap-${gapId}`);
     card.style.transition = 'opacity .3s';
     card.style.opacity = '0';
@@ -3404,7 +3409,8 @@ async function hentInsights() {
   </div>`;
 
   try {
-    const res = await fetch(`${AGENT_URL}/insights/${currentClient.id}`);
+    const res = await apiFetch(`${AGENT_URL}/insights/${currentClient.id}`);
+    if (!res) return;
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderInsights(data.insights || []);
@@ -3446,11 +3452,12 @@ async function implementerInsight(idx, ins) {
   btn.textContent = 'Implementerer...';
 
   try {
-    const res = await fetch(`${AGENT_URL}/apply-insight/${currentClient.id}`, {
+    const res = await apiFetch(`${AGENT_URL}/apply-insight/${currentClient.id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ felt: ins.felt, forslag_vaerdi: ins.forslag_vaerdi })
     });
+    if (!res) return;
     const data = await res.json();
     if (data.success) {
       btn.className = 'btn-implement done';
@@ -3474,9 +3481,10 @@ async function kørBrancheResearch() {
   btn.textContent = '🔍 Researcher...';
 
   try {
-    const res = await fetch(`${AGENT_URL}/research-branche/${currentClient.id}`, {
+    const res = await apiFetch(`${AGENT_URL}/research-branche/${currentClient.id}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
     });
+    if (!res) return;
     const data = await res.json();
     if (data.success) {
       btn.textContent = `✓ ${data.tegn} tegn tilføjet`;
@@ -4436,7 +4444,7 @@ async function generateBooking() {
   // Gem i Supabase
   if (client) {
     try {
-      await fetch(AGENT_URL + '/booking-config', {
+      await apiFetch(AGENT_URL + '/booking-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ klient_id: client.id, ...bookingCfg })
@@ -6435,7 +6443,7 @@ async function loadIndsigter() {
             <div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">Send eller forhåndsvis denne måneds rapport til klienten</div>
           </div>
           <div style="display:flex;gap:.6rem">
-            <a href="${AGENT_URL}/preview-rapport/${klientId}" target="_blank" class="btn btn-secondary btn-sm">👁 Forhåndsvis</a>
+            <button class="btn btn-secondary btn-sm" onclick="forhåndsvisRapport('${klientId}')">👁 Forhåndsvis</button>
             <button class="btn btn-primary btn-sm" onclick="sendRapport('${klientId}','${klient?.email||''}')">📧 Send rapport</button>
           </div>
         </div>
@@ -6486,6 +6494,20 @@ async function loadIndsigter() {
       ? 'Serveren svarer ikke (timeout) — Render starter op, prøv igen om 30 sek.'
       : `Fejl: ${e.message}`;
     content.innerHTML = `<div style="color:var(--red);text-align:center;padding:2rem">${msg}</div>`;
+  }
+}
+
+async function forhåndsvisRapport(klientId) {
+  // Hent med token i header (ikke i URL) og aabn resultatet som blob i nyt faneblad
+  try {
+    const res = await apiFetch(`${AGENT_URL}/preview-rapport/${klientId}`);
+    if (!res || !res.ok) { alert('Kunne ikke hente forhåndsvisning lige nu.'); return; }
+    const html = await res.text();
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) {
+    alert('Kunne ikke hente forhåndsvisning lige nu.');
   }
 }
 

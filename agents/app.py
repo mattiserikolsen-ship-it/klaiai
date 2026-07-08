@@ -24,6 +24,7 @@ import requests as http_requests
 from bs4 import BeautifulSoup
 import threading
 import io
+import urllib.parse
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 try:
@@ -1499,6 +1500,7 @@ def get_booking_config(klient_id):
 
 
 @app.route('/booking-config', methods=['POST'])
+@require_token
 def gem_booking_config():
     """Gemmer booking konfiguration"""
     if not db:
@@ -1507,6 +1509,8 @@ def gem_booking_config():
     klient_id = data.get('klient_id')
     if not klient_id:
         return jsonify({'error': 'klient_id mangler'}), 400
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     try:
         cfg = {
             'klient_id': klient_id,
@@ -1716,8 +1720,11 @@ def portal_opdater_booking_status(booking_id):
 # ── LEAD MAILS PREVIEW & GODKENDELSE ──────────────────
 
 @app.route('/lead-mails/<klient_id>', methods=['GET'])
+@require_token
 def get_lead_mails(klient_id):
     """Henter afventende lead-mails til preview"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'mails': []})
     try:
@@ -1734,6 +1741,7 @@ def get_lead_mails(klient_id):
 
 
 @app.route('/godkend-mails', methods=['POST'])
+@require_token
 def godkend_mails(klient_id=None):
     """Godkender (og sender) lead-mails. Kan også opdatere tekst inden afsendelse."""
     data = request.json
@@ -1744,6 +1752,8 @@ def godkend_mails(klient_id=None):
 
     if not db or not klient_id:
         return jsonify({'error': 'Mangler data'}), 400
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
 
     # Hent lead email
     lead_email, lead_navn = '', ''
@@ -1807,10 +1817,17 @@ def godkend_mails(klient_id=None):
 
 
 @app.route('/afvis-mails/<lead_id>', methods=['POST'])
+@require_token
 def afvis_mails(lead_id):
     """Afviser/sletter afventende mails for et lead"""
     if not db:
         return jsonify({'error': 'Ingen database'}), 500
+    try:
+        _ejer = db.table('leads').select('klient_id').eq('id', lead_id).single().execute()
+        if _ejer.data and _ingen_adgang(_ejer.data.get('klient_id')):
+            return jsonify({'error': 'Ingen adgang'}), 403
+    except Exception:
+        return jsonify({'error': 'Ingen adgang'}), 403
     try:
         db.table('lead_mails').update({'status': 'afvist'}).eq('lead_id', lead_id).eq('status', 'afventer').execute()
         return jsonify({'success': True})
@@ -1821,8 +1838,11 @@ def afvis_mails(lead_id):
 # ── CHATBOT GAPS ───────────────────────────────────────
 
 @app.route('/gaps/<klient_id>', methods=['GET'])
+@require_token
 def get_gaps(klient_id):
     """Henter ubesvarede spørgsmål for en klient"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'gaps': []})
     try:
@@ -1833,8 +1853,11 @@ def get_gaps(klient_id):
 
 
 @app.route('/udfyld-gap/<klient_id>', methods=['POST'])
+@require_token
 def udfyld_gap(klient_id):
     """Claude genererer forslag til hvad der mangler i chatbot-konfigurationen"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     data = request.json
     gap_id = data.get('gap_id')
     spoergsmaal = data.get('spoergsmaal', '')
@@ -1888,10 +1911,17 @@ Returner KUN dette JSON-format:
 
 
 @app.route('/luk-gap/<gap_id>', methods=['POST'])
+@require_token
 def luk_gap(gap_id):
     """Markerer et gap som lukket/ignoreret"""
     if not db:
         return jsonify({'error': 'Ingen database'}), 500
+    try:
+        _ejer = db.table('chatbot_gaps').select('klient_id').eq('id', gap_id).single().execute()
+        if _ejer.data and _ingen_adgang(_ejer.data.get('klient_id')):
+            return jsonify({'error': 'Ingen adgang'}), 403
+    except Exception:
+        return jsonify({'error': 'Ingen adgang'}), 403
     try:
         db.table('chatbot_gaps').update({'status': 'ignoreret'}).eq('id', gap_id).execute()
         return jsonify({'success': True})
@@ -1902,8 +1932,11 @@ def luk_gap(gap_id):
 # ── AI INSIGHTS & BRANCHE-RESEARCH ────────────────────
 
 @app.route('/insights/<klient_id>', methods=['GET'])
+@require_token
 def get_insights(klient_id):
     """Analyserer klientens opsætning og returnerer kritiske AI-forbedringer"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     klient = get_klient(klient_id)
     leads, bookinger = [], []
     if db:
@@ -1983,8 +2016,11 @@ Regler:
 
 
 @app.route('/apply-insight/<klient_id>', methods=['POST'])
+@require_token
 def apply_insight(klient_id):
     """Implementerer et AI-indsigt ved at opdatere chatbot-config"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
 
@@ -2018,8 +2054,11 @@ def apply_insight(klient_id):
 
 
 @app.route('/research-branche/<klient_id>', methods=['POST'])
+@require_token
 def research_branche(klient_id):
     """Lader Claude researche branchen og beriger ekstra_viden automatisk"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
 
@@ -2071,10 +2110,13 @@ Skriv præcist og faktabaseret. Dette bruges til at træne en AI-chatbot til at 
 # ── RAPPORT ENDPOINTS ──────────────────────────────────
 
 @app.route('/rapport/<klient_id>', methods=['GET'])
+@require_token
 def get_rapport(klient_id):
     """Aggregeret rapport-data til grafer"""
     from datetime import datetime, timedelta
 
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     if not db:
         return jsonify({'error': 'Database ikke tilgængelig'}), 500
     try:
@@ -2371,8 +2413,18 @@ def _byg_rapport_html(klient_id, klient_navn, leads, bookinger, gaps=None, chat_
 
 @app.route('/preview-rapport/<klient_id>', methods=['GET'])
 def preview_rapport(klient_id):
-    """Returnerer rapport HTML direkte i browser — til forhåndsvisning"""
+    """Returnerer rapport HTML direkte i browser — til forhåndsvisning.
+
+    Kan aabnes i nyt vindue, saa token accepteres baade via Authorization-header
+    og som query-param (frontend henter via fetch+blob, saa token ikke laekker i URL)."""
     from flask import Response
+    raw = request.headers.get('Authorization', '') or ('Bearer ' + (request.args.get('token') or ''))
+    token = raw.replace('Bearer ', '').strip()
+    if not _token_ok(token):
+        return jsonify({'error': 'Adgang krævet — log ind igen'}), 401
+    _info = active_tokens.get(token, {})
+    if _info.get('role') == 'client' and str(_info.get('klient_id')) != str(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     klient = get_klient(klient_id)
     klient_navn = klient.get('navn', 'din virksomhed')
     leads, bookinger, gaps, chat_count = _hent_rapport_data(klient_id)
@@ -2381,8 +2433,11 @@ def preview_rapport(klient_id):
 
 
 @app.route('/send-rapport/<klient_id>', methods=['POST'])
+@require_token
 def send_rapport(klient_id):
     """Sender en professionel HTML-rapport pr. mail"""
+    if _ingen_adgang(klient_id):
+        return jsonify({'error': 'Ingen adgang'}), 403
     klient = get_klient(klient_id)
     klient_navn = klient.get('navn', 'din virksomhed')
     kontakt = klient.get('info', {}).get('kontakt', '')
@@ -4032,6 +4087,7 @@ def _kør_multi_scanning(job_id, urls):
 
 
 @app.route('/hent-pdf-links', methods=['POST'])
+@limiter.limit("10 per minute; 40 per hour")
 def hent_pdf_links_endpoint():
     """Henter og udtrækker tekst fra en liste af PDF-URLs"""
     data = request.json
@@ -4064,6 +4120,7 @@ def hent_pdf_links_endpoint():
 
 
 @app.route('/scan-multi', methods=['POST'])
+@limiter.limit("10 per minute; 40 per hour")
 @require_admin
 def scan_multi():
     """Scanner flere URLs og kombinerer data — returnerer job_id"""
@@ -4360,7 +4417,8 @@ def econ_sync_tilbud(tilbud_id):
     kunde_navn  = t.get('kunde_navn', 'Ukendt kunde')
     econ_kunde_nr = None
     if kunde_email:
-        s = http_requests.get(f'{ECONOMIC_BASE}/customers?filter=email$eq:{kunde_email}',
+        _email_q = urllib.parse.quote(kunde_email, safe='')
+        s = http_requests.get(f'{ECONOMIC_BASE}/customers?filter=email$eq:{_email_q}',
             headers=hdrs, timeout=8)
         if s.status_code == 200:
             kol = s.json().get('collection', [])
@@ -7203,6 +7261,7 @@ Kun JSON array, ingen tekst før eller efter."""
 
 
 @app.route('/tilbud/generer', methods=['POST'])
+@limiter.limit("10 per minute; 40 per hour")
 @require_token
 def generer_tilbud():
     """Genererer et AI-tilbud med valgfri konkurrentanalyse"""

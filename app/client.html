@@ -1940,6 +1940,7 @@ const SEKTION_LABELS = {
 let _bfSektioner = ['forretning','leads','indbakke','bookinger','tilbud','mails','pipeline','gaps','agenter','rapport'];
 let _brugereCache = [];
 const _bAuth = () => ({ 'Content-Type':'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' });
+const _bGet = () => ({ headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' } });
 const _bBtn = 'font-size:.72rem;font-weight:600;padding:.32rem .7rem;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--mid);cursor:pointer;font-family:inherit';
 
 async function loadBrugere() {
@@ -1979,12 +1980,12 @@ function renderBrugere(brugere) {
         <button style="${_bBtn}" onclick="redigerBruger('${b.id}')">Redigér</button>
         <button style="${_bBtn}" onclick="nulstilKode('${b.id}')">Ny kode</button>
         <button style="${_bBtn}" onclick="toggleAktiv('${b.id}', ${inaktiv})">${inaktiv ? 'Aktivér' : 'Deaktivér'}</button>
-        <button style="${_bBtn};color:#c0392b;border-color:#f0c9c4" onclick="sletBruger('${b.id}', '${(b.navn || b.email).replace(/'/g,'')}')">Slet</button>`;
+        <button style="${_bBtn};color:#c0392b;border-color:#f0c9c4" onclick="sletBruger(this.dataset.id,this.dataset.navn)" data-id="${esc(b.id)}" data-navn="${esc(b.navn || b.email)}">Slet</button>`;
     }
     return `<div style="display:flex;justify-content:space-between;gap:1rem;padding:.9rem 0;border-bottom:1px solid var(--border);${inaktiv ? 'opacity:.55' : ''}">
       <div style="min-width:0">
-        <div style="font-weight:700;font-size:.88rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">${b.navn || '(uden navn)'} ${_rolleBadge(b.rolle)} ${inaktiv ? '<span style=\'font-size:.64rem;color:#c0392b;font-weight:700\'>Deaktiveret</span>' : ''}</div>
-        <div style="font-size:.78rem;color:var(--mid);margin-top:.15rem">${b.email}</div>
+        <div style="font-weight:700;font-size:.88rem;color:var(--dark);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">${esc(b.navn || '(uden navn)')} ${_rolleBadge(b.rolle)} ${inaktiv ? '<span style=\'font-size:.64rem;color:#c0392b;font-weight:700\'>Deaktiveret</span>' : ''}</div>
+        <div style="font-size:.78rem;color:var(--mid);margin-top:.15rem">${esc(b.email)}</div>
         <div style="font-size:.74rem;color:var(--mid);margin-top:.2rem">${adgangTekst}</div>
       </div>
       <div style="display:flex;gap:.4rem;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">${handlinger}</div>
@@ -2472,6 +2473,15 @@ const LEAD_STATUS_MAP = {
   lukket:    { label: 'Kunde',     bg: '#dcfce7', color: '#16a34a' },
 };
 
+// Escaper mod stored XSS: kundedata (lead-navn, besked, email, emne osv.)
+// kommer fra offentlige widgets/mails og MÅ ALDRIG renderes råt i innerHTML.
+// Bruges på ALT der stammer fra kunde-/lead-/mail-input.
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 function renderLeadIndbakke(leads) {
   const el = document.getElementById('leadIndbakke');
   const badge = document.getElementById('leadIndbakkeBadge');
@@ -2493,17 +2503,18 @@ function renderLeadIndbakke(leads) {
     const st = LEAD_STATUS_MAP[l.status] || LEAD_STATUS_MAP.ny;
     const statusBadge = `<span class="lead-inbox-status" style="background:${st.bg};color:${st.color}">${st.label}</span>`;
     const ringKnap = l.telefon
-      ? `<a href="tel:${l.telefon}" style="background:#f0fdf4;color:#16a34a">📞 Ring</a>`
+      ? `<a href="tel:${encodeURIComponent(l.telefon)}" style="background:#f0fdf4;color:#16a34a">📞 Ring</a>`
       : '';
     const tilbudKnap = `<button onclick="showView('tilbud')" style="background:#f0f4ff;color:#2563eb">📄 Send tilbud</button>`;
-    const crmKnap = `<button onclick="åbnCRM('${l.email || ''}','${(l.navn||'').replace(/'/g,"\\'")}');" style="background:var(--bg);color:var(--mid);border:1px solid var(--border)">Historie</button>`;
-    const kontakt = l.telefon ? `📞 ${l.telefon}` : (l.email || '');
+    // Data via data-attributter (esc'et) → åbnCRM får rene værdier uden kode-injektion.
+    const crmKnap = `<button onclick="åbnCRM(this.dataset.email,this.dataset.navn)" data-email="${esc(l.email||'')}" data-navn="${esc(l.navn||'')}" style="background:var(--bg);color:var(--mid);border:1px solid var(--border)">Historie</button>`;
+    const kontakt = l.telefon ? `📞 ${esc(l.telefon)}` : esc(l.email || '');
     return `<div class="lead-inbox-card">
-      <div class="lead-inbox-avatar">${initialer}</div>
+      <div class="lead-inbox-avatar">${esc(initialer)}</div>
       <div class="lead-inbox-body">
-        <div class="lead-inbox-name">${l.navn || '—'}${statusBadge}</div>
+        <div class="lead-inbox-name">${esc(l.navn || '—')}${statusBadge}</div>
         <div class="lead-inbox-meta">${kontakt}</div>
-        ${l.besked ? `<div class="lead-inbox-besked">"${l.besked}"</div>` : ''}
+        ${l.besked ? `<div class="lead-inbox-besked">"${esc(l.besked)}"</div>` : ''}
         <div class="lead-inbox-actions">${ringKnap}${tilbudKnap}${crmKnap}</div>
       </div>
       <div class="lead-inbox-time">${relTid(l.oprettet)}</div>
@@ -2521,8 +2532,8 @@ function renderAktivitetFeed(events) {
     <div class="activity-item">
       <div class="activity-icon" style="background:${e.bg};color:${e.farve}">${e.ikon}</div>
       <div class="activity-body">
-        <div class="activity-title">${e.titel}</div>
-        <div class="activity-sub">${e.sub || ''}</div>
+        <div class="activity-title">${esc(e.titel)}</div>
+        <div class="activity-sub">${esc(e.sub || '')}</div>
       </div>
       <div class="activity-time">${relTid(e.tid)}</div>
     </div>`).join('');
@@ -2589,11 +2600,11 @@ function leadHTML(l, kort = false) {
     <div class="lead-avatar">${initials}</div>
     <div class="lead-body">
       <div class="lead-name">
-        <span onclick="if('${l.email}')åbnCRM('${l.email}','${(l.navn||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${l.navn || '—'}</span>
+        <span onclick="if(this.dataset.email)åbnCRM(this.dataset.email,this.dataset.navn)" data-email="${esc(l.email||'')}" data-navn="${esc(l.navn||'')}" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${esc(l.navn || '—')}</span>
         ${erKontaktet ? `<span class="badge badge-green">✓ Kontaktet</span>` : ''}
       </div>
-      <div class="lead-contact">${[l.email, l.telefon, l.virksomhed].filter(Boolean).join(' · ')}</div>
-      ${l.besked ? `<div class="lead-msg">"${l.besked}"</div>` : ''}
+      <div class="lead-contact">${esc([l.email, l.telefon, l.virksomhed].filter(Boolean).join(' · '))}</div>
+      ${l.besked ? `<div class="lead-msg">"${esc(l.besked)}"</div>` : ''}
       <div class="lead-meta">${kilde}${statusBadge}</div>
     </div>
     <div class="lead-right">
@@ -2694,8 +2705,8 @@ function renderBookinger() {
         <div class="booking-date-month">${mdr}</div>
       </div>
       <div class="booking-body">
-        <div class="booking-name">${b.navn || '—'}</div>
-        <div class="booking-detail">Kl. ${b.tid || '—'}${b.ydelse ? ' · '+b.ydelse : ''}${b.telefon ? ' · '+b.telefon : ''}</div>
+        <div class="booking-name">${esc(b.navn || '—')}</div>
+        <div class="booking-detail">Kl. ${esc(b.tid || '—')}${b.ydelse ? ' · '+esc(b.ydelse) : ''}${b.telefon ? ' · '+esc(b.telefon) : ''}</div>
       </div>
       <div class="booking-right">
         <span class="badge ${scfg.cls}">${scfg.label}</span>
@@ -2801,11 +2812,11 @@ function åbnBookingPanel(bookingId) {
   ).join('');
 
   document.getElementById('bpDetaljer').innerHTML = [
-    b.email    ? `<div><strong>Email:</strong> ${b.email}</div>` : '',
-    b.telefon  ? `<div><strong>Telefon:</strong> ${b.telefon}</div>` : '',
-    b.ydelse   ? `<div><strong>Ydelse:</strong> ${b.ydelse}</div>` : '',
-    b.besked   ? `<div><strong>Besked:</strong> ${b.besked}</div>` : '',
-    b.noter    ? `<div style="margin-top:.5rem;padding:.65rem .85rem;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:.8rem"><strong>Note:</strong> ${b.noter}</div>` : '',
+    b.email    ? `<div><strong>Email:</strong> ${esc(b.email)}</div>` : '',
+    b.telefon  ? `<div><strong>Telefon:</strong> ${esc(b.telefon)}</div>` : '',
+    b.ydelse   ? `<div><strong>Ydelse:</strong> ${esc(b.ydelse)}</div>` : '',
+    b.besked   ? `<div><strong>Besked:</strong> ${esc(b.besked)}</div>` : '',
+    b.noter    ? `<div style="margin-top:.5rem;padding:.65rem .85rem;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:.8rem"><strong>Note:</strong> ${esc(b.noter)}</div>` : '',
   ].join('');
 
   document.getElementById('bpTilbudLinkDiv').style.display = b.tilbud_id ? 'block' : 'none';
@@ -2859,7 +2870,7 @@ function åbnOpretAftaleModal(tilbudId, navn, email, telefon) {
     const relevante = tilbudData.filter(t => t.status === 'accepteret' || t.status === 'sendt');
     if (relevante.length) {
       sel.innerHTML = '<option value="">— Ingen kobling —</option>' +
-        relevante.map(t => `<option value="${t.id}" ${t.id===tilbudId?'selected':''}>${t.titel||t.kunde_navn} (${t.status})</option>`).join('');
+        relevante.map(t => `<option value="${esc(t.id)}" ${t.id===tilbudId?'selected':''}>${esc(t.titel||t.kunde_navn)} (${t.status})</option>`).join('');
       koblDiv.style.display = 'block';
     } else { koblDiv.style.display = 'none'; }
   } else {
@@ -3084,8 +3095,8 @@ function renderTilbud() {
     return `<div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);${rowStyle}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:.2rem">${t.titel || 'Tilbud'}</div>
-          <div style="font-size:.78rem;color:var(--muted)"><span onclick="if('${t.kunde_email}')åbnCRM('${t.kunde_email}','${(t.kunde_navn||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${t.kunde_navn || '—'}</span>${t.kunde_email ? ' · ' + t.kunde_email : ''}${t.kunde_adresse ? ' · ' + t.kunde_adresse + (t.kunde_postnummer ? ', ' + t.kunde_postnummer : '') : ''}</div>
+          <div style="font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:.2rem">${esc(t.titel || 'Tilbud')}</div>
+          <div style="font-size:.78rem;color:var(--muted)"><span onclick="if(this.dataset.email)åbnCRM(this.dataset.email,this.dataset.navn)" data-email="${esc(t.kunde_email||'')}" data-navn="${esc(t.kunde_navn||'')}" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px">${esc(t.kunde_navn || '—')}</span>${t.kunde_email ? ' · ' + esc(t.kunde_email) : ''}${t.kunde_adresse ? ' · ' + esc(t.kunde_adresse) + (t.kunde_postnummer ? ', ' + esc(t.kunde_postnummer) : '') : ''}</div>
           ${t.status === 'accepteret' && godkendtDato ? `<div style="font-size:.75rem;color:#15803d;margin-top:.3rem;font-weight:600">✓ Accepteret ${godkendtDato}</div>` : ''}
           ${sendtDato && t.status !== 'accepteret' ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Sendt ${sendtDato}</div>` : ''}
         </div>
@@ -3095,7 +3106,7 @@ function renderTilbud() {
           <div style="display:flex;gap:.4rem;margin-top:.2rem">
             <button onclick="åbnTilbud('${t.id}')" style="background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
             <button onclick="downloadTilbudPdf('${t.id}')" title="Download PDF" style="background:#f0efec;color:var(--dark);border:1px solid var(--border);border-radius:7px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">⬇ PDF</button>
-            ${t.status === 'accepteret' ? `<button onclick="åbnOpretAftaleModal('${t.id}','${(t.kunde_navn||'').replace(/'/g,"\\'")}','${t.kunde_email||''}','')" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">📅 Book opstart</button>` : ''}
+            ${t.status === 'accepteret' ? `<button onclick="åbnOpretAftaleModal(this.dataset.id,this.dataset.navn,this.dataset.email,'')" data-id="${esc(t.id)}" data-navn="${esc(t.kunde_navn||'')}" data-email="${esc(t.kunde_email||'')}" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">📅 Book opstart</button>` : ''}
             ${(t.status === 'sendt' || t.status === 'accepteret') && !t.economic_faktura_nr ? `<button onclick="econSyncTilbud('${t.id}',this)" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit" title="Synkroniser til e-conomic">e-conomic ↑</button>` : ''}
             ${t.economic_faktura_nr ? `<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600">✓ e-conomic #${t.economic_faktura_nr}</span>` : ''}
           </div>
@@ -3562,8 +3573,8 @@ function renderPipeline() {
            </div>`
         : '';
       return `<div class="pipeline-card" onclick="åbnTilbud('${t.id}')">
-        <div class="pipeline-card-titel">${t.titel || 'Tilbud'}</div>
-        <div class="pipeline-card-sub">${t.kunde_navn || '—'} · ${dato}</div>
+        <div class="pipeline-card-titel">${esc(t.titel || 'Tilbud')}</div>
+        <div class="pipeline-card-sub">${esc(t.kunde_navn || '—')} · ${dato}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.5rem">
           <div class="pipeline-card-pris">${pris}</div>
           ${flytKnapper}
@@ -3604,7 +3615,7 @@ async function loadGaps() {
   const el = document.getElementById('gapsList');
   el.innerHTML = skeletonList(3, false);
   try {
-    const res = await fetch(`${API}/gaps/${CLIENT_ID}`);
+    const res = await fetch(`${API}/gaps/${CLIENT_ID}`, _bGet());
     if (!res.ok) { el.innerHTML = errorState('loadGaps()', { title: 'Kunne ikke hente spørgsmål', msg: 'Vi kunne ikke hente de ubesvarede spørgsmål lige nu. Prøv igen om et øjeblik.' }); return; }
     gapsData = (await res.json()).gaps || [];
     renderGaps();
@@ -3657,7 +3668,7 @@ async function aiForslag(idx, gapId, spoergsmaal) {
   try {
     const res = await fetch(`${API}/udfyld-gap/${CLIENT_ID}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _bAuth(),
       body: JSON.stringify({ gap_id: gapId, spoergsmaal })
     });
     const d = await res.json();
@@ -3689,7 +3700,7 @@ async function markerGapLøst(idx, gapId) {
     if (gapId) {
       await fetch(`${API}/udfyld-gap/${CLIENT_ID}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _bAuth(),
         body: JSON.stringify({ gap_id: gapId, spoergsmaal: '' })
       });
     }
@@ -3917,7 +3928,7 @@ function renderCRM(historik, crmData) {
       return `<div style="display:flex;align-items:flex-start;gap:.75rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border)">
         <div style="font-size:1rem;margin-top:.05rem;flex-shrink:0">${ev.ikon}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:.82rem;font-weight:600;color:var(--dark)">${ev.tekst}${stHtml}</div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--dark)">${esc(ev.tekst)}${stHtml}</div>
           <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">${dato}</div>
         </div>
         ${seKnap}
@@ -3967,7 +3978,7 @@ let aktivPeriode = 'uger';
 async function loadRapport() {
   if (!CLIENT_ID) return;
   try {
-    const res = await fetch(`${API}/rapport/${CLIENT_ID}`);
+    const res = await fetch(`${API}/rapport/${CLIENT_ID}`, _bGet());
     if (!res.ok) return;
     rapportData = await res.json();
 
@@ -4081,8 +4092,18 @@ function skiftPeriode(periode, btn) {
   renderRapChart(periode);
 }
 
-function forhåndsvisRapport() {
-  window.open(`${API}/preview-rapport/${CLIENT_ID}`, '_blank');
+async function forhåndsvisRapport() {
+  // Hent med token i header (ikke i URL) og aabn resultatet som blob i nyt faneblad
+  try {
+    const res = await fetch(`${API}/preview-rapport/${CLIENT_ID}`, _bGet());
+    if (!res.ok) { alert('Kunne ikke hente forhåndsvisning lige nu.'); return; }
+    const html = await res.text();
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) {
+    alert('Kunne ikke hente forhåndsvisning lige nu.');
+  }
 }
 
 async function sendRapport() {
@@ -4092,7 +4113,7 @@ async function sendRapport() {
   try {
     const res = await fetch(`${API}/send-rapport/${CLIENT_ID}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: _bAuth(),
       body: JSON.stringify({})
     });
     const d = await res.json();
@@ -4484,9 +4505,9 @@ function renderIndbakke(mails) {
         ${svaret}
         <span style="margin-left:auto;font-size:.72rem;color:var(--muted)">${tid}</span>
       </div>
-      <div style="font-weight:700;font-size:.92rem;margin-bottom:.15rem">${(m.fra_navn || m.fra_email || 'Ukendt')}${m.fra_email ? ` <span style="font-weight:400;color:var(--muted);font-size:.8rem">&lt;${m.fra_email}&gt;</span>` : ''}</div>
-      <div style="font-size:.88rem;color:#333;margin-bottom:.25rem">${m.emne || '(uden emne)'}</div>
-      <div style="font-size:.82rem;color:var(--muted);line-height:1.45">${uddrag}${uddrag.length >= 140 ? '…' : ''}</div>
+      <div style="font-weight:700;font-size:.92rem;margin-bottom:.15rem">${esc(m.fra_navn || m.fra_email || 'Ukendt')}${m.fra_email ? ` <span style="font-weight:400;color:var(--muted);font-size:.8rem">&lt;${esc(m.fra_email)}&gt;</span>` : ''}</div>
+      <div style="font-size:.88rem;color:#333;margin-bottom:.25rem">${esc(m.emne || '(uden emne)')}</div>
+      <div style="font-size:.82rem;color:var(--muted);line-height:1.45">${esc(uddrag)}${uddrag.length >= 140 ? '…' : ''}</div>
       <div style="margin-top:.6rem;display:flex;gap:.5rem">
         ${ulaest ? `<button onclick="indbakkeStatus('${m.id}','laest',this)" style="background:var(--bg);border:1px solid var(--border);color:var(--dark);border-radius:8px;padding:.35rem .8rem;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit">Markér læst</button>` : ''}
         <button onclick="indbakkeStatus('${m.id}','arkiveret',this)" style="background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:.35rem .8rem;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit">Arkivér</button>
@@ -4538,7 +4559,7 @@ if (CLIENT_ID) {
   hentSidenSidst();
   startAktivitetPolling();
   // Hent gaps badge straks
-  fetch(`${API}/gaps/${CLIENT_ID}`)
+  fetch(`${API}/gaps/${CLIENT_ID}`, _bGet())
     .then(r => r.json())
     .then(d => {
       const gaps = (d.gaps || []).length;
