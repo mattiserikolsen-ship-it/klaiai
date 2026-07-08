@@ -268,6 +268,16 @@ def _totp_verify(secret, code, window=1, step=30, digits=6):
             return True
     return False
 
+def _totp_ny_secret():
+    """Genererer en tilfaeldig base32-secret (160 bit) til TOTP-enrollment."""
+    return base64.b32encode(secrets.token_bytes(20)).decode().rstrip('=')
+
+def _totp_uri(secret, konto, udsteder='Nordolsen'):
+    """Bygger en otpauth://-URI som authenticator-apps kan importere via QR."""
+    label = urllib.parse.quote(f'{udsteder}:{konto}')
+    q = urllib.parse.urlencode({'secret': secret, 'issuer': udsteder})
+    return f'otpauth://totp/{label}?{q}'
+
 def _er_localhost():
     return request.remote_addr in ('127.0.0.1', '::1', 'localhost')
 
@@ -4255,7 +4265,7 @@ def login():
     # Klient login — tjek Supabase
     if db:
         try:
-            res = db.table('klienter').select('id, navn, email, password, aktiv').eq('email', email).single().execute()
+            res = db.table('klienter').select('id, navn, email, password, aktiv, totp_secret, totp_aktiv').eq('email', email).single().execute()
             if res.data:
                 klient = res.data
                 if klient.get('aktiv') == False:
@@ -4280,6 +4290,15 @@ def login():
                         except:
                             pass
                 if pw_ok:
+                    # 2FA: har ejeren slaaet det til, kraeves ogsaa en gyldig kode.
+                    # Password er allerede verificeret, saa 'totp_required' laekker kun
+                    # at password var korrekt — angriberen mangler stadig koden.
+                    if klient.get('totp_aktiv'):
+                        totp = (data.get('totp') or '').strip()
+                        if not totp:
+                            return jsonify({'totp_required': True}), 200
+                        if not _totp_verify(klient.get('totp_secret') or '', totp):
+                            return jsonify({'error': 'Forkert 2FA-kode', 'totp_required': True}), 401
                     token = secrets.token_hex(32)
                     _gem_token(token, {'role': 'client', 'klient_id': klient['id'], 'created_at': _time.time()})
                     return jsonify({'token': token, 'role': 'client', 'klient_id': klient['id']})
@@ -4321,6 +4340,101 @@ def login():
             pass
 
     return jsonify({'error': 'Forkert email eller adgangskode'}), 401
+
+# ── 2FA (TOTP) for virksomheds-ejere ────────────────────────────────
+# Ejeren styrer selv sin 2FA inde i portalen (kan ikke saette Render-env som
+# Nordolsen-admin goer). Secret gemmes pr. klient i klienter.totp_secret og
+# haandhaeves foerst ved login naar totp_aktiv=true.
+def _kraev_ejer():
+    """Returnerer (klient_id, fejl_response). Kun virksomhedens EJER (klienter-login,
+    ikke under-bruger, ikke Nordolsen-admin) maa styre 2FA paa sin egen konto."""
+    raw = request.headers.get('Authorization', '')
+    token = raw.replace('Bearer ', '').strip()
+    info = active_tokens.get(token, {})
+    if info.get('role') != 'client' or info.get('bruger_id'):
+        return None, (jsonify({'error': 'Kun virksomhedens ejer kan styre 2FA'}), 403)
+    return info.get('klient_id'), None
+
+@app.route('/2fa/status', methods=['GET'])
+@require_token
+def totp_status():
+    klient_id, fejl = _kraev_ejer()
+    if fejl:
+        return fejl
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        r = db.table('klienter').select('totp_aktiv').eq('id', klient_id).single().execute()
+        aktiv = bool(r.data and r.data.get('totp_aktiv'))
+    except Exception:
+        aktiv = False
+    return jsonify({'aktiv': aktiv})
+
+@app.route('/2fa/setup', methods=['POST'])
+@require_token
+def totp_setup():
+    """Starter enrollment: laver en ny secret (pending), returnerer den + otpauth-URI.
+    Haandhaeves IKKE endnu — foerst efter /2fa/aktiver bekraefter en gyldig kode."""
+    klient_id, fejl = _kraev_ejer()
+    if fejl:
+        return fejl
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    try:
+        r = db.table('klienter').select('email, totp_aktiv').eq('id', klient_id).single().execute()
+        if r.data and r.data.get('totp_aktiv'):
+            return jsonify({'error': '2FA er allerede aktiveret. Slaa den fra foerst for at nulstille.'}), 400
+        konto = (r.data or {}).get('email') or f'klient-{klient_id}'
+        secret = _totp_ny_secret()
+        db.table('klienter').update({'totp_secret': secret, 'totp_aktiv': False}).eq('id', klient_id).execute()
+        return jsonify({'secret': secret, 'otpauth': _totp_uri(secret, konto)})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e, 'Kunne ikke starte 2FA-opsaetning')}), 500
+
+@app.route('/2fa/aktiver', methods=['POST'])
+@require_token
+def totp_aktiver():
+    """Bekraefter enrollment: verificerer foerste kode og slaar 2FA til for alvor."""
+    klient_id, fejl = _kraev_ejer()
+    if fejl:
+        return fejl
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    kode = ((request.json or {}).get('totp') or '').strip()
+    try:
+        r = db.table('klienter').select('totp_secret').eq('id', klient_id).single().execute()
+        secret = (r.data or {}).get('totp_secret')
+        if not secret:
+            return jsonify({'error': 'Start opsaetningen forfra.'}), 400
+        if not _totp_verify(secret, kode):
+            return jsonify({'error': 'Forkert kode. Tjek at telefonens ur er korrekt og proev igen.'}), 400
+        db.table('klienter').update({'totp_aktiv': True}).eq('id', klient_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e, 'Kunne ikke aktivere 2FA')}), 500
+
+@app.route('/2fa/deaktiver', methods=['POST'])
+@require_token
+def totp_deaktiver():
+    """Slaar 2FA fra. Kraever en gyldig kode, saa en kapret session ikke bare kan
+    fjerne beskyttelsen. Mister ejeren sin telefon, kan Nordolsen-admin nulstille
+    totp_secret/totp_aktiv i databasen."""
+    klient_id, fejl = _kraev_ejer()
+    if fejl:
+        return fejl
+    if not db:
+        return jsonify({'error': 'Ingen database'}), 500
+    kode = ((request.json or {}).get('totp') or '').strip()
+    try:
+        r = db.table('klienter').select('totp_secret, totp_aktiv').eq('id', klient_id).single().execute()
+        if not (r.data and r.data.get('totp_aktiv')):
+            return jsonify({'ok': True})  # allerede fra
+        if not _totp_verify(r.data.get('totp_secret') or '', kode):
+            return jsonify({'error': 'Forkert kode. Indtast en gyldig 2FA-kode for at slaa fra.'}), 400
+        db.table('klienter').update({'totp_secret': None, 'totp_aktiv': False}).eq('id', klient_id).execute()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e, 'Kunne ikke slaa 2FA fra')}), 500
 
 @app.route('/', methods=['GET'])
 def index():

@@ -1679,6 +1679,59 @@
         </div>
       </div>
 
+      <!-- SIKKERHED / 2FA (vises kun for virksomhedens ejer) -->
+      <div class="card" id="sikkerhedCard" style="margin-top:1.25rem;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div>
+            <div class="card-title" style="margin:0">To-faktor login (2FA)</div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Ekstra sikkerhed: kræv en 6-cifret kode fra din telefon ved login</div>
+          </div>
+          <div id="tfaBadge" style="display:none;background:#dcfce7;color:#15803d;font-size:.72rem;font-weight:700;padding:.25rem .7rem;border-radius:99px">✓ Aktiveret</div>
+        </div>
+
+        <!-- Når slået fra -->
+        <div id="tfaFraPanel">
+          <p style="font-size:.83rem;color:var(--muted);margin-bottom:.9rem;line-height:1.65">
+            Med 2FA slået til skal du — udover din adgangskode — indtaste en kode fra en authenticator-app (fx Google Authenticator, Microsoft Authenticator eller 1Password) hver gang du logger ind. Så kan ingen komme ind, selv hvis din adgangskode bliver stjålet.
+          </p>
+          <button onclick="tfaStart()" id="tfaStartBtn" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.65rem 1.25rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Slå 2FA til</button>
+        </div>
+
+        <!-- Opsætning / enrollment -->
+        <div id="tfaSetupPanel" style="display:none">
+          <ol style="font-size:.83rem;color:var(--dark);line-height:1.7;margin:0 0 1rem 1.1rem;padding:0">
+            <li>Åbn din authenticator-app og vælg "Tilføj konto".</li>
+            <li>Vælg "Indtast nøgle manuelt" og skriv nøglen nedenfor (konto: Nordolsen).</li>
+            <li>Indtast den 6-cifrede kode appen viser, og tryk Bekræft.</li>
+          </ol>
+          <div style="background:#f7f6f3;border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-bottom:1rem">
+            <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem">Din hemmelige nøgle</div>
+            <div id="tfaSecret" style="font-family:monospace;font-size:1rem;font-weight:700;letter-spacing:2px;color:var(--dark);word-break:break-all"></div>
+          </div>
+          <div style="max-width:220px;margin-bottom:1rem">
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:.3rem">6-cifret kode fra appen</label>
+            <input id="tfaKode" inputmode="numeric" maxlength="6" placeholder="123456" style="width:100%;padding:.65rem .9rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;letter-spacing:3px;text-align:center;outline:none"/>
+          </div>
+          <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+            <button onclick="tfaBekraeft()" id="tfaBekraeftBtn" style="background:#16a34a;color:#fff;border:none;border-radius:9px;padding:.65rem 1.25rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Bekræft og aktivér</button>
+            <button onclick="tfaAnnuller()" style="background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.65rem 1.1rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Annuller</button>
+            <span id="tfaSetupFejl" style="font-size:.8rem;color:#dc2626"></span>
+          </div>
+        </div>
+
+        <!-- Når slået til -->
+        <div id="tfaTilPanel" style="display:none">
+          <p style="font-size:.83rem;color:var(--muted);margin-bottom:.9rem;line-height:1.65">
+            2FA er aktivt på din konto. For at slå det fra skal du bekræfte med en gyldig kode fra din authenticator-app.
+          </p>
+          <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+            <input id="tfaFraKode" inputmode="numeric" maxlength="6" placeholder="6-cifret kode" style="width:150px;padding:.6rem .8rem;border:1px solid var(--border);border-radius:9px;font-size:16px;font-family:inherit;letter-spacing:2px;text-align:center;outline:none"/>
+            <button onclick="tfaSlaaFra()" style="background:#fee2e2;color:#dc2626;border:none;border-radius:9px;padding:.6rem 1.1rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">Slå 2FA fra</button>
+            <span id="tfaFraFejl" style="font-size:.8rem;color:#dc2626"></span>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- AGENTER -->
@@ -4286,6 +4339,7 @@ async function econSyncTilbud(tilbudId, knap) {
 let indstillingerIndlæst = false;
 
 async function loadIndstillinger() {
+  tfaInit();
   if (indstillingerIndlæst) return;
   loadKlientKatalog();
   econLoadStatus();
@@ -4311,6 +4365,65 @@ async function loadIndstillinger() {
 document.getElementById('cfg_farve')?.addEventListener('input', function() {
   document.getElementById('cfg_farve_hex').value = this.value;
 });
+
+// ── 2FA (kun ejer) ──────────────────────────────────────
+// /2fa/status svarer 403 for under-brugere → kortet forbliver skjult, så kun
+// virksomhedens ejer ser det. Backend er kilden til sandhed for hvem der må styre 2FA.
+async function tfaInit() {
+  try {
+    const r = await fetch(`${API}/2fa/status`, _bGet());
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('sikkerhedCard').style.display = '';
+    tfaVisTilstand(!!d.aktiv);
+  } catch(e) {}
+}
+function tfaVisTilstand(aktiv) {
+  document.getElementById('tfaBadge').style.display    = aktiv ? '' : 'none';
+  document.getElementById('tfaFraPanel').style.display = aktiv ? 'none' : '';
+  document.getElementById('tfaTilPanel').style.display = aktiv ? '' : 'none';
+  document.getElementById('tfaSetupPanel').style.display = 'none';
+}
+async function tfaStart() {
+  const btn = document.getElementById('tfaStartBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${API}/2fa/setup`, { method:'POST', headers:_bAuth() });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(d.error || 'Kunne ikke starte opsætningen.'); return; }
+    document.getElementById('tfaSecret').textContent = (d.secret || '').replace(/(.{4})/g, '$1 ').trim();
+    document.getElementById('tfaSetupFejl').textContent = '';
+    document.getElementById('tfaKode').value = '';
+    document.getElementById('tfaFraPanel').style.display = 'none';
+    document.getElementById('tfaSetupPanel').style.display = '';
+    document.getElementById('tfaKode').focus();
+  } catch(e) { alert('Forbindelsesfejl — prøv igen.'); }
+  finally { btn.disabled = false; }
+}
+async function tfaBekraeft() {
+  const kode = document.getElementById('tfaKode').value.trim();
+  const fejl = document.getElementById('tfaSetupFejl');
+  fejl.textContent = '';
+  try {
+    const r = await fetch(`${API}/2fa/aktiver`, { method:'POST', headers:_bAuth(), body: JSON.stringify({ totp: kode }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { fejl.textContent = d.error || 'Forkert kode.'; return; }
+    tfaVisTilstand(true);
+  } catch(e) { fejl.textContent = 'Forbindelsesfejl — prøv igen.'; }
+}
+function tfaAnnuller() { tfaVisTilstand(false); }
+async function tfaSlaaFra() {
+  const kode = document.getElementById('tfaFraKode').value.trim();
+  const fejl = document.getElementById('tfaFraFejl');
+  fejl.textContent = '';
+  try {
+    const r = await fetch(`${API}/2fa/deaktiver`, { method:'POST', headers:_bAuth(), body: JSON.stringify({ totp: kode }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { fejl.textContent = d.error || 'Forkert kode.'; return; }
+    document.getElementById('tfaFraKode').value = '';
+    tfaVisTilstand(false);
+  } catch(e) { fejl.textContent = 'Forbindelsesfejl — prøv igen.'; }
+}
 
 async function gemIndstillinger() {
   const btn = document.getElementById('btnGemCfg');
