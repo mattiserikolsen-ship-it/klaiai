@@ -13,6 +13,10 @@ import anthropic
 import json
 import os
 import secrets
+import hmac
+import hashlib
+import base64
+import struct
 import html
 import bcrypt
 from sendgrid import SendGridAPIClient
@@ -229,8 +233,40 @@ limiter = Limiter(
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')  # INGEN fallback — skal sættes i miljøet
 if not ADMIN_PASSWORD:
     print("ADVARSEL: ADMIN_PASSWORD er ikke sat — admin-adgang er blokeret indtil den sættes.")
+# 2FA (TOTP) for admin-login. Base32-secret sat i miljoeet (ADMIN_TOTP_SECRET).
+# Er den TOM => 2FA er slaaet fra (bagudkompatibelt, laaser ikke ude foer enrollment).
+# Er den SAT => admin-login kraever bade password OG en gyldig 6-cifret kode.
+ADMIN_TOTP_SECRET = os.environ.get('ADMIN_TOTP_SECRET', '').strip()
 # Sæt ADMIN_LOCAL_ONLY=true på Render for at blokere admin-adgang fra internettet
 ADMIN_LOCAL_ONLY = os.environ.get('ADMIN_LOCAL_ONLY', 'false').lower() == 'true'
+
+def _totp_verify(secret, code, window=1, step=30, digits=6):
+    """Verificerer en TOTP-kode (RFC 6238) mod en base32-secret.
+
+    window=1 accepterer ogsaa forrige/naeste 30s-interval, saa smaa ur-forskelle
+    mellem server og telefon ikke afviser en ellers korrekt kode. Bruger kun
+    stdlib (hmac/hashlib/base64/struct) — ingen ekstern afhaengighed."""
+    if not secret or not code:
+        return False
+    code = str(code).strip().replace(' ', '')
+    if not (code.isdigit() and len(code) == digits):
+        return False
+    try:
+        s = secret.strip().replace(' ', '').upper()
+        s += '=' * ((8 - len(s) % 8) % 8)
+        key = base64.b32decode(s)
+    except Exception:
+        return False
+    counter = int(_time.time() // step)
+    for drift in range(-window, window + 1):
+        msg = struct.pack('>Q', counter + drift)
+        h = hmac.new(key, msg, hashlib.sha1).digest()
+        offset = h[-1] & 0x0F
+        bincode = struct.unpack('>I', h[offset:offset + 4])[0] & 0x7FFFFFFF
+        otp = str(bincode % (10 ** digits)).zfill(digits)
+        if hmac.compare_digest(otp, code):
+            return True
+    return False
 
 def _er_localhost():
     return request.remote_addr in ('127.0.0.1', '::1', 'localhost')
@@ -4203,6 +4239,15 @@ def login():
 
     # Admin login (kun muligt hvis ADMIN_PASSWORD er sat i miljøet)
     if admin_pw and email == admin_email and password == admin_pw:
+        # 2FA: er ADMIN_TOTP_SECRET sat, kraeves ogsaa en gyldig 6-cifret kode.
+        # Password er allerede verificeret her, saa 'totp_required' laekker kun
+        # at password var korrekt — angriberen mangler stadig koden.
+        if ADMIN_TOTP_SECRET:
+            totp = (data.get('totp') or '').strip()
+            if not totp:
+                return jsonify({'totp_required': True}), 200
+            if not _totp_verify(ADMIN_TOTP_SECRET, totp):
+                return jsonify({'error': 'Forkert 2FA-kode', 'totp_required': True}), 401
         token = secrets.token_hex(32)
         _gem_token(token, {'role': 'admin', 'created_at': _time.time()})
         return jsonify({'token': token, 'role': 'admin'})

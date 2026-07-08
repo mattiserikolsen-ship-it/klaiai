@@ -2408,6 +2408,7 @@ function visLoginOverlay() {
       <div style="font-size:1.1rem;font-weight:800;color:#0a1628;margin-bottom:1.5rem">Log ind på Nordolsen</div>
       <input id="lo_email" type="email" placeholder="Email" style="width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:.75rem;box-sizing:border-box"/>
       <input id="lo_pw" type="password" placeholder="Password" style="width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:1rem;box-sizing:border-box"/>
+      <input id="lo_totp" type="text" placeholder="6-cifret 2FA-kode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="display:none;width:100%;padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;font-size:.9rem;margin-bottom:1rem;box-sizing:border-box"/>
       <div id="lo_fejl" style="color:#dc2626;font-size:.82rem;margin-bottom:.75rem;display:none"></div>
       <button onclick="gørLogin()" style="width:100%;background:#0a2463;color:#fff;border:none;padding:.85rem;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer">Log ind →</button>
     </div>`;
@@ -2418,15 +2419,23 @@ function visLoginOverlay() {
 async function gørLogin() {
   const email = document.getElementById('lo_email').value.trim();
   const pw    = document.getElementById('lo_pw').value;
+  const totp  = document.getElementById('lo_totp').value.trim();
   const fejl  = document.getElementById('lo_fejl');
   fejl.style.display = 'none';
   try {
     const res = await fetch(AGENT_URL + '/login', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email, password: pw })
+      body: JSON.stringify(totp ? { email, password: pw, totp } : { email, password: pw })
     });
     const data = await res.json();
+    if (data.totp_required) {
+      const totpEl = document.getElementById('lo_totp');
+      totpEl.style.display = 'block';
+      totpEl.focus();
+      if (data.error) { fejl.textContent = data.error; fejl.style.display = 'block'; }
+      return;
+    }
     if (data.token && data.role === 'admin') {
       localStorage.setItem('klaiai_token', data.token);
       localStorage.setItem('klaiai_role', 'admin');
