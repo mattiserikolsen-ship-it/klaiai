@@ -1583,9 +1583,23 @@
             <div class="card-title" style="margin:0">Priskatalog</div>
             <div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">Disse priser bruges automatisk når systemet genererer tilbud</div>
           </div>
-          <button onclick="åbnNyPrispost()" style="background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">+ Tilføj</button>
+          <div style="display:flex;gap:.5rem">
+            <button onclick="åbnSkabelonModal()" style="background:#f0f4ff;color:#2563eb;border:1.5px solid #c7d7fe;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">📋 Indlæs skabelon</button>
+            <button onclick="åbnNyPrispost()" style="background:var(--dark);color:#fff;border:none;border-radius:8px;padding:.45rem 1rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">+ Tilføj</button>
+          </div>
         </div>
         <div id="klientKatalogListe"><div class="loading" style="padding:1.5rem">Henter katalog...</div></div>
+      </div>
+
+      <!-- INDLÆS BRANCHE-SKABELON MODAL -->
+      <div id="skabelonOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)lukSkabelonModal()">
+        <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:1.5rem 1.25rem calc(2rem + env(safe-area-inset-bottom,0px));max-height:90vh;overflow-y:auto">
+          <div style="font-size:.95rem;font-weight:800;color:var(--dark);margin-bottom:.35rem">Indlæs standard priser</div>
+          <div style="font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:1.1rem">Vælg dit fag, så udfyldes kataloget med typiske ydelser og priser. Du kan rette alt bagefter. Priser du allerede har, røres ikke.</div>
+          <div id="skabelonListe" style="display:flex;flex-direction:column;gap:.5rem"><div class="loading">Henter skabeloner...</div></div>
+          <div id="skabelonStatus" style="font-size:.82rem;color:var(--muted);margin:.75rem 0;display:none"></div>
+          <button onclick="lukSkabelonModal()" style="width:100%;margin-top:1rem;background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.7rem;font-size:.875rem;font-weight:700;cursor:pointer;font-family:inherit">Luk</button>
+        </div>
       </div>
 
       <!-- NY/REDIGER PRISPOST MODAL -->
@@ -4848,9 +4862,11 @@ async function loadKlientKatalog() {
 function renderKlientKatalog() {
   const liste = document.getElementById('klientKatalogListe');
   if (!klientKatalog.length) {
-    liste.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted)">
+    liste.innerHTML = `<div style="padding:2rem 1.5rem;text-align:center;color:var(--muted)">
       <div style="font-size:1.5rem;margin-bottom:.5rem">📋</div>
-      <div style="font-size:.85rem">Ingen ydelser endnu — tilføj din første pris</div>
+      <div style="font-size:.85rem;margin-bottom:1rem">Ingen ydelser endnu — kom hurtigt i gang</div>
+      <button onclick="åbnSkabelonModal()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.6rem 1.3rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">📋 Indlæs standard priser for dit fag</button>
+      <div style="font-size:.75rem;margin-top:.75rem">eller <a onclick="åbnNyPrispost()" style="color:#2563eb;font-weight:600;cursor:pointer">tilføj din første pris manuelt</a></div>
     </div>`;
     return;
   }
@@ -4893,6 +4909,67 @@ function åbnNyPrispost() {
   document.getElementById('ppStatus').style.display = 'none';
   document.getElementById('prispostModalTitel').textContent = 'Tilføj ydelse / pris';
   document.getElementById('prispostOverlay').style.display = 'flex';
+}
+
+// ── Branche-skabeloner (quick-start af priskatalog) ────────
+async function åbnSkabelonModal() {
+  document.getElementById('skabelonStatus').style.display = 'none';
+  document.getElementById('skabelonOverlay').style.display = 'flex';
+  const liste = document.getElementById('skabelonListe');
+  liste.innerHTML = '<div class="loading">Henter skabeloner...</div>';
+  try {
+    const res = await fetch(`${API}/priskatalog-skabeloner`, {
+      headers: { 'Authorization': localStorage.getItem('klaiai_token') || '' }
+    });
+    const skabeloner = await res.json();
+    if (!Array.isArray(skabeloner) || !skabeloner.length) {
+      liste.innerHTML = '<div style="font-size:.82rem;color:var(--muted)">Ingen skabeloner tilgængelige.</div>';
+      return;
+    }
+    liste.innerHTML = skabeloner.map(s => `
+      <button onclick="indlaesSkabelon('${s.key}','${s.navn.replace(/'/g,"\\'")}')" style="display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:.85rem 1rem;cursor:pointer;font-family:inherit">
+        <span style="font-size:.9rem;font-weight:700;color:var(--dark)">${s.navn}</span>
+        <span style="font-size:.72rem;color:var(--muted);font-weight:600">${s.antal} ydelser →</span>
+      </button>`).join('');
+  } catch(e) {
+    liste.innerHTML = '<div style="font-size:.82rem;color:#dc2626">Kunne ikke hente skabeloner.</div>';
+  }
+}
+
+function lukSkabelonModal() {
+  document.getElementById('skabelonOverlay').style.display = 'none';
+}
+
+async function indlaesSkabelon(branche, navn) {
+  const statusEl = document.getElementById('skabelonStatus');
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = `Indlæser ${navn}...`;
+  try {
+    const res = await fetch(`${API}/priskatalog/${CLIENT_ID}/skabelon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem('klaiai_token') || '' },
+      body: JSON.stringify({ branche })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      await loadKlientKatalog();
+      if (data.tilføjet === 0) {
+        statusEl.style.color = 'var(--muted)';
+        statusEl.textContent = 'Alle ydelser fra denne skabelon findes allerede.';
+      } else {
+        statusEl.style.color = 'var(--green)';
+        statusEl.textContent = `✓ ${data.tilføjet} ydelser tilføjet${data.sprunget_over ? ` (${data.sprunget_over} fandtes i forvejen)` : ''}. Ret priserne så de passer.`;
+        setTimeout(lukSkabelonModal, 1400);
+      }
+    } else {
+      statusEl.style.color = '#dc2626';
+      statusEl.textContent = data.error || 'Fejl — prøv igen';
+    }
+  } catch(e) {
+    statusEl.style.color = '#dc2626';
+    statusEl.textContent = 'Netværksfejl';
+  }
 }
 
 function redigerPrispost(id) {

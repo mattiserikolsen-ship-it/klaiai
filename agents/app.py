@@ -7161,6 +7161,131 @@ def slet_prispost_admin(post_id):
     except Exception as e:
         return jsonify({'error': _log_fejl(e)}), 500
 
+# ── Branche-skabeloner til priskatalog (quick-start) ──────────────────────
+# Så en ny kunde ikke møder et tomt katalog: ét klik indlæser typiske
+# ydelser+priser for deres fag, som de bagefter kan rette til.
+# Priser er ekskl. moms (matcher tilbuddenes standard-betingelser).
+BRANCHE_SKABELONER = {
+    'toemrer': {
+        'navn': 'Tømrer / snedker',
+        'poster': [
+            {'navn': 'Timepris tømrer', 'enhedspris': 495, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Faglært tømrerarbejde pr. time'},
+            {'navn': 'Opstartsgebyr / kørsel', 'enhedspris': 350, 'enhed': 'opgave', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Kørsel og opstart pr. opgave'},
+            {'navn': 'Montering af indvendig dør', 'enhedspris': 850, 'enhed': 'stk', 'kategori': 'Døre & vinduer', 'beskrivelse': 'Inkl. tilpasning og justering'},
+            {'navn': 'Udskiftning af vindue', 'enhedspris': 2500, 'enhed': 'stk', 'kategori': 'Døre & vinduer', 'beskrivelse': 'Demontering og montering, ekskl. vindue'},
+            {'navn': 'Terrasse — trykimprægneret', 'enhedspris': 750, 'enhed': 'm²', 'kategori': 'Terrasse & udhus', 'beskrivelse': 'Inkl. underlag, ekskl. materialer'},
+            {'navn': 'Terrasse — hårdttræ/komposit', 'enhedspris': 1200, 'enhed': 'm²', 'kategori': 'Terrasse & udhus', 'beskrivelse': 'Inkl. underlag, ekskl. materialer'},
+            {'navn': 'Lægning af trægulv', 'enhedspris': 350, 'enhed': 'm²', 'kategori': 'Gulv', 'beskrivelse': 'Klik- eller plankegulv'},
+            {'navn': 'Opsætning af gipsvæg', 'enhedspris': 450, 'enhed': 'm²', 'kategori': 'Vægge & lofter', 'beskrivelse': 'Skelet og beklædning'},
+            {'navn': 'Loftbeklædning', 'enhedspris': 400, 'enhed': 'm²', 'kategori': 'Vægge & lofter', 'beskrivelse': 'Montering af loftplader'},
+            {'navn': 'Isolering af loft', 'enhedspris': 250, 'enhed': 'm²', 'kategori': 'Isolering', 'beskrivelse': 'Ekskl. materialer'},
+            {'navn': 'Køkkenmontering', 'enhedspris': 12000, 'enhed': 'opgave', 'kategori': 'Køkken & bad', 'beskrivelse': 'Standard køkken, ekskl. hvidevarer'},
+            {'navn': 'Carport (standard)', 'enhedspris': 25000, 'enhed': 'opgave', 'kategori': 'Terrasse & udhus', 'beskrivelse': 'Opførsel, ekskl. materialer'},
+            {'navn': 'Nedrivning / nedtagning', 'enhedspris': 395, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Inkl. bortskaffelse efter aftale'},
+        ],
+    },
+    'maler': {
+        'navn': 'Maler',
+        'poster': [
+            {'navn': 'Timepris maler', 'enhedspris': 425, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Faglært malerarbejde pr. time'},
+            {'navn': 'Maling af væg (2 gange)', 'enhedspris': 85, 'enhed': 'm²', 'kategori': 'Indvendig maling', 'beskrivelse': 'To gange maling, ekskl. materialer'},
+            {'navn': 'Maling af loft', 'enhedspris': 95, 'enhed': 'm²', 'kategori': 'Indvendig maling', 'beskrivelse': 'To gange maling'},
+            {'navn': 'Spartling og slibning', 'enhedspris': 120, 'enhed': 'm²', 'kategori': 'Forarbejde', 'beskrivelse': 'Klargøring af overflade'},
+            {'navn': 'Maling af træværk/lister', 'enhedspris': 65, 'enhed': 'm', 'kategori': 'Træværk', 'beskrivelse': 'Karme, lister og paneler'},
+            {'navn': 'Tapetsering', 'enhedspris': 150, 'enhed': 'm²', 'kategori': 'Vægbeklædning', 'beskrivelse': 'Ekskl. tapet'},
+        ],
+    },
+    'vvs': {
+        'navn': 'VVS',
+        'poster': [
+            {'navn': 'Timepris VVS', 'enhedspris': 595, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Autoriseret VVS pr. time'},
+            {'navn': 'Fejlfinding / tilkald', 'enhedspris': 750, 'enhed': 'opgave', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Udkald og fejlfinding'},
+            {'navn': 'Udskiftning af blandingsbatteri', 'enhedspris': 950, 'enhed': 'stk', 'kategori': 'Bad & køkken', 'beskrivelse': 'Ekskl. armatur'},
+            {'navn': 'Montering af toilet', 'enhedspris': 1800, 'enhed': 'stk', 'kategori': 'Bad & køkken', 'beskrivelse': 'Ekskl. toilet'},
+            {'navn': 'Udskiftning af radiator', 'enhedspris': 2500, 'enhed': 'stk', 'kategori': 'Varme', 'beskrivelse': 'Ekskl. radiator'},
+        ],
+    },
+    'elektriker': {
+        'navn': 'Elektriker',
+        'poster': [
+            {'navn': 'Timepris elektriker', 'enhedspris': 550, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Autoriseret el-arbejde pr. time'},
+            {'navn': 'Ny stikkontakt', 'enhedspris': 650, 'enhed': 'stk', 'kategori': 'Installation', 'beskrivelse': 'Montering og tilslutning'},
+            {'navn': 'Montering af lampe/armatur', 'enhedspris': 450, 'enhed': 'stk', 'kategori': 'Installation', 'beskrivelse': 'Ekskl. armatur'},
+            {'navn': 'Eltjek / gennemgang', 'enhedspris': 1500, 'enhed': 'opgave', 'kategori': 'Service', 'beskrivelse': 'Sikkerhedsgennemgang af installation'},
+            {'navn': 'Udskiftning af HPFI-relæ', 'enhedspris': 1800, 'enhed': 'stk', 'kategori': 'Installation', 'beskrivelse': 'Inkl. materiale'},
+        ],
+    },
+    'murer': {
+        'navn': 'Murer',
+        'poster': [
+            {'navn': 'Timepris murer', 'enhedspris': 475, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Faglært murerarbejde pr. time'},
+            {'navn': 'Flisebelægning', 'enhedspris': 650, 'enhed': 'm²', 'kategori': 'Fliser', 'beskrivelse': 'Opsætning, ekskl. fliser'},
+            {'navn': 'Opmuring af væg', 'enhedspris': 850, 'enhed': 'm²', 'kategori': 'Murværk', 'beskrivelse': 'Ekskl. sten'},
+            {'navn': 'Pudsning af væg', 'enhedspris': 350, 'enhed': 'm²', 'kategori': 'Murværk', 'beskrivelse': 'Grov- og finpuds'},
+            {'navn': 'Fugning', 'enhedspris': 250, 'enhed': 'm', 'kategori': 'Fliser', 'beskrivelse': 'Ny fuge'},
+        ],
+    },
+    'rengoering': {
+        'navn': 'Rengøring',
+        'poster': [
+            {'navn': 'Timepris rengøring', 'enhedspris': 349, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Rengøring pr. time'},
+            {'navn': 'Hovedrengøring', 'enhedspris': 45, 'enhed': 'm²', 'kategori': 'Rengøring', 'beskrivelse': 'Grundig rengøring'},
+            {'navn': 'Flytterengøring', 'enhedspris': 55, 'enhed': 'm²', 'kategori': 'Rengøring', 'beskrivelse': 'Klar til aflevering'},
+            {'navn': 'Vinduespudsning', 'enhedspris': 39, 'enhed': 'stk', 'kategori': 'Rengøring', 'beskrivelse': 'Pr. vindue, ind- og udvendig'},
+        ],
+    },
+}
+
+@app.route('/priskatalog-skabeloner', methods=['GET'])
+@require_token
+def hent_priskatalog_skabeloner():
+    """Liste over tilgængelige branche-skabeloner (til quick-start af priskatalog)."""
+    return jsonify([
+        {'key': key, 'navn': v['navn'], 'antal': len(v['poster'])}
+        for key, v in BRANCHE_SKABELONER.items()
+    ])
+
+@app.route('/priskatalog/<klient_id>/skabelon', methods=['POST'])
+@require_token
+def indlaes_priskatalog_skabelon(klient_id):
+    """Indlæser en branche-skabelon ind i klientens priskatalog.
+    Springer over ydelser der allerede findes (samme navn), så gentagne kald
+    ikke laver dubletter."""
+    raw = request.headers.get('Authorization', '')
+    _tok = raw.replace('Bearer ', '').strip()
+    _info = active_tokens.get(_tok, {})
+    if _info.get('role') == 'client' and _info.get('klient_id') != klient_id:
+        return jsonify({'error': 'Ikke tilladt'}), 403
+    if not db: return jsonify({'error': 'Ingen database'}), 500
+    branche = (request.json or {}).get('branche', '')
+    skabelon = BRANCHE_SKABELONER.get(branche)
+    if not skabelon:
+        return jsonify({'error': 'Ukendt skabelon'}), 400
+    import uuid as _uuid
+    try:
+        eksisterende = db.table('priskatalog').select('navn').eq('klient_id', klient_id).execute()
+        findes = {(r.get('navn') or '').strip().lower() for r in (eksisterende.data or [])}
+        nye = []
+        for p in skabelon['poster']:
+            if p['navn'].strip().lower() in findes:
+                continue
+            nye.append({
+                'id': str(_uuid.uuid4()),
+                'klient_id': klient_id,
+                'kategori': p['kategori'],
+                'navn': p['navn'],
+                'beskrivelse': p.get('beskrivelse', ''),
+                'enhedspris': float(p['enhedspris']),
+                'enhed': p['enhed'],
+                'aktiv': True,
+                'moms_inkluderet': False,
+            })
+        if nye:
+            db.table('priskatalog').insert(nye).execute()
+        return jsonify({'ok': True, 'tilføjet': len(nye), 'sprunget_over': len(skabelon['poster']) - len(nye)})
+    except Exception as e:
+        return jsonify({'error': _log_fejl(e)}), 500
+
 @app.route('/markeds-analyse/<klient_id>', methods=['GET'])
 @require_token
 def hent_markeds_analyse(klient_id):
@@ -7507,10 +7632,30 @@ PRISKATALOG (brug disse EKSAKTE priser — afveg ikke):
 (Intet priskatalog opsat — prissæt ud fra dansk markedspris for opgaven)
 """
 
+    # Faste linjer: de ydelser håndværkeren aktivt har valgt fra sit katalog
+    # låses som linjer med EKSAKT pris server-side — AI'en må ikke omskrive
+    # eller udelade dem. Det sikrer at valgte katalog-priser altid holder.
+    faste_linjer = []
+    for y in valgte_ydelser:
+        try:
+            pris = float(y.get('enhedspris', 0))
+        except (ValueError, TypeError):
+            pris = 0
+        faste_linjer.append({
+            'beskrivelse': y.get('navn', ''),
+            'antal': 1,
+            'enhed': y.get('enhed', 'stk'),
+            'enhedspris': pris,
+            'total': pris,
+        })
+    valgte_navne = {(y.get('navn') or '').strip().lower() for y in valgte_ydelser}
+
     valgte_tekst = ''
-    if valgte_ydelser:
+    if faste_linjer:
         linjer = [f"- {y['navn']}: {kr(y['enhedspris'])} kr. per {y.get('enhed','stk')}" for y in valgte_ydelser]
-        valgte_tekst = "\n\nKUNDEN HAR VALGT DISSE SPECIFIKKE YDELSER (inkludér dem alle i tilbuddet med disse PRÆCISE priser):\n" + '\n'.join(linjer)
+        valgte_tekst = ("\n\nHÅNDVÆRKEREN HAR VALGT DISSE YDELSER FRA SIT KATALOG — de er ALLEREDE tilføjet"
+                        " som faste linjer i tilbuddet med præcise priser. Tilføj dem IKKE igen. Tilføj kun"
+                        " EVENTUELLE ekstra linjer for arbejde/materialer der ikke er dækket af disse:\n" + '\n'.join(linjer))
 
     materialer_tekst = ''
     if materialer:
@@ -7570,6 +7715,17 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
         tilbud_data = json.loads(raw)
     except Exception as e:
         return jsonify({'error': _log_fejl(e, 'AI-generering fejlede')}), 500
+
+    # Lås de valgte katalog-ydelser: læg dem forrest som faste linjer og fjern
+    # eventuelle AI-linjer der dublerer dem (samme navn). Så holder de valgte
+    # priser præcist, uanset hvad AI'en finder på.
+    if faste_linjer:
+        ai_linjer = tilbud_data.get('linjer', []) or []
+        ai_uden_dubletter = [
+            l for l in ai_linjer
+            if (l.get('beskrivelse') or '').strip().lower() not in valgte_navne
+        ]
+        tilbud_data['linjer'] = faste_linjer + ai_uden_dubletter
 
     # Konkurrentanalyse (hvis aktiveret)
     konkurrent_opsummering = ''
