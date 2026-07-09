@@ -5596,7 +5596,7 @@ Regler:
 - Brug #7c3aed som accentfarve"""
 
                 resp = ai.messages.create(
-                    model='claude-opus-4-8',
+                    model='claude-haiku-4-5-20251001',
                     max_tokens=500,
                     messages=[{'role': 'user', 'content': prompt}]
                 )
