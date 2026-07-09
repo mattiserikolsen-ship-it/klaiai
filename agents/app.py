@@ -8417,7 +8417,7 @@ def portal_send_tilbud(tilbud_id):
         _std_tekst = f'Hej {kunde_navn},\n\nHermed dit tilbud fra {fra_navn}.\n\nTilbuddet er vedhæftet som PDF.'
         _tekst = render_tilbud_mailtekst(_mcfg.get('tilbud_mail_tekst'), kunde_navn, fra_navn) or _std_tekst
 
-        send_mail(
+        mail_ok = send_mail(
             kunde_email, emne,
             _tekst,
             fra_navn=fra_navn,
@@ -8425,6 +8425,13 @@ def portal_send_tilbud(tilbud_id):
             pdf_vedhæft=pdf_bytes,
             pdf_filnavn=f'{sikkert_filnavn}.pdf'
         )
+        # Mailen KOM ikke afsted — markér IKKE som sendt. Ellers tror
+        # haandvaerkeren at tilbuddet er ude, mens kunden aldrig fik det.
+        if not mail_ok:
+            alarm('Tilbud kunne ikke sendes',
+                  f'Tilbud {tilbud_id} til {kunde_email} fejlede ved afsendelse (SendGrid). Tilbuddet er IKKE markeret som sendt.',
+                  noegle='tilbud_send_fejl')
+            return jsonify({'error': 'Tilbuddet kunne ikke sendes lige nu. Prøv igen om lidt — kunden har ikke modtaget noget endnu.'}), 502
 
         from datetime import datetime as _dt2
         db.table('tilbud').update({
