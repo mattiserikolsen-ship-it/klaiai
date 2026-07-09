@@ -1397,6 +1397,15 @@ def generer_tilbud_pdf(html_indhold):
         return None
 
 
+def kr(beløb):
+    """Formatér beløb med dansk tusind-adskiller (punktum): 22375 -> '22.375'.
+    Python's ':,' giver engelsk komma (22,375) — forkert og forvirrende på dansk."""
+    try:
+        return f"{int(round(float(beløb))):,}".replace(',', '.')
+    except (ValueError, TypeError):
+        return str(beløb)
+
+
 def send_mail(til, emne, tekst, fra_navn, html_content=None, pdf_vedhæft=None, pdf_filnavn='tilbud.pdf', reply_to=None):
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return False
@@ -6599,7 +6608,7 @@ def kør_tilbud_udløb():
   </td></tr>
   <tr><td style="padding:28px 36px">
     <p style="font-size:15px;color:#374151;line-height:1.7">Hej {t.get('kunde_navn','')},<br><br>
-    Dit tilbud <strong>"{t.get('titel','Tilbud')}"</strong> på <strong>{int(t.get('total_pris',0)):,} kr.</strong> udløber om 5 dage.<br><br>
+    Dit tilbud <strong>"{t.get('titel','Tilbud')}"</strong> på <strong>{kr(t.get('total_pris',0))} kr.</strong> udløber om 5 dage.<br><br>
     Ønsker du at gå videre, skal du acceptere inden da.</p>
     {f'<div style="text-align:center;margin:24px 0"><a href="{accept_url}" style="background:#d97706;color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 40px;border-radius:10px;display:inline-block">Acceptér tilbud →</a></div>' if accept_url else ''}
     <p style="font-size:13px;color:#6b7280">Har du spørgsmål er du altid velkommen til at kontakte os.<br><br>Med venlig hilsen<br><strong>{fra_navn}</strong></p>
@@ -6830,29 +6839,29 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
                 '<tr>'
                 f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a1a;font-weight:300">{l.get("beskrivelse","")} <span style="font-size:10px;color:#bbb;font-weight:400">{"inkl. moms" if l.get("moms_inkluderet") else "ekskl. moms"}</span></td>'
                 f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:center;white-space:nowrap">{l.get("antal","1")} {l.get("enhed","stk")}</td>'
-                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:right;white-space:nowrap">{int(l.get("enhedspris",0)):,} kr.</td>'
-                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#111;text-align:right;white-space:nowrap">{int(l.get("total",0)):,} kr.</td>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;color:#999;text-align:right;white-space:nowrap">{kr(l.get("enhedspris",0))} kr.</td>'
+                f'<td style="padding:13px 0;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:700;color:#111;text-align:right;white-space:nowrap">{kr(l.get("total",0))} kr.</td>'
                 '</tr>'
             )
         rabat_rækker = ''
         if rabat > 0:
             rabat_rækker = (
                 f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Subtotal</td>'
-                f'<td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(subtotal):,} kr.</td></tr>'
+                f'<td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{kr(subtotal)} kr.</td></tr>'
                 f'<tr><td colspan="3" style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
-                f'<td style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">&#8722;{int(rabat):,} kr.</td></tr>'
+                f'<td style="padding:6px 0;font-size:12px;color:#16a34a;font-weight:700;text-align:right">&#8722;{kr(rabat)} kr.</td></tr>'
             )
 
         if has_inkl:
             ekskl_total_rækker = (
-                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Varer (inkl. moms)</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(sum_inkl):,} kr.</td></tr>' if sum_inkl > 0 else '') +
-                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Arbejde/kørsel (ekskl. moms)</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(sum_ekskl):,} kr.</td></tr>' if sum_ekskl > 0 else '') +
-                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Moms 25% af ydelser</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(moms_beloeb):,} kr.</td></tr>' if moms_beloeb > 0 else '') +
+                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Varer (inkl. moms)</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{kr(sum_inkl)} kr.</td></tr>' if sum_inkl > 0 else '') +
+                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Arbejde/kørsel (ekskl. moms)</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{kr(sum_ekskl)} kr.</td></tr>' if sum_ekskl > 0 else '') +
+                (f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Moms 25% af ydelser</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{kr(moms_beloeb)} kr.</td></tr>' if moms_beloeb > 0 else '') +
                 rabat_rækker
             )
         else:
             ekskl_total_rækker = (
-                f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Moms 25%</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{int(moms_beloeb):,} kr.</td></tr>'
+                f'<tr><td colspan="3" style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">Moms 25%</td><td style="padding:8px 0;font-size:11px;color:#bbb;text-align:right">{kr(moms_beloeb)} kr.</td></tr>'
                 + rabat_rækker
             )
 
@@ -6869,7 +6878,7 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
   {ekskl_total_rækker}
   <tr style="border-top:2px solid #111">
     <td colspan="3" style="padding:18px 0 6px;font-size:10px;font-weight:300;color:#aaa;text-align:right;text-transform:uppercase;letter-spacing:1.5px">Total inkl. moms</td>
-    <td style="padding:18px 0 6px;font-size:22px;font-weight:900;color:#111;text-align:right;line-height:1">{int(total):,} kr.</td>
+    <td style="padding:18px 0 6px;font-size:22px;font-weight:900;color:#111;text-align:right;line-height:1">{kr(total)} kr.</td>
   </tr>
 </table>
 </div>"""
@@ -6947,33 +6956,33 @@ def _byg_tilbud_html(klient_navn, klient_hjemmeside, kunde_navn, kunde_email,
             '<tr>'
             f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#1a1a2e">{l.get("beskrivelse","")} <span style="font-size:10px;color:#9ca3af">{"inkl. moms" if l.get("moms_inkluderet") else "ekskl. moms"}</span></td>'
             f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:center">{l.get("antal","1")} {l.get("enhed","stk")}</td>'
-            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:right">{int(l.get("enhedspris",0)):,} kr.</td>'
-            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#1a1a2e;text-align:right">{int(l.get("total",0)):,} kr.</td>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#6b7280;text-align:right">{kr(l.get("enhedspris",0))} kr.</td>'
+            f'<td style="padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#1a1a2e;text-align:right">{kr(l.get("total",0))} kr.</td>'
             '</tr>'
         )
     rabat_rækker = ''
     if rabat > 0:
         rabat_rækker = (
             f'<tr><td colspan="3" style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">Subtotal</td>'
-            f'<td style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(subtotal):,} kr.</td></tr>'
+            f'<td style="padding:8px 16px;font-size:12px;color:#9ca3af;text-align:right">{kr(subtotal)} kr.</td></tr>'
             f'<tr><td colspan="3" style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">Rabat</td>'
-            f'<td style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">&#8722;{int(rabat):,} kr.</td></tr>'
+            f'<td style="padding:8px 16px;font-size:13px;color:#16a34a;font-weight:700;text-align:right">&#8722;{kr(rabat)} kr.</td></tr>'
         )
 
     if has_inkl:
         std_total_rækker = (
-            (f'<tr style="background:#f9fafb"><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Varer (inkl. moms)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(sum_inkl):,} kr.</td></tr>' if sum_inkl > 0 else '') +
-            (f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Arbejde/kørsel (ekskl. moms)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(sum_ekskl):,} kr.</td></tr>' if sum_ekskl > 0 else '') +
-            (f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms 25% af ydelser</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(moms_beloeb):,} kr.</td></tr>' if moms_beloeb > 0 else '') +
+            (f'<tr style="background:#f9fafb"><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Varer (inkl. moms)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{kr(sum_inkl)} kr.</td></tr>' if sum_inkl > 0 else '') +
+            (f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Arbejde/kørsel (ekskl. moms)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{kr(sum_ekskl)} kr.</td></tr>' if sum_ekskl > 0 else '') +
+            (f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms 25% af ydelser</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{kr(moms_beloeb)} kr.</td></tr>' if moms_beloeb > 0 else '') +
             rabat_rækker +
-            f'<tr style="background:{accent}"><td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td><td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total):,} kr.</td></tr>'
+            f'<tr style="background:{accent}"><td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td><td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{kr(total)} kr.</td></tr>'
         )
     else:
         std_total_rækker = (
             rabat_rækker +
-            f'<tr style="background:#f9fafb"><td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td><td style="padding:14px 16px;font-size:16px;font-weight:900;color:{accent};text-align:right">{int(total):,} kr.</td></tr>'
-            f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms (25%)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{int(moms_beloeb):,} kr.</td></tr>'
-            f'<tr style="background:{accent}"><td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td><td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{int(total*1.25 if not has_inkl else total):,} kr.</td></tr>'
+            f'<tr style="background:#f9fafb"><td colspan="3" style="padding:14px 16px;font-size:13px;font-weight:700;color:#1a1a2e;text-align:right">Total ekskl. moms</td><td style="padding:14px 16px;font-size:16px;font-weight:900;color:{accent};text-align:right">{kr(total)} kr.</td></tr>'
+            f'<tr><td colspan="3" style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">Moms (25%)</td><td style="padding:10px 16px;font-size:12px;color:#9ca3af;text-align:right">{kr(moms_beloeb)} kr.</td></tr>'
+            f'<tr style="background:{accent}"><td colspan="3" style="padding:14px 16px;font-size:14px;font-weight:700;color:#fff;text-align:right">Total inkl. moms</td><td style="padding:14px 16px;font-size:18px;font-weight:900;color:#fff;text-align:right">{kr(total*1.25 if not has_inkl else total)} kr.</td></tr>'
         )
 
     return f"""<!DOCTYPE html>
@@ -7483,7 +7492,7 @@ def generer_tilbud():
             linjer = []
             for p in kat.data:
                 moms_note = 'inkl. moms' if p.get('moms_inkluderet') else 'ekskl. moms'
-                linje = f"- {p['navn']}: {int(p['enhedspris']):,} kr. per {p.get('enhed','stk')} ({moms_note})"
+                linje = f"- {p['navn']}: {kr(p['enhedspris'])} kr. per {p.get('enhed','stk')} ({moms_note})"
                 if p.get('beskrivelse'):
                     linje += f" — {p['beskrivelse']}"
                 linjer.append(linje)
@@ -7500,7 +7509,7 @@ PRISKATALOG (brug disse EKSAKTE priser — afveg ikke):
 
     valgte_tekst = ''
     if valgte_ydelser:
-        linjer = [f"- {y['navn']}: {int(y['enhedspris']):,} kr. per {y.get('enhed','stk')}" for y in valgte_ydelser]
+        linjer = [f"- {y['navn']}: {kr(y['enhedspris'])} kr. per {y.get('enhed','stk')}" for y in valgte_ydelser]
         valgte_tekst = "\n\nKUNDEN HAR VALGT DISSE SPECIFIKKE YDELSER (inkludér dem alle i tilbuddet med disse PRÆCISE priser):\n" + '\n'.join(linjer)
 
     materialer_tekst = ''
@@ -8685,7 +8694,7 @@ def godkend_tilbud(tilbud_id, token):
       </tr>
       <tr style="border-top:1px solid #f0f0f0">
         <td style="padding:10px 16px;font-size:13px;color:#6b7280">Beløb</td>
-        <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#15803d">{total_pris:,} kr. ekskl. moms</td>
+        <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#15803d">{kr(total_pris)} kr. ekskl. moms</td>
       </tr>
       <tr style="border-top:1px solid #f0f0f0">
         <td style="padding:10px 16px;font-size:13px;color:#6b7280">Referencenr.</td>
@@ -8722,7 +8731,7 @@ def godkend_tilbud(tilbud_id, token):
 </body></html>"""
 
         try:
-            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'Nordolsen', html_content=bekræftelse_html, reply_to=klient_email)
+            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({kr(total_pris)} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'Nordolsen', html_content=bekræftelse_html, reply_to=klient_email)
         except Exception as e:
             print(f'Bekræftelsesmail fejl: {e}')
 
@@ -8734,12 +8743,12 @@ def godkend_tilbud(tilbud_id, token):
                     f'<h2 style="color:#15803d">&#9989; Tilbud accepteret!</h2>'
                     f'<p><strong>{kunde_navn_h}</strong> har accepteret tilbuddet <strong>"{titel_h}"</strong>.</p>'
                     f'<table style="border-collapse:collapse;width:100%;max-width:400px">'
-                    f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Beløb</td><td style="padding:8px;font-weight:700;border-bottom:1px solid #eee">{total_pris:,} kr.</td></tr>'
+                    f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Beløb</td><td style="padding:8px;font-weight:700;border-bottom:1px solid #eee">{kr(total_pris)} kr.</td></tr>'
                     f'<tr><td style="padding:8px;color:#666;border-bottom:1px solid #eee">Tidspunkt</td><td style="padding:8px;border-bottom:1px solid #eee">{dato_str}</td></tr>'
                     f'<tr><td style="padding:8px;color:#666">Reference</td><td style="padding:8px;font-family:monospace">{ref_nr}</td></tr>'
                     f'</table></div>'
                 )
-                send_mail(klient_email, f'✅ Tilbud accepteret: {titel}', f'{kunde_navn} har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).', fra_navn='Nordolsen', html_content=notif_html)
+                send_mail(klient_email, f'✅ Tilbud accepteret: {titel}', f'{kunde_navn} har accepteret tilbuddet "{titel}" ({kr(total_pris)} kr.).', fra_navn='Nordolsen', html_content=notif_html)
         except:
             pass
 
