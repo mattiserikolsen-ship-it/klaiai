@@ -7234,6 +7234,96 @@ BRANCHE_SKABELONER = {
             {'navn': 'Vinduespudsning', 'enhedspris': 39, 'enhed': 'stk', 'kategori': 'Rengøring', 'beskrivelse': 'Pr. vindue, ind- og udvendig'},
         ],
     },
+    'konsulent': {
+        'navn': 'Konsulent / rådgiver',
+        'poster': [
+            {'navn': 'Timepris konsulent', 'enhedspris': 1200, 'enhed': 'time', 'kategori': 'Rådgivning', 'beskrivelse': 'Konsulentarbejde pr. time'},
+            {'navn': 'Strategisession (halv dag)', 'enhedspris': 5500, 'enhed': 'opgave', 'kategori': 'Rådgivning', 'beskrivelse': 'Op til 4 timer'},
+            {'navn': 'Workshop (heldag)', 'enhedspris': 12000, 'enhed': 'dag', 'kategori': 'Rådgivning', 'beskrivelse': 'Faciliteret workshop'},
+            {'navn': 'Løbende rådgivning (retainer)', 'enhedspris': 8000, 'enhed': 'pakke', 'kategori': 'Abonnement', 'beskrivelse': 'Pr. måned'},
+            {'navn': 'Analyse & rapport', 'enhedspris': 9500, 'enhed': 'opgave', 'kategori': 'Rådgivning', 'beskrivelse': 'Skriftlig analyse med anbefalinger'},
+        ],
+    },
+    'klinik': {
+        'navn': 'Klinik / behandler',
+        'poster': [
+            {'navn': 'Første undersøgelse', 'enhedspris': 850, 'enhed': 'stk', 'kategori': 'Behandling', 'beskrivelse': 'Grundig udredning'},
+            {'navn': 'Behandling (60 min)', 'enhedspris': 750, 'enhed': 'stk', 'kategori': 'Behandling', 'beskrivelse': 'Fuld behandling'},
+            {'navn': 'Konsultation (30 min)', 'enhedspris': 450, 'enhed': 'stk', 'kategori': 'Behandling', 'beskrivelse': 'Opfølgning'},
+            {'navn': 'Online-konsultation', 'enhedspris': 350, 'enhed': 'stk', 'kategori': 'Behandling', 'beskrivelse': 'Video eller telefon'},
+            {'navn': 'Klippekort (5 behandlinger)', 'enhedspris': 3400, 'enhed': 'pakke', 'kategori': 'Pakker', 'beskrivelse': 'Rabat ved forudbetaling'},
+        ],
+    },
+    'frisoer': {
+        'navn': 'Frisør & skønhed',
+        'poster': [
+            {'navn': 'Herreklip', 'enhedspris': 350, 'enhed': 'stk', 'kategori': 'Klip', 'beskrivelse': 'Inkl. vask'},
+            {'navn': 'Dameklip', 'enhedspris': 550, 'enhed': 'stk', 'kategori': 'Klip', 'beskrivelse': 'Inkl. vask og føn'},
+            {'navn': 'Farvning', 'enhedspris': 900, 'enhed': 'stk', 'kategori': 'Farve', 'beskrivelse': 'Helfarve'},
+            {'navn': 'Striber / highlights', 'enhedspris': 1200, 'enhed': 'stk', 'kategori': 'Farve', 'beskrivelse': 'Efter hårlængde'},
+            {'navn': 'Føn & styling', 'enhedspris': 300, 'enhed': 'stk', 'kategori': 'Styling', 'beskrivelse': 'Uden klip'},
+        ],
+    },
+    'bureau': {
+        'navn': 'Bureau / marketing',
+        'poster': [
+            {'navn': 'Timepris rådgivning', 'enhedspris': 1100, 'enhed': 'time', 'kategori': 'Rådgivning', 'beskrivelse': 'Marketing- og webrådgivning'},
+            {'navn': 'Social media-pakke', 'enhedspris': 7500, 'enhed': 'pakke', 'kategori': 'Abonnement', 'beskrivelse': 'Pr. måned, indhold og styring'},
+            {'navn': 'Google Ads-opsætning', 'enhedspris': 6500, 'enhed': 'opgave', 'kategori': 'Annoncering', 'beskrivelse': 'Kampagneopsætning'},
+            {'navn': 'Hjemmeside (one-page)', 'enhedspris': 15000, 'enhed': 'opgave', 'kategori': 'Web', 'beskrivelse': 'Design og opsætning'},
+            {'navn': 'SEO-optimering', 'enhedspris': 5500, 'enhed': 'pakke', 'kategori': 'Abonnement', 'beskrivelse': 'Pr. måned'},
+        ],
+    },
+    'fotograf': {
+        'navn': 'Fotograf / kreativ',
+        'poster': [
+            {'navn': 'Portrætsession', 'enhedspris': 2500, 'enhed': 'opgave', 'kategori': 'Foto', 'beskrivelse': 'Inkl. udvalgte billeder'},
+            {'navn': 'Erhvervsfotografering (halv dag)', 'enhedspris': 6500, 'enhed': 'opgave', 'kategori': 'Foto', 'beskrivelse': 'Op til 4 timer'},
+            {'navn': 'Videoproduktion (dag)', 'enhedspris': 12000, 'enhed': 'dag', 'kategori': 'Video', 'beskrivelse': 'Optagelse på lokation'},
+            {'navn': 'Redigering pr. billede', 'enhedspris': 150, 'enhed': 'stk', 'kategori': 'Efterbehandling', 'beskrivelse': 'Retouchering'},
+            {'navn': 'Bryllupsdækning', 'enhedspris': 18000, 'enhed': 'opgave', 'kategori': 'Foto', 'beskrivelse': 'Fuld dag inkl. redigering'},
+        ],
+    },
+    'have': {
+        'navn': 'Have & anlæg',
+        'poster': [
+            {'navn': 'Timepris havemand', 'enhedspris': 425, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Havearbejde pr. time'},
+            {'navn': 'Græsslåning', 'enhedspris': 25, 'enhed': 'm²', 'kategori': 'Vedligehold', 'beskrivelse': 'Inkl. opsamling'},
+            {'navn': 'Hækkeklipning', 'enhedspris': 45, 'enhed': 'm', 'kategori': 'Vedligehold', 'beskrivelse': 'Pr. løbende meter'},
+            {'navn': 'Beskæring af træer', 'enhedspris': 550, 'enhed': 'time', 'kategori': 'Vedligehold', 'beskrivelse': 'Inkl. bortkørsel efter aftale'},
+            {'navn': 'Anlæg af flisegang', 'enhedspris': 750, 'enhed': 'm²', 'kategori': 'Anlæg', 'beskrivelse': 'Ekskl. materialer'},
+        ],
+    },
+    'event': {
+        'navn': 'Event & catering',
+        'poster': [
+            {'navn': 'Menu pr. kuvert', 'enhedspris': 385, 'enhed': 'stk', 'kategori': 'Mad', 'beskrivelse': 'Pr. gæst'},
+            {'navn': 'Servering (personale)', 'enhedspris': 295, 'enhed': 'time', 'kategori': 'Personale', 'beskrivelse': 'Pr. medarbejder pr. time'},
+            {'navn': 'Bartender', 'enhedspris': 350, 'enhed': 'time', 'kategori': 'Personale', 'beskrivelse': 'Pr. time'},
+            {'navn': 'Leje af service', 'enhedspris': 45, 'enhed': 'stk', 'kategori': 'Udstyr', 'beskrivelse': 'Pr. kuvert'},
+            {'navn': 'Fuld eventpakke', 'enhedspris': 25000, 'enhed': 'opgave', 'kategori': 'Pakker', 'beskrivelse': 'Planlægning og afvikling'},
+        ],
+    },
+    'transport': {
+        'navn': 'Transport & flytning',
+        'poster': [
+            {'navn': 'Timepris flyttemand', 'enhedspris': 450, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Pr. mand pr. time'},
+            {'navn': 'Flyttebil inkl. chauffør', 'enhedspris': 750, 'enhed': 'time', 'kategori': 'Kørsel', 'beskrivelse': 'Pr. time'},
+            {'navn': 'Flytning (2-vær. lejlighed)', 'enhedspris': 4500, 'enhed': 'opgave', 'kategori': 'Pakker', 'beskrivelse': 'Standard flytning'},
+            {'navn': 'Nedpakning', 'enhedspris': 395, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Pr. mand pr. time'},
+            {'navn': 'Opstartsgebyr / kørsel', 'enhedspris': 500, 'enhed': 'opgave', 'kategori': 'Kørsel', 'beskrivelse': 'Fast startgebyr'},
+        ],
+    },
+    'auto': {
+        'navn': 'Autoværksted',
+        'poster': [
+            {'navn': 'Timepris mekaniker', 'enhedspris': 650, 'enhed': 'time', 'kategori': 'Arbejdsløn', 'beskrivelse': 'Værkstedstime'},
+            {'navn': 'Serviceeftersyn', 'enhedspris': 1800, 'enhed': 'opgave', 'kategori': 'Service', 'beskrivelse': 'Ekskl. dele'},
+            {'navn': 'Olieskift', 'enhedspris': 900, 'enhed': 'opgave', 'kategori': 'Service', 'beskrivelse': 'Inkl. olie og filter'},
+            {'navn': 'Dækskift (4 dæk)', 'enhedspris': 400, 'enhed': 'opgave', 'kategori': 'Dæk', 'beskrivelse': 'Om- og afbalancering'},
+            {'navn': 'Bremseskift (for/bag)', 'enhedspris': 2500, 'enhed': 'opgave', 'kategori': 'Reparation', 'beskrivelse': 'Ekskl. dele'},
+        ],
+    },
 }
 
 @app.route('/priskatalog-skabeloner', methods=['GET'])

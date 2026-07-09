@@ -1595,7 +1595,7 @@
       <div id="skabelonOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:flex-end;justify-content:center" onclick="if(event.target===this)lukSkabelonModal()">
         <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:1.5rem 1.25rem calc(2rem + env(safe-area-inset-bottom,0px));max-height:90vh;overflow-y:auto">
           <div style="font-size:.95rem;font-weight:800;color:var(--dark);margin-bottom:.35rem">Indlæs standard priser</div>
-          <div style="font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:1.1rem">Vælg dit fag, så udfyldes kataloget med typiske ydelser og priser. Du kan rette alt bagefter. Priser du allerede har, røres ikke.</div>
+          <div style="font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:1.1rem">Vælg din branche, så udfyldes kataloget med typiske ydelser og priser. Du kan rette alt bagefter. Priser du allerede har, røres ikke.</div>
           <div id="skabelonListe" style="display:flex;flex-direction:column;gap:.5rem"><div class="loading">Henter skabeloner...</div></div>
           <div id="skabelonStatus" style="font-size:.82rem;color:var(--muted);margin:.75rem 0;display:none"></div>
           <button onclick="lukSkabelonModal()" style="width:100%;margin-top:1rem;background:#f0efec;color:var(--dark);border:none;border-radius:9px;padding:.7rem;font-size:.875rem;font-weight:700;cursor:pointer;font-family:inherit">Luk</button>
@@ -4899,7 +4899,7 @@ function renderKlientKatalog() {
     liste.innerHTML = `<div style="padding:2rem 1.5rem;text-align:center;color:var(--muted)">
       <div style="font-size:1.5rem;margin-bottom:.5rem">📋</div>
       <div style="font-size:.85rem;margin-bottom:1rem">Ingen ydelser endnu — kom hurtigt i gang</div>
-      <button onclick="åbnSkabelonModal()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.6rem 1.3rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">📋 Indlæs standard priser for dit fag</button>
+      <button onclick="åbnSkabelonModal()" style="background:var(--dark);color:#fff;border:none;border-radius:9px;padding:.6rem 1.3rem;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit">📋 Indlæs standard priser for din branche</button>
       <div style="font-size:.75rem;margin-top:.75rem">eller <a onclick="åbnNyPrispost()" style="color:#2563eb;font-weight:600;cursor:pointer">tilføj din første pris manuelt</a></div>
     </div>`;
     return;
