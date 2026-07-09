@@ -8582,8 +8582,11 @@ def godkend_tilbud(tilbud_id, token):
     if not db:
         return '<h2>Systemfejl — kontakt os direkte</h2>', 500
     try:
-        res = db.table('tilbud').select('*').eq('id', tilbud_id).single().execute()
-        t = res.data
+        # .limit(1) frem for .single() — .single() kaster exception ved 0 rækker
+        # (ukendt/slettet tilbud) og ville give kunden en raa 500 i stedet for
+        # den venlige "ikke fundet"-side.
+        res = db.table('tilbud').select('*').eq('id', tilbud_id).limit(1).execute()
+        t = res.data[0] if res.data else None
         if not t:
             return _godkend_side('Tilbud ikke fundet', 'Vi kunne ikke finde dette tilbud. Kontakt os direkte.', fejl=True), 404
         if t.get('accept_token') != token:
