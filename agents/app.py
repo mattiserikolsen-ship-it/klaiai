@@ -1397,7 +1397,7 @@ def generer_tilbud_pdf(html_indhold):
         return None
 
 
-def send_mail(til, emne, tekst, fra_navn, html_content=None, pdf_vedhæft=None, pdf_filnavn='tilbud.pdf'):
+def send_mail(til, emne, tekst, fra_navn, html_content=None, pdf_vedhæft=None, pdf_filnavn='tilbud.pdf', reply_to=None):
     if not SENDGRID_API_KEY or not SENDGRID_FROM:
         return False
     try:
@@ -1411,6 +1411,13 @@ def send_mail(til, emne, tekst, fra_navn, html_content=None, pdf_vedhæft=None, 
             plain_text_content=tekst,
             html_content=html_content
         )
+        # Svar-til: mails sendes fra det fælles klaai.dk-domæne, men kundens
+        # svar skal lande hos den rigtige virksomhed (håndværkeren) — ikke i en
+        # ubemandet kontakt@klaai.dk-postkasse. Sættes kun når et gyldigt svar-til
+        # er angivet, så system/Nordolsen-mails er uændrede.
+        if reply_to and '@' in str(reply_to):
+            from sendgrid.helpers.mail import ReplyTo
+            message.reply_to = ReplyTo(reply_to, fra_navn)
         if pdf_vedhæft:
             import base64
             from sendgrid.helpers.mail import Attachment, FileContent, FileName, FileType, Disposition
@@ -6525,10 +6532,11 @@ def kør_tilbud_followup():
             if dage_siden < skema[næste_trin]:
                 continue
 
-            k = db.table('klienter').select('navn,hjemmeside').eq('id', t['klient_id']).single().execute()
+            k = db.table('klienter').select('navn,hjemmeside,email').eq('id', t['klient_id']).single().execute()
             klient = k.data or {}
             fra_navn = klient.get('navn', 'Virksomheden')
             klient_hjemmeside = klient.get('hjemmeside', '')
+            klient_email = klient.get('email', '') or ''
             kunde_navn  = t.get('kunde_navn', '')
             titel       = t.get('titel', 'Tilbud')
             total_pris  = t.get('total_pris', 0) or 0
@@ -6544,7 +6552,7 @@ def kør_tilbud_followup():
 
             html, emne = _byg_followup_html(fra_navn, klient_hjemmeside, kunde_navn, titel, accept_knap, næste_trin, total_pris)
 
-            send_mail(kunde_email, emne, f'Opfølgning på dit tilbud fra {fra_navn}', fra_navn=fra_navn, html_content=html)
+            send_mail(kunde_email, emne, f'Opfølgning på dit tilbud fra {fra_navn}', fra_navn=fra_navn, html_content=html, reply_to=klient_email)
             db.table('tilbud').update({
                 'followup_sendt': True,
                 'followup_dato': nu.isoformat(),
@@ -6576,8 +6584,9 @@ def kør_tilbud_udløb():
                 if dage_siden == 25 and not t.get('sidst_chance_sendt'):
                     kunde_email = t.get('kunde_email', '')
                     if kunde_email and '@' in kunde_email:
-                        k = db.table('klienter').select('navn').eq('id', t['klient_id']).single().execute()
+                        k = db.table('klienter').select('navn,email').eq('id', t['klient_id']).single().execute()
                         fra_navn = k.data.get('navn', 'Virksomheden') if k.data else 'Virksomheden'
+                        klient_email = (k.data.get('email', '') if k.data else '') or ''
                         accept_token = t.get('accept_token', '')
                         accept_url = f'{SERVER_URL}/tilbud/godkend/{t["id"]}/{accept_token}' if accept_token else ''
                         html = f"""<!DOCTYPE html><html lang="da"><head><meta charset="UTF-8"/></head>
@@ -6597,7 +6606,7 @@ def kør_tilbud_udløb():
   </td></tr>
 </table></td></tr></table>
 </body></html>"""
-                        send_mail(kunde_email, f"⏰ Dit tilbud udløber om 5 dage — {t.get('titel','')}", '', fra_navn, html_content=html)
+                        send_mail(kunde_email, f"⏰ Dit tilbud udløber om 5 dage — {t.get('titel','')}", '', fra_navn, html_content=html, reply_to=klient_email)
                         db.table('tilbud').update({'sidst_chance_sendt': True}).eq('id', t['id']).execute()
                         print(f"  ⏰ Sidst-chance mail sendt til {kunde_email}")
 
@@ -8371,11 +8380,13 @@ def portal_send_tilbud(tilbud_id):
 
         fra_navn = 'Nordolsen'
         klient_hjemmeside = ''
+        klient_email = ''
         try:
             k = db.table('klienter').select('navn,hjemmeside,email').eq('id', klient_id).single().execute()
             if k.data:
                 fra_navn = k.data.get('navn', fra_navn)
                 klient_hjemmeside = k.data.get('hjemmeside', '')
+                klient_email = k.data.get('email', '') or ''
         except:
             pass
 
@@ -8423,7 +8434,8 @@ def portal_send_tilbud(tilbud_id):
             fra_navn=fra_navn,
             html_content=html_til_kunde,
             pdf_vedhæft=pdf_bytes,
-            pdf_filnavn=f'{sikkert_filnavn}.pdf'
+            pdf_filnavn=f'{sikkert_filnavn}.pdf',
+            reply_to=klient_email
         )
         # Mailen KOM ikke afsted — markér IKKE som sendt. Ellers tror
         # haandvaerkeren at tilbuddet er ude, mens kunden aldrig fik det.
@@ -8710,7 +8722,7 @@ def godkend_tilbud(tilbud_id, token):
 </body></html>"""
 
         try:
-            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'Nordolsen', html_content=bekræftelse_html)
+            send_mail(kunde_email, f'Bekræftelse: Du har godkendt "{titel}"', f'Hej {kunde_navn},\n\nDette er din bekræftelse på at du har accepteret tilbuddet "{titel}" ({total_pris:,} kr.).\n\nReference: {ref_nr}', fra_navn=klient_navn or 'Nordolsen', html_content=bekræftelse_html, reply_to=klient_email)
         except Exception as e:
             print(f'Bekræftelsesmail fejl: {e}')
 
