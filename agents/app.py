@@ -4205,17 +4205,7 @@ def test_mail():
         return jsonify({'sendt': True, 'status': response.status_code, 'fra': SENDGRID_FROM, 'til': til})
     except Exception as e:
         print(f"test-mail fejl: {e} | body: {getattr(e, 'body', '')}")
-        _body = getattr(e, 'body', b'')
-        if isinstance(_body, bytes):
-            _body = _body.decode('utf-8', 'replace')
-        return jsonify({
-            'sendt': False,
-            'fejl': 'Test-mail kunne ikke sendes',
-            'debug_status': getattr(e, 'status_code', None),
-            'debug_type': type(e).__name__,
-            'debug_besked': str(e)[:300],
-            'debug_body': str(_body)[:800]
-        }), 500
+        return jsonify({'sendt': False, 'fejl': 'Test-mail kunne ikke sendes'}), 500
 
 @app.route('/chatbot.js', methods=['GET'])
 def serve_chatbot_js():
