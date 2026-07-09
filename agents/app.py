@@ -7775,7 +7775,11 @@ Vælg de mest relevante ydelser fra priskataloget til opgaven. Beregn total korr
             'tilbud_meta': {
                 'intro':      tilbud_data.get('intro', ''),
                 'betingelser': tilbud_data.get('betingelser', ''),
-                'win_temaer': tilbud_data.get('win_temaer', [])
+                'win_temaer': tilbud_data.get('win_temaer', []),
+                # Gemmes så "Lav lignende tilbud" kan genskabe input til wizarden
+                'opgave':        opgave,
+                'noter':         noter,
+                'valgte_ydelser': valgte_ydelser,
             },
             'total_pris': int(total),
             'status': 'udkast',

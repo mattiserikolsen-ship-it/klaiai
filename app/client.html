@@ -3173,6 +3173,7 @@ function renderTilbud() {
           <div style="display:flex;gap:.4rem;margin-top:.2rem">
             <button onclick="åbnTilbud('${t.id}')" style="background:var(--dark);color:#fff;border:none;border-radius:7px;padding:.35rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">Se tilbud →</button>
             <button onclick="downloadTilbudPdf('${t.id}')" title="Download PDF" style="background:#f0efec;color:var(--dark);border:1px solid var(--border);border-radius:7px;padding:.35rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">⬇ PDF</button>
+            <button onclick="lavLignendeTilbud('${t.id}')" title="Lav et nyt tilbud der ligner dette" style="background:#f0f4ff;color:#2563eb;border:1px solid #c7d7fe;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">🔁 Lav lignende</button>
             ${t.status === 'accepteret' ? `<button onclick="åbnOpretAftaleModal(this.dataset.id,this.dataset.navn,this.dataset.email,'')" data-id="${esc(t.id)}" data-navn="${esc(t.kunde_navn||'')}" data-email="${esc(t.kunde_email||'')}" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit">📅 Book opstart</button>` : ''}
             ${(t.status === 'sendt' || t.status === 'accepteret') && !t.economic_faktura_nr ? `<button onclick="econSyncTilbud('${t.id}',this)" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit" title="Synkroniser til e-conomic">e-conomic ↑</button>` : ''}
             ${t.economic_faktura_nr ? `<span style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:7px;padding:.35rem .7rem;font-size:.72rem;font-weight:600">✓ e-conomic #${t.economic_faktura_nr}</span>` : ''}
@@ -3450,7 +3451,7 @@ function renderValgteMaterialer() {
     </div>`;
 }
 
-function åbnNytTilbudModal(email, navn, telefon) {
+function åbnNytTilbudModal(email, navn, telefon, prefill) {
   ['ntKundeNavn','ntKundeEmail','ntKundeAdresse','ntKundePostnummer','ntOpgave','ntNoter','ntForbehold','ntKundeTelefon','ntEmailEmne'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -3459,6 +3460,12 @@ function åbnNytTilbudModal(email, navn, telefon) {
   if (email)   document.getElementById('ntKundeEmail').value    = email;
   if (navn)    document.getElementById('ntKundeNavn').value     = navn;
   if (telefon) document.getElementById('ntKundeTelefon').value  = telefon;
+  // Prefill fra "Lav lignende tilbud": genskab opgave/noter/forbehold (kunde tom)
+  if (prefill) {
+    if (prefill.opgave)    document.getElementById('ntOpgave').value    = prefill.opgave;
+    if (prefill.noter)     document.getElementById('ntNoter').value     = prefill.noter;
+    if (prefill.forbehold) document.getElementById('ntForbehold').value = prefill.forbehold;
+  }
   gåTilStep(1);
   document.getElementById('ntStatus').style.display = 'none';
   document.getElementById('ntGenBtn').disabled = false;
@@ -3493,11 +3500,38 @@ function åbnNytTilbudModal(email, navn, telefon) {
           onchange="this.closest('label').style.background=this.checked?'#e8eeff':'#f3f4f6'"/>
         ${p.navn} — ${parseInt(p.enhedspris).toLocaleString('da-DK')} kr.
       </label>`).join('');
+    // Forud-vælg ydelser ved "Lav lignende tilbud"
+    if (prefill && Array.isArray(prefill.valgte_navne) && prefill.valgte_navne.length) {
+      const ønskede = new Set(prefill.valgte_navne.map(n => (n||'').trim().toLowerCase()));
+      chips.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        if (ønskede.has((cb.dataset.navn||'').trim().toLowerCase())) {
+          cb.checked = true;
+          cb.closest('label').style.background = '#e8eeff';
+        }
+      });
+    }
   }).catch(() => {});
 }
 
 function lukNytTilbudModal() {
   document.getElementById('nytTilbudOverlay').classList.remove('open');
+}
+
+// Lav et nyt tilbud der ligner et tidligere — genbruger opgave, noter og
+// valgte katalog-ydelser, men med tom kunde. Til gentagne opgavetyper.
+function lavLignendeTilbud(tilbudId) {
+  const t = (tilbudData || []).find(x => x.id === tilbudId);
+  if (!t) return;
+  const meta = t.tilbud_meta || {};
+  const navne = [];
+  (meta.valgte_ydelser || []).forEach(y => { if (y && y.navn) navne.push(y.navn); });
+  (t.linjer || []).forEach(l => { if (l && l.beskrivelse) navne.push(l.beskrivelse); });
+  åbnNytTilbudModal('', '', '', {
+    opgave:    meta.opgave || '',
+    noter:     meta.noter || '',
+    forbehold: t.forbehold || '',
+    valgte_navne: navne
+  });
 }
 
 async function genererNytTilbud() {
